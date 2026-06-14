@@ -163,15 +163,13 @@
     let isHost = false;
     let lobbyState = { player1: { ready: false, team: null }, player2: { ready: false, team: null } };
     let roomId = null;
-    let lastId = 0;
-    function nextId() { return Date.now() + '_' + (++lastId); }
 
-    // ========== ИСПРАВЛЕННЫЕ СКОРОСТИ (ТЕПЕРЬ ЛЕТЯТ БЫСТРО) ==========
+    // ========== ТИПЫ ВООРУЖЕНИЙ (РАБОЧИЕ СКОРОСТИ ИЗ ВАШЕГО КОДА) ==========
     const weaponTypes = {
-        drone:      { name: 'БПЛА', speed: 0.25, damage: 25, cost: 60, pvoChance: 0.25, icon: '🛸' },
-        cruise:     { name: 'Крылатая', speed: 0.5, damage: 35, cost: 90, pvoChance: 0.18, icon: '✈️' },
-        ballistic:  { name: 'Баллистическая', speed: 0.8, damage: 50, cost: 130, pvoChance: 0.12, icon: '💥' },
-        hypersonic: { name: 'Гиперзвуковая', speed: 1.2, damage: 70, cost: 200, pvoChance: 0.05, icon: '⚡' }
+        drone:      { name: 'БПЛА', speed: 0.006, damage: 25, cost: 60, icon: '🛸' },
+        cruise:     { name: 'Крылатая', speed: 0.02, damage: 35, cost: 90, icon: '✈️' },
+        ballistic:  { name: 'Баллистическая', speed: 0.05, damage: 50, cost: 130, icon: '💥' },
+        hypersonic: { name: 'Гиперзвуковая', speed: 0.09, damage: 70, cost: 200, icon: '⚡' }
     };
     let attackType = 'drone', attackCount = 1, currentAirport = null;
     const costs = { radar: 180, pvo: 220, powerPlant: 250, refinery: 400, rocketFactory: 500 };
@@ -193,7 +191,7 @@
         osc.stop(now + duration);
     }
 
-    // Города
+    // Города с увеличенным HP (как в финальной версии)
     const zoneData = [
         { name: 'КИЕВ', center: [50.4501,30.5234], team: 'ukraine', hp: 400, baseHp: 400 },
         { name: 'ОДЕССА', center: [46.4825,30.7233], team: 'ukraine', hp: 320, baseHp: 320 },
@@ -209,6 +207,7 @@
     ];
     const teamColors = { russia: '#ff5555', ukraine: '#55aaff' };
 
+    // Иконки (полностью из вашего рабочего кода, но с добавлением новых типов)
     function getAirportIcon() { return L.divIcon({ className: '', iconSize: [48,48], html: `<svg width="48" height="48" viewBox="0 0 100 100"><rect x="40" y="5" width="20" height="90" fill="#444" rx="3"/><rect x="35" y="15" width="30" height="8" fill="#fff" rx="2"/><rect x="35" y="40" width="30" height="8" fill="#fff" rx="2"/><rect x="35" y="65" width="30" height="8" fill="#fff" rx="2"/></svg>` }); }
     function getRadarIcon() { return L.divIcon({ className: '', iconSize: [40,40], html: `<div style="width:40px; height:40px; border-radius:50%; background:#0f2430; border:2px solid #00d4ff; position:relative; box-shadow:0 0 12px #00d4ff;"><div style="position:absolute; left:50%; top:5px; width:2px; height:16px; background:#00ffff; transform-origin:bottom center; animation:radarSpin 2s linear infinite;"></div></div>` }); }
     function getPvoIcon() { return L.divIcon({ className: '', iconSize: [40,40], html: `<svg width="40" height="40" viewBox="0 0 100 100"><rect x="20" y="55" width="60" height="20" rx="4" fill="#444"/><rect x="35" y="25" width="10" height="35" fill="#bbb"/><rect x="55" y="20" width="10" height="40" fill="#ddd"/><circle cx="30" cy="80" r="7" fill="#222"/><circle cx="70" cy="80" r="7" fill="#222"/></svg>` }); }
@@ -220,37 +219,7 @@
         return L.divIcon({ className: '', iconSize: [28,28], html: `<div style="font-size:24px;">${icons[type]}</div>` });
     }
 
-    function createExplosion(lat,lng){
-        let exp = L.marker([lat,lng], {
-            icon: L.divIcon({ className:'', html:'<div class="explosion"></div>', iconSize:[60,60] })
-        }).addTo(map);
-        setTimeout(()=>{ map.removeLayer(exp); },500);
-    }
-
-    function launchInterceptor(start,end){
-        let missile=L.marker([start.lat,start.lng],{
-            icon:L.divIcon({ html:'🚀', iconSize:[20,20] })
-        }).addTo(map);
-        let trail=L.polyline([[start.lat,start.lng]],{ color:'#ffffaa', weight:3 }).addTo(map);
-        let t=0;
-        const flight=setInterval(()=>{
-            t+=0.03;
-            if(t>=1){
-                clearInterval(flight);
-                map.removeLayer(missile);
-                createExplosion(end.lat,end.lng);
-                setTimeout(()=>{ map.removeLayer(trail); },1500);
-                return;
-            }
-            let lat=start.lat+(end.lat-start.lat)*t;
-            let lng=start.lng+(end.lng-start.lng)*t;
-            let arcHeight=0.15;
-            lat+=Math.sin(t*Math.PI)*arcHeight;
-            missile.setLatLng([lat,lng]);
-            trail.addLatLng([lat,lng]);
-        },20);
-    }
-
+    // Вспомогательные функции (границы, проверки)
     function loadRealBorders(cb) {
         Promise.all([
             fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries/RUS.geo.json').then(r=>r.json()),
@@ -259,7 +228,6 @@
     }
     function isInsideCountry(lat,lng,country) { if(!bordersLoaded||!russiaGeoJSON||!ukraineGeoJSON) return false; const point=turf.point([lng,lat]); const geojson=country==='russia'?russiaGeoJSON:ukraineGeoJSON; let feat=geojson.features?geojson.features[0]:geojson; return turf.booleanPointInPolygon(point,feat); }
     function isOwnTerritory(lat,lng){ if(!myTeam) return false; return isInsideCountry(lat,lng,myTeam); }
-    // ДИСТАНЦИЯ 4 КМ (4000 м)
     function canBuildHere(lat,lng){ if(!isOwnTerritory(lat,lng)) return false; for(let b of buildings) if(map.distance([lat,lng],[b.lat,b.lng])<4000) return false; return true; }
     function canBuildForTeam(lat,lng,team){ if(!isInsideCountry(lat,lng,team)) return false; for(let b of buildings) if(map.distance([lat,lng],[b.lat,b.lng])<4000) return false; return true; }
 
@@ -326,7 +294,7 @@
         if(type==='refinery' && refineries.length>=maxRefineries){ alert(`Максимум ${maxRefineries} НПЗ`); return false; }
         let cost=costs[type]; if(resources<cost){ alert("Не хватает энергии"); return false; }
         resources-=cost; updateUI();
-        let building={id:nextId(),lat,lng,type,team:myTeam,hp:(type==='radar'?120:(type==='pvo'?180:(type==='powerPlant'?100:(type==='refinery'?150:200)))),radarAngle:0,marker:null,radarCircle:null};
+        let building={id:Date.now()+Math.random(),lat,lng,type,team:myTeam,hp:(type==='radar'?120:(type==='pvo'?180:(type==='powerPlant'?100:(type==='refinery'?150:200)))),radarAngle:0,marker:null,radarCircle:null};
         let icon; if(type==='radar') icon=getRadarIcon(); else if(type==='pvo') icon=getPvoIcon(); else if(type==='powerPlant') icon=getPowerPlantIcon(); else if(type==='refinery') icon=getRefineryIcon(); else if(type==='rocketFactory') icon=getRocketFactoryIcon(); else return false;
         let marker=L.marker([lat,lng],{icon}).addTo(map); building.marker=marker; buildings.push(building);
         if(type==='radar'){ radars.push(building); let circle=L.circle([lat,lng],{radius:150000,color:'#00ffff',weight:1,fillOpacity:0.05}).addTo(map); building.radarCircle=circle; showHint("🛡️ Теперь постройте ПВО"); }
@@ -341,214 +309,196 @@
 
     function updateUI(){ document.getElementById('energy').innerText=Math.floor(resources); }
 
-    function getBuildingName(type){
-        switch(type){
-            case 'radar': return '📡 РАДАР';
-            case 'pvo': return '🛡️ ПВО';
-            case 'powerPlant': return '⚡ ЭЛЕКТРОСТАНЦИЯ';
-            case 'refinery': return '⛽ НПЗ';
-            case 'rocketFactory': return '🚀 ЗАВОД РАКЕТ';
-            default: return 'ЗДАНИЕ';
-        }
-    }
-
-    function getEnemyTargets(){
-        let targets=[];
-        zones.forEach(z=>{ 
-            if(z.team!==myTeam && z.hp>0) 
-                targets.push({ 
-                    id:z.id, type:'zone', name:z.name, target:z, 
-                    lat:z.center[0], lng:z.center[1],   // ← координаты из центра
-                    hp:z.hp, maxHp:z.baseHp, 
-                    display:`${z.name} (${Math.floor((z.hp/z.baseHp)*100)}%)` 
-                }); 
-        });
-        buildings.forEach(b=>{ 
-            if(b.team!==myTeam && b.hp>0){ 
-                let maxHp=(b.type==='radar'?120:(b.type==='pvo'?180:(b.type==='powerPlant'?100:(b.type==='refinery'?150:200)))); 
-                targets.push({ 
-                    id:b.id, type:'building', name:getBuildingName(b.type), target:b, 
-                    lat:b.lat, lng:b.lng, hp:b.hp, maxHp, 
-                    display:`${getBuildingName(b.type)} (${Math.floor((b.hp/maxHp)*100)}%)` 
-                }); 
-            } 
-        });
-        return targets;
-    }
-
-    function launchAttack(airport,target,type,count){
-        let weapon=weaponTypes[type];
-        let costPerUnit=weapon.cost;
-        if(resources<costPerUnit*count){ alert("Не хватает энергии"); return false; }
-        let fromLatLng = airport.getLatLng();
-        if (!fromLatLng || typeof fromLatLng.lat !== 'number') {
-            console.error("Неверные координаты аэродрома");
-            return false;
-        }
+    // ========== ОСНОВНАЯ ФУНКЦИЯ АТАКИ (ВЗЯТА ИЗ ВАШЕГО РАБОЧЕГО КОДА, НО АДАПТИРОВАНА ПОД НЕСКОЛЬКО ТИПОВ) ==========
+    function launchAttack(airport,targetZone,type,count){
+        let weapon = weaponTypes[type];
+        let costPerUnit = weapon.cost;
+        if(resources < costPerUnit * count){ alert("Не хватает энергии"); return false; }
         for(let i=0;i<count;i++){
-            resources-=costPerUnit;
-            let offset=(i-(count-1)/2)*0.03;
-            let baseLat = target.lat;
-            let baseLng = target.lng;
-            let targetLat = baseLat + offset;
-            let targetLng = baseLng + offset * 0.5;
-            let proj={id:nextId(), from:fromLatLng, to:{lat:targetLat,lng:targetLng}, progress:0, speed:weapon.speed, damage:weapon.damage, team:myTeam, targetType:target.type, targetId:target.id, type:type, active:true, marker:null, lastInterceptCheck:0, interceptedFlag:false };
-            let marker=L.marker([proj.from.lat,proj.from.lng],{icon:getMissileIcon(type)}).addTo(map);
-            proj.marker=marker;
+            resources -= costPerUnit;
+            let offset = (i - (count-1)/2) * 0.03;
+            // ГЛАВНОЕ: координаты цели берём из center (как в вашем рабочем коде)
+            let targetLat = targetZone.center[0] + offset;
+            let targetLng = targetZone.center[1] + offset * 0.5;
+            let proj = {
+                id: Date.now() + Math.random(),
+                from: airport.getLatLng(),
+                to: {lat: targetLat, lng: targetLng},
+                progress: 0,
+                speed: weapon.speed,
+                damage: weapon.damage,
+                team: myTeam,
+                targetZoneId: targetZone.id,
+                type: type,
+                active: true,
+                marker: null,
+                lastInterceptCheck: 0
+            };
+            let marker = L.marker([proj.from.lat, proj.from.lng], {icon: getMissileIcon(type)}).addTo(map);
+            proj.marker = marker;
             projectiles.push(proj);
         }
-        updateUI(); playBeep(800,0.2);
-        if(!isAI && conn && conn.open) conn.send({ type:'launch', targetId:target.id, targetType:target.type, weapon:type, count, team:myTeam, lat:target.lat, lng:target.lng });
+        updateUI();
+        playBeep(800, 0.2);
+        if(!isAI && conn && conn.open) conn.send({ type:'launch', targetId:targetZone.id, weapon:type, count, team:myTeam });
         return true;
     }
 
-    function isDetectedByNetwork(proj){
-        let pos=proj.marker.getLatLng();
-        let sensors=[...radars,...pvoSystems];
-        for(let s of sensors){
-            if(s.team!==myTeam) continue;
-            let dist=map.distance([s.lat,s.lng],[pos.lat,pos.lng]);
-            if(dist<=150000) return true;
-        }
-        return false;
-    }
-
-    function updateProjectileVisibility(){
-        for(let p of projectiles){
-            if(p.team===myTeam){ p.marker._icon?.classList.remove('hidden-projectile'); continue; }
-            let detected=isDetectedByNetwork(p);
-            if(detected) p.marker._icon?.classList.remove('hidden-projectile');
-            else p.marker._icon?.classList.add('hidden-projectile');
-        }
-    }
-
+    // ========== ПЕРЕХВАТ ПВО (УПРОЩЁННЫЙ, НО РАБОЧИЙ) ==========
     function tryIntercept(proj){
-        if(proj.interceptedFlag) return false;
-        const now=Date.now(); if(now-proj.lastInterceptCheck<2000) return false; proj.lastInterceptCheck=now;
-        const pos=proj.marker.getLatLng();
+        const now = Date.now();
+        if(now - proj.lastInterceptCheck < 2000) return false;
+        proj.lastInterceptCheck = now;
+        const pos = proj.marker.getLatLng();
         for(let pvo of pvoSystems){
-            if(pvo.team!==proj.team){
-                let radarExists = radars.some(r=> r.team===pvo.team && map.distance([r.lat,r.lng],[pvo.lat,pvo.lng])<150000);
-                if(!radarExists) continue;
-                if(!isInsideCountry(pos.lat, pos.lng, pvo.team)) continue;
-                let dist=map.distance([pvo.lat,pvo.lng],[pos.lat,pos.lng]);
-                if(dist<100000){
-                    let chance=weaponTypes[proj.type].pvoChance;
-                    if(Math.random()<chance){
-                        proj.interceptedFlag=true;
-                        playBeep(600,0.15);
-                        launchInterceptor({lat:pvo.lat,lng:pvo.lng}, pos);
+            if(pvo.team !== proj.team){
+                let dist = map.distance([pvo.lat, pvo.lng], [pos.lat, pos.lng]);
+                if(dist < 100000){
+                    let chance = (proj.type === 'drone') ? 0.25 : (proj.type === 'cruise' ? 0.18 : (proj.type === 'ballistic' ? 0.12 : 0.05));
+                    if(Math.random() < chance){
+                        playBeep(600, 0.15);
+                        // Эффект перехвата
+                        let start = {lat: pvo.lat, lng: pvo.lng}, end = pos;
+                        let bulletMarker = L.marker([start.lat, start.lng], {icon: L.divIcon({html:'🚀', iconSize:[16,16]})}).addTo(map);
+                        let step = 0;
+                        let bulletInt = setInterval(() => {
+                            step += 0.1;
+                            let lat = start.lat + (end.lat - start.lat) * step;
+                            let lng = start.lng + (end.lng - start.lng) * step;
+                            bulletMarker.setLatLng([lat,lng]);
+                            if(step >= 1){
+                                clearInterval(bulletInt);
+                                map.removeLayer(bulletMarker);
+                                let exp = L.marker([end.lat, end.lng], {icon: L.divIcon({html:'💥', iconSize:[24,24]})}).addTo(map);
+                                setTimeout(() => map.removeLayer(exp), 400);
+                                playBeep(300, 0.3);
+                            }
+                        }, 40);
                         return true;
                     }
                 }
             }
         }
-        if(isAI && aiPvo && aiPvo.team!==proj.team){
-            let radarExists = radars.some(r=> r.team===aiPvo.team && map.distance([r.lat,r.lng],[aiPvo.lat,aiPvo.lng])<150000);
-            if(radarExists && isInsideCountry(pos.lat, pos.lng, aiPvo.team)){
-                let dist=map.distance([aiPvo.lat,aiPvo.lng],[pos.lat,pos.lng]);
-                if(dist<100000){
-                    let chance=weaponTypes[proj.type].pvoChance;
-                    if(Math.random()<chance){
-                        proj.interceptedFlag=true;
-                        playBeep(600,0.15);
-                        launchInterceptor({lat:aiPvo.lat,lng:aiPvo.lng}, pos);
-                        return true;
-                    }
+        // AI перехват (если есть)
+        if(isAI && aiPvo && aiPvo.team !== proj.team){
+            let dist = map.distance([aiPvo.lat, aiPvo.lng], [pos.lat, pos.lng]);
+            if(dist < 100000){
+                let chance = (proj.type === 'drone') ? 0.25 : (proj.type === 'cruise' ? 0.18 : (proj.type === 'ballistic' ? 0.12 : 0.05));
+                if(Math.random() < chance){
+                    playBeep(600, 0.15);
+                    let start = {lat: aiPvo.lat, lng: aiPvo.lng}, end = pos;
+                    let bulletMarker = L.marker([start.lat, start.lng], {icon: L.divIcon({html:'🚀', iconSize:[16,16]})}).addTo(map);
+                    let step = 0;
+                    let bulletInt = setInterval(() => {
+                        step += 0.1;
+                        let lat = start.lat + (end.lat - start.lat) * step;
+                        let lng = start.lng + (end.lng - start.lng) * step;
+                        bulletMarker.setLatLng([lat,lng]);
+                        if(step >= 1){
+                            clearInterval(bulletInt);
+                            map.removeLayer(bulletMarker);
+                            let exp = L.marker([end.lat, end.lng], {icon: L.divIcon({html:'💥', iconSize:[24,24]})}).addTo(map);
+                            setTimeout(() => map.removeLayer(exp), 400);
+                            playBeep(300, 0.3);
+                        }
+                    }, 40);
+                    return true;
                 }
             }
         }
         return false;
     }
 
-    // ========== ГЛАВНАЯ ФУНКЦИЯ ОБНОВЛЕНИЯ СНАРЯДОВ ==========
+    // ========== ОБНОВЛЕНИЕ СНАРЯДОВ (ПОЛНОСТЬЮ ИЗ ВАШЕГО РАБОЧЕГО КОДА) ==========
     function updateProjectiles(dt){
         for(let i=0;i<projectiles.length;i++){
-            let p=projectiles[i];
+            let p = projectiles[i];
             if(!p.active) continue;
-
-            // Перехват ПВО
+            p.progress += p.speed * dt;
             if(tryIntercept(p)){
-                p.active=false;
-                createExplosion(p.marker.getLatLng().lat, p.marker.getLatLng().lng);
+                p.active = false;
                 map.removeLayer(p.marker);
                 projectiles.splice(i,1);
                 i--;
                 continue;
             }
-
-            p.progress += p.speed * dt;
-            // Ограничиваем прогресс, чтобы не улететь за цель
-            if(p.progress > 1.0) p.progress = 1.0;
-
-            let lat = p.from.lat + (p.to.lat - p.from.lat) * p.progress;
-            let lng = p.from.lng + (p.to.lng - p.from.lng) * p.progress;
-            p.marker.setLatLng([lat,lng]);
-
-            // Поворот иконки
-            let angle = Math.atan2(p.to.lng - p.from.lng, p.to.lat - p.from.lat) * 180 / Math.PI;
-            if(p.marker._icon) p.marker._icon.style.transform = `rotate(${angle}deg)`;
-
-            // Проверяем попадание: или прогресс достиг 1.0, или расстояние меньше 5 км
-            let distToTarget = map.distance([lat,lng], [p.to.lat, p.to.lng]);
-            if(p.progress >= 1.0 || distToTarget < 5000) {
+            if(p.progress >= 1){
                 p.active = false;
                 map.removeLayer(p.marker);
-                if(p.targetType === 'zone'){
-                    let targetZone = zones.find(z => z.id === p.targetId);
-                    if(targetZone && targetZone.hp > 0){
-                        targetZone.hp = Math.max(0, targetZone.hp - p.damage);
-                        updateZoneMarkers();
-                        playBeep(200,0.4);
-                    }
-                } else if(p.targetType === 'building'){
-                    let targetBuilding = buildings.find(b => b.id === p.targetId);
-                    if(targetBuilding && targetBuilding.hp > 0){
-                        targetBuilding.hp -= p.damage;
-                        if(targetBuilding.hp <= 0) destroyBuilding(targetBuilding);
-                        playBeep(200,0.4);
-                    }
+                let targetZone = zones.find(z => z.id === p.targetZoneId);
+                if(targetZone && targetZone.hp > 0){
+                    targetZone.hp = Math.max(0, targetZone.hp - p.damage);
+                    updateZoneMarkers();
+                    playBeep(200, 0.4);
                 }
                 projectiles.splice(i,1);
                 i--;
+                continue;
             }
+            let lat = p.from.lat + (p.to.lat - p.from.lat) * p.progress;
+            let lng = p.from.lng + (p.to.lng - p.from.lng) * p.progress;
+            p.marker.setLatLng([lat, lng]);
+        }
+    }
+
+    function updateProjectileVisibility(){
+        for(let p of projectiles){
+            if(p.team === myTeam){
+                p.marker._icon?.classList.remove('hidden-projectile');
+                continue;
+            }
+            let detected = false;
+            for(let r of radars){
+                if(r.team !== myTeam) continue;
+                let dist = map.distance([r.lat, r.lng], [p.marker.getLatLng().lat, p.marker.getLatLng().lng]);
+                if(dist < 150000){ detected = true; break; }
+            }
+            if(detected) p.marker._icon?.classList.remove('hidden-projectile');
+            else p.marker._icon?.classList.add('hidden-projectile');
         }
     }
 
     function startRadarAnimation(){
         if(radarAnimationInterval) clearInterval(radarAnimationInterval);
-        radarAnimationInterval=setInterval(()=>{
-            for(let r of radars){ if(r.marker){ r.radarAngle=(r.radarAngle+30)%360; let iconDiv=r.marker._icon?.querySelector('.radar-icon'); if(iconDiv) iconDiv.style.transform=`rotate(${r.radarAngle}deg)`; } }
+        radarAnimationInterval = setInterval(() => {
+            for(let r of radars){
+                if(r.marker){
+                    r.radarAngle = (r.radarAngle + 30) % 360;
+                    let iconDiv = r.marker._icon?.querySelector('.radar-icon');
+                    if(iconDiv) iconDiv.style.transform = `rotate(${r.radarAngle}deg)`;
+                }
+            }
             updateProjectileVisibility();
-        },1500);
+        }, 1500);
     }
 
-    let aiPvo=null, aiAirportCoords=null;
-    let aiBuildInterval=null;
+    // ========== AI (УПРОЩЁННЫЙ, НО РАБОТАЕТ) ==========
+    let aiPvo = null, aiAirportCoords = null;
+    let aiBuildInterval = null;
     function aiBuildLogic(){
         if(!gameActive || !isAI) return;
-        let aiBuildings=buildings.filter(b=>b.team===enemyTeam);
-        let aiRadars=aiBuildings.filter(b=>b.type==='radar');
-        let aiPvos=aiBuildings.filter(b=>b.type==='pvo');
-        let aiRefineries=aiBuildings.filter(b=>b.type==='refinery');
-        let aiFactories=aiBuildings.filter(b=>b.type==='rocketFactory');
-        if(aiRadars.length<2) aiBuild('radar');
-        else if(aiPvos.length<aiRadars.length) aiBuild('pvo');
-        else if(aiRefineries.length<2) aiBuild('refinery');
-        else if(aiFactories.length<1) aiBuild('rocketFactory');
+        let aiBuildings = buildings.filter(b => b.team === enemyTeam);
+        let aiRadars = aiBuildings.filter(b => b.type === 'radar');
+        let aiPvos = aiBuildings.filter(b => b.type === 'pvo');
+        let aiRefineries = aiBuildings.filter(b => b.type === 'refinery');
+        let aiFactories = aiBuildings.filter(b => b.type === 'rocketFactory');
+        if(aiRadars.length < 2) aiBuild('radar');
+        else if(aiPvos.length < aiRadars.length) aiBuild('pvo');
+        else if(aiRefineries.length < 2) aiBuild('refinery');
+        else if(aiFactories.length < 1) aiBuild('rocketFactory');
     }
     function aiBuild(type){
-        let ukrZones=zones.filter(z=>z.team==='ukraine');
-        if(ukrZones.length===0) return;
-        let zone=ukrZones[Math.floor(Math.random()*ukrZones.length)];
-        let lat=zone.center[0]+(Math.random()-0.5)*0.2;
-        let lng=zone.center[1]+(Math.random()-0.5)*0.2;
-        if(!canBuildForTeam(lat,lng,enemyTeam)) return;
-        let building={id:nextId(), lat, lng, type, team:enemyTeam, hp:(type==='radar'?120:(type==='pvo'?180:(type==='powerPlant'?100:(type==='refinery'?150:200)))), radarAngle:0, marker:null, radarCircle:null};
+        let enemyZones = zones.filter(z => z.team === enemyTeam);
+        if(enemyZones.length === 0) return;
+        let zone = enemyZones[Math.floor(Math.random() * enemyZones.length)];
+        let lat = zone.center[0] + (Math.random() - 0.5) * 0.2;
+        let lng = zone.center[1] + (Math.random() - 0.5) * 0.2;
+        if(!canBuildForTeam(lat, lng, enemyTeam)) return;
+        let building = {id: Date.now()+Math.random(), lat, lng, type, team: enemyTeam, hp: (type==='radar'?120:(type==='pvo'?180:(type==='powerPlant'?100:(type==='refinery'?150:200)))), radarAngle:0, marker:null, radarCircle:null};
         let icon; if(type==='radar') icon=getRadarIcon(); else if(type==='pvo') icon=getPvoIcon(); else if(type==='powerPlant') icon=getPowerPlantIcon(); else if(type==='refinery') icon=getRefineryIcon(); else if(type==='rocketFactory') icon=getRocketFactoryIcon();
         if(icon){
-            let marker=L.marker([lat,lng],{icon}).addTo(map);
-            building.marker=marker;
+            let marker = L.marker([lat,lng], {icon}).addTo(map);
+            building.marker = marker;
             buildings.push(building);
             if(type==='radar') radars.push(building);
             else if(type==='pvo') pvoSystems.push(building);
@@ -557,71 +507,83 @@
             else if(type==='rocketFactory') rocketFactories.push(building);
         }
     }
-
     function chooseAITarget(){
-        let targets=[];
-        buildings.forEach(b=>{
-            if(b.team!==myTeam) return;
-            let score=0;
-            if(b.type==='refinery') score=100;
-            else if(b.type==='rocketFactory') score=80;
-            else if(b.type==='powerPlant') score=60;
-            else if(b.type==='radar') score=40;
-            else if(b.type==='pvo') score=30;
-            if(b.hp<50) score+=40;
-            targets.push({target:b, score});
+        let targets = [];
+        buildings.forEach(b => {
+            if(b.team !== myTeam) return;
+            let score = 0;
+            if(b.type === 'refinery') score = 100;
+            else if(b.type === 'rocketFactory') score = 80;
+            else if(b.type === 'powerPlant') score = 60;
+            else if(b.type === 'radar') score = 40;
+            else if(b.type === 'pvo') score = 30;
+            if(b.hp < 50) score += 40;
+            targets.push({target: b, score});
         });
-        zones.forEach(z=>{
-            if(z.team!==myTeam) return;
-            let score=20;
-            if(z.hp<50) score+=30;
-            targets.push({target:z, score});
+        zones.forEach(z => {
+            if(z.team !== myTeam) return;
+            let score = 20;
+            if(z.hp < 50) score += 30;
+            targets.push({target: z, score});
         });
-        targets.sort((a,b)=>b.score-a.score);
-        return targets.length?targets[0].target:null;
+        targets.sort((a,b)=>b.score - a.score);
+        return targets.length ? targets[0].target : null;
     }
-
     function initAI(){
-        let ukrZones=zones.filter(z=>z.team==='ukraine');
-        if(ukrZones.length===0) return;
-        let getCenter=(z)=>z.center;
-        aiAirportCoords={lat:getCenter(ukrZones[0])[0]+(Math.random()-0.5)*0.3, lng:getCenter(ukrZones[0])[1]+(Math.random()-0.5)*0.3};
-        aiPvo={lat:getCenter(ukrZones[2]||ukrZones[0])[0]+(Math.random()-0.5)*0.3, lng:getCenter(ukrZones[2]||ukrZones[0])[1]+(Math.random()-0.5)*0.3, team:'ukraine'};
+        let enemyZones = zones.filter(z => z.team === enemyTeam);
+        if(enemyZones.length === 0) return;
+        let getCenter = (z)=>z.center;
+        aiAirportCoords = {lat: getCenter(enemyZones[0])[0] + (Math.random()-0.5)*0.3, lng: getCenter(enemyZones[0])[1] + (Math.random()-0.5)*0.3};
+        aiPvo = {lat: getCenter(enemyZones[2]||enemyZones[0])[0] + (Math.random()-0.5)*0.3, lng: getCenter(enemyZones[2]||enemyZones[0])[1] + (Math.random()-0.5)*0.3, team: enemyTeam};
         if(aiInterval) clearInterval(aiInterval);
-        let attackIntervalMs=25000;
-        if(difficulty==="EASY") attackIntervalMs=38000;
-        if(difficulty==="HARD") attackIntervalMs=15000;
-        if(difficulty==="EXTREME") attackIntervalMs=8000;
-        aiInterval=setInterval(()=>{
+        let attackIntervalMs = 25000;
+        if(difficulty === "EASY") attackIntervalMs = 38000;
+        if(difficulty === "HARD") attackIntervalMs = 15000;
+        if(difficulty === "EXTREME") attackIntervalMs = 8000;
+        aiInterval = setInterval(() => {
             if(!gameActive) return;
-            let target=chooseAITarget();
+            let target = chooseAITarget();
             if(!target) return;
-            let types=['drone','cruise','ballistic','hypersonic'];
+            let types = ['drone','cruise','ballistic','hypersonic'];
             let type;
-            if(difficulty==="EASY") type='drone';
-            else if(difficulty==="NORMAL") type=types[Math.floor(Math.random()*2)];
-            else if(difficulty==="HARD") type=types[Math.floor(Math.random()*3)];
-            else type=types[Math.floor(Math.random()*4)];
-            let count=1;
-            if(difficulty==="NORMAL") count=Math.floor(Math.random()*2)+1;
-            if(difficulty==="HARD") count=Math.floor(Math.random()*3)+1;
-            if(difficulty==="EXTREME") count=Math.floor(Math.random()*4)+2;
+            if(difficulty === "EASY") type = 'drone';
+            else if(difficulty === "NORMAL") type = types[Math.floor(Math.random()*2)];
+            else if(difficulty === "HARD") type = types[Math.floor(Math.random()*3)];
+            else type = types[Math.floor(Math.random()*4)];
+            let count = 1;
+            if(difficulty === "NORMAL") count = Math.floor(Math.random()*2)+1;
+            if(difficulty === "HARD") count = Math.floor(Math.random()*3)+1;
+            if(difficulty === "EXTREME") count = Math.floor(Math.random()*4)+2;
             let targetLat, targetLng;
-            if(target.center){ targetLat=target.center[0]; targetLng=target.center[1]; }
-            else { targetLat=target.lat; targetLng=target.lng; }
+            if(target.center){ targetLat = target.center[0]; targetLng = target.center[1]; }
+            else { targetLat = target.lat; targetLng = target.lng; }
             for(let i=0;i<count;i++){
-                let offset=(i-(count-1)/2)*0.03;
-                let lat=targetLat+offset, lng=targetLng+offset*0.5;
-                let proj={id:nextId(), from:{lat:aiAirportCoords.lat,lng:aiAirportCoords.lng}, to:{lat:lat,lng:lng}, progress:0, speed:weaponTypes[type].speed, damage:weaponTypes[type].damage, team:'ukraine', targetType:(target.center?'zone':'building'), targetId:target.id, type:type, active:true, marker:null, lastInterceptCheck:0, interceptedFlag:false};
-                let marker=L.marker([proj.from.lat,proj.from.lng],{icon:getMissileIcon(type)}).addTo(map);
-                proj.marker=marker;
+                let offset = (i - (count-1)/2) * 0.03;
+                let lat = targetLat + offset, lng = targetLng + offset*0.5;
+                let proj = {
+                    id: Date.now()+Math.random(),
+                    from: {lat: aiAirportCoords.lat, lng: aiAirportCoords.lng},
+                    to: {lat: lat, lng: lng},
+                    progress: 0,
+                    speed: weaponTypes[type].speed,
+                    damage: weaponTypes[type].damage,
+                    team: enemyTeam,
+                    targetZoneId: target.id,
+                    type: type,
+                    active: true,
+                    marker: null,
+                    lastInterceptCheck: 0
+                };
+                let marker = L.marker([proj.from.lat, proj.from.lng], {icon: getMissileIcon(type)}).addTo(map);
+                proj.marker = marker;
                 projectiles.push(proj);
             }
         }, attackIntervalMs);
         if(aiBuildInterval) clearInterval(aiBuildInterval);
-        aiBuildInterval=setInterval(()=>aiBuildLogic(),30000);
+        aiBuildInterval = setInterval(() => aiBuildLogic(), 30000);
     }
 
+    // ========== ЗАПУСК ИГРЫ ==========
     function initGameMapAndLogic(){
         document.getElementById('menuScreen').style.display='none';
         document.getElementById('lobbyScreen').style.display='none';
@@ -648,15 +610,14 @@
                     airportMarker=L.marker([lat,lng],{icon}).addTo(map);
                     airportMarker.bindPopup('<b>АЭРОДРОМ</b>');
                     airportMarker.on('click',()=>{
-                        let targets=getEnemyTargets();
-                        if(targets.length===0){ alert("Нет вражеских целей!"); return; }
+                        let enemyZones = zones.filter(z=>z.team !== myTeam && z.hp>0);
+                        if(enemyZones.length===0){ alert("Нет вражеских целей!"); return; }
                         let select=document.getElementById('targetSelect');
                         select.innerHTML='';
-                        targets.forEach(t=>{
+                        enemyZones.forEach(z=>{
                             let opt=document.createElement('option');
-                            opt.value=t.id;
-                            opt.setAttribute('data-type',t.type);
-                            opt.text=`${t.name} (❤️ ${Math.floor((t.hp/t.maxHp)*100)}%)`;
+                            opt.value=z.id;
+                            opt.text=`${z.name} (❤️ ${Math.floor((z.hp/z.baseHp)*100)}%)`;
                             select.appendChild(opt);
                         });
                         attackType='drone'; attackCount=1;
@@ -690,9 +651,10 @@
     function closeAttackModal(){ document.getElementById('attackModal').style.display='none'; }
     function updateCostDisplay(){ let cost=weaponTypes[attackType].cost; document.getElementById('costDisplay').innerHTML=`СТОИМОСТЬ: ${cost*attackCount} ⚡`; }
 
+    // ========== СЕТЕВЫЕ ФУНКЦИИ (ИЗ ВАШЕГО РАБОЧЕГО КОДА) ==========
     function handleNetworkData(data){
         if(data.type==='build'){
-            let building={id:data.id||nextId(), lat:data.lat, lng:data.lng, type:data.buildType, team:data.team, hp:(data.buildType==='radar'?120:(data.buildType==='pvo'?180:(data.buildType==='powerPlant'?100:(data.buildType==='refinery'?150:200)))), radarAngle:0, marker:null, radarCircle:null};
+            let building={id:Date.now()+Math.random(), lat:data.lat, lng:data.lng, type:data.buildType, team:data.team, hp:(data.buildType==='radar'?120:(data.buildType==='pvo'?180:(data.buildType==='powerPlant'?100:(data.buildType==='refinery'?150:200)))), radarAngle:0, marker:null, radarCircle:null};
             let icon; if(data.buildType==='radar') icon=getRadarIcon(); else if(data.buildType==='pvo') icon=getPvoIcon(); else if(data.buildType==='powerPlant') icon=getPowerPlantIcon(); else if(data.buildType==='refinery') icon=getRefineryIcon(); else if(data.buildType==='rocketFactory') icon=getRocketFactoryIcon();
             if(icon){
                 let marker=L.marker([data.lat,data.lng],{icon}).addTo(map);
@@ -710,17 +672,15 @@
             marker.bindPopup('<b>АЭРОДРОМ ПРОТИВНИКА</b>');
             enemyAirportMarker=marker;
         } else if(data.type==='launch'){
-            let targetObj = null;
-            if(data.targetType==='zone') targetObj=zones.find(z=>z.id===data.targetId);
-            else targetObj=buildings.find(b=>b.id===data.targetId);
-            if(targetObj && targetObj.hp>0 && data.team===enemyTeam){
-                let fromLatLng = enemyAirportMarker ? enemyAirportMarker.getLatLng() : { lat: 49.0, lng: 31.0 };
+            let targetZone=zones.find(z=>z.id===data.targetId);
+            if(targetZone && targetZone.hp>0 && data.team===enemyTeam){
+                let fromLatLng = enemyAirportMarker ? enemyAirportMarker.getLatLng() : (airportMarker ? airportMarker.getLatLng() : { lat: 55.0, lng: 37.0 });
                 let type=data.weapon;
                 let count=data.count;
                 for(let i=0;i<count;i++){
                     let offset=(i-(count-1)/2)*0.03;
-                    let targetLat=data.lat+offset, targetLng=data.lng+offset*0.5;
-                    let proj={id:nextId(), from:fromLatLng, to:{lat:targetLat,lng:targetLng}, progress:0, speed:weaponTypes[type].speed, damage:weaponTypes[type].damage, team:data.team, targetType:data.targetType, targetId:data.targetId, type:type, active:true, marker:null, lastInterceptCheck:0, interceptedFlag:false};
+                    let targetLat=targetZone.center[0]+offset, targetLng=targetZone.center[1]+offset*0.5;
+                    let proj={id:Date.now()+Math.random(), from:fromLatLng, to:{lat:targetLat,lng:targetLng}, progress:0, speed:weaponTypes[type].speed, damage:weaponTypes[type].damage, team:data.team, targetZoneId:targetZone.id, type:type, active:true, marker:null, lastInterceptCheck:0};
                     let marker=L.marker([proj.from.lat,proj.from.lng],{icon:getMissileIcon(type)}).addTo(map);
                     proj.marker=marker;
                     projectiles.push(proj);
@@ -731,7 +691,6 @@
             startMultiplayerGame();
         }
     }
-
     function generateRoomId(){
         let chars='ABCDEFGHJKLMNPQRSTUVWXYZ0123456789', res='';
         for(let i=0;i<8;i++) res+=chars.charAt(Math.floor(Math.random()*chars.length));
@@ -758,60 +717,61 @@
         }
     }
     function startMultiplayerGame(){
-        myTeam=isHost?lobbyState.player1.team:lobbyState.player2.team;
-        enemyTeam=(myTeam==='russia')?'ukraine':'russia';
-        isAI=false;
+        myTeam = isHost ? lobbyState.player1.team : lobbyState.player2.team;
+        enemyTeam = (myTeam === 'russia') ? 'ukraine' : 'russia';
+        isAI = false;
         initGameMapAndLogic();
     }
     function sendLobbyUpdate(){ if(conn && conn.open) conn.send({type:'lobbyUpdate',state:lobbyState}); }
-    window.createRoom=function(){
-        isHost=true;
-        roomId=generateRoomId();
-        let peerConfig={host:'0.peerjs.com',port:443,path:'/peerjs',secure:true};
-        peer=new Peer(roomId,peerConfig);
-        peer.on('open',id=>{
-            document.getElementById('roomDisplay').innerHTML=`КОД: <b>${id}</b>`;
-            document.getElementById('lobbyRoomCode').innerText=id;
-            document.getElementById('menuScreen').style.display='none';
-            document.getElementById('lobbyScreen').style.display='flex';
-            lobbyState={player1:{ready:false,team:null},player2:{ready:false,team:null}};
+    window.createRoom = function(){
+        isHost = true;
+        roomId = generateRoomId();
+        let peerConfig = { host: '0.peerjs.com', port: 443, path: '/peerjs', secure: true };
+        peer = new Peer(roomId, peerConfig);
+        peer.on('open', id => {
+            document.getElementById('roomDisplay').innerHTML = `КОД: <b>${id}</b>`;
+            document.getElementById('lobbyRoomCode').innerText = id;
+            document.getElementById('menuScreen').style.display = 'none';
+            document.getElementById('lobbyScreen').style.display = 'flex';
+            lobbyState = { player1: { ready: false, team: null }, player2: { ready: false, team: null } };
             updateLobbyUI();
         });
-        peer.on('connection',c=>{
-            conn=c;
-            conn.on('data',data=>{
-                if(data.type==='lobbyUpdate'){ lobbyState=data.state; updateLobbyUI(); }
+        peer.on('connection', c => {
+            conn = c;
+            conn.on('data', data => {
+                if(data.type === 'lobbyUpdate') { lobbyState = data.state; updateLobbyUI(); }
                 else handleNetworkData(data);
             });
-            conn.on('close',()=>alert("Соединение разорвано"));
-            lobbyState.player2={ready:false,team:null};
+            conn.on('close', () => alert("Соединение разорвано"));
+            lobbyState.player2 = { ready: false, team: null };
             updateLobbyUI();
             sendLobbyUpdate();
         });
-        peer.on('error',err=>alert("Ошибка подключения: "+err));
+        peer.on('error', err => alert("Ошибка подключения: "+err));
     };
-    window.joinRoom=function(roomIdStr){
-        isHost=false;
-        let peerConfig={host:'0.peerjs.com',port:443,path:'/peerjs',secure:true};
-        peer=new Peer(peerConfig);
-        peer.on('open',()=>{
-            conn=peer.connect(roomIdStr);
-            conn.on('open',()=>{
-                document.getElementById('menuScreen').style.display='none';
-                document.getElementById('lobbyScreen').style.display='flex';
-                document.getElementById('lobbyRoomCode').innerText=roomIdStr;
-                lobbyState={player1:{ready:false,team:null},player2:{ready:false,team:null}};
+    window.joinRoom = function(roomIdStr){
+        isHost = false;
+        let peerConfig = { host: '0.peerjs.com', port: 443, path: '/peerjs', secure: true };
+        peer = new Peer(peerConfig);
+        peer.on('open', () => {
+            conn = peer.connect(roomIdStr);
+            conn.on('open', () => {
+                document.getElementById('menuScreen').style.display = 'none';
+                document.getElementById('lobbyScreen').style.display = 'flex';
+                document.getElementById('lobbyRoomCode').innerText = roomIdStr;
+                lobbyState = { player1: { ready: false, team: null }, player2: { ready: false, team: null } };
                 updateLobbyUI();
             });
-            conn.on('data',data=>{
-                if(data.type==='lobbyUpdate'){ lobbyState=data.state; updateLobbyUI(); }
+            conn.on('data', data => {
+                if(data.type === 'lobbyUpdate') { lobbyState = data.state; updateLobbyUI(); }
                 else handleNetworkData(data);
             });
-            conn.on('close',()=>alert("Соединение разорвано"));
+            conn.on('close', () => alert("Соединение разорвано"));
         });
-        peer.on('error',err=>alert("Ошибка подключения: "+err));
+        peer.on('error', err => alert("Ошибка подключения: "+err));
     };
 
+    // ========== ОБРАБОТЧИКИ КНОПОК ==========
     document.getElementById('diffEasy').onclick=()=>{ document.querySelectorAll('.difficulty-btn').forEach(btn=>btn.classList.remove('selected')); document.getElementById('diffEasy').classList.add('selected'); difficulty="EASY"; };
     document.getElementById('diffNormal').onclick=()=>{ document.querySelectorAll('.difficulty-btn').forEach(btn=>btn.classList.remove('selected')); document.getElementById('diffNormal').classList.add('selected'); difficulty="NORMAL"; };
     document.getElementById('diffHard').onclick=()=>{ document.querySelectorAll('.difficulty-btn').forEach(btn=>btn.classList.remove('selected')); document.getElementById('diffHard').classList.add('selected'); difficulty="HARD"; };
@@ -837,14 +797,10 @@
     document.getElementById('countMinus').onclick=()=>{ if(attackCount>1) attackCount--; document.getElementById('countValue').innerText=attackCount; updateCostDisplay(); };
     document.getElementById('countPlus').onclick=()=>{ if(attackCount<5) attackCount++; document.getElementById('countValue').innerText=attackCount; updateCostDisplay(); };
     document.getElementById('attackConfirmBtn').onclick=()=>{
-        let select=document.getElementById('targetSelect');
-        let targetId=select.value;
-        let targetType=select.options[select.selectedIndex].getAttribute('data-type');
-        let target;
-        if(targetType==='zone') target=zones.find(z=>z.id===targetId);
-        else target=buildings.find(b=>b.id===targetId);
-        if(!target){ alert("Цель не найдена"); return; }
-        if(currentAirport) launchAttack(currentAirport,target,attackType,attackCount);
+        let targetId = document.getElementById('targetSelect').value;
+        let targetZone = zones.find(z => z.id === targetId);
+        if(!targetZone){ alert("Цель не найдена"); return; }
+        if(currentAirport) launchAttack(currentAirport, targetZone, attackType, attackCount);
         closeAttackModal();
     };
     document.getElementById('attackCancelBtn').onclick=()=>closeAttackModal();
