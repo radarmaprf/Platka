@@ -31,6 +31,7 @@
         .ready-btn { background:#ffaa33!important; color:#1a2a2a!important; }
         #gameHUD { position:fixed; top:12px; left:12px; right:12px; background:rgba(5,10,15,0.9); backdrop-filter:blur(12px); border-radius:30px; padding:8px 16px; display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; z-index:1500; border:1px solid #00ffaa; box-shadow:0 0 20px rgba(0,255,170,0.25), inset 0 0 15px rgba(0,255,170,0.05); font-weight:bold; }
         .hud-resource { background:#1e2e2e; padding:4px 12px; border-radius:40px; display:inline-flex; align-items:center; gap:6px; color:#00ffaa; font-size:18px; }
+        .hud-rank { background:#1e2e2e; padding:4px 12px; border-radius:40px; font-size:14px; display:inline-flex; align-items:center; gap:6px; }
         .health-bars { display:flex; gap:20px; background:rgba(0,0,0,0.5); padding:4px 12px; border-radius:40px; }
         .health-bar { display:flex; align-items:center; gap:8px; }
         .bar-bg { width:120px; height:10px; background:#333; border-radius:10px; overflow:hidden; }
@@ -122,6 +123,7 @@
     <div id="map" style="width:100%; height:100%;"></div>
     <div id="gameHUD">
         <div class="hud-resource">⚡ <span id="energy">300</span></div>
+        <div class="hud-rank" id="rankDisplay">⭐ <span id="rankTitle">Рядовой</span> <span id="rankXp">0 XP</span></div>
         <div class="health-bars">
             <div class="health-bar"><span>🇷🇺</span><div class="bar-bg"><div class="bar-fill ru-fill" id="ruFill"></div></div><span id="ruPercent">0%</span></div>
             <div class="health-bar"><span>🇺🇦</span><div class="bar-bg"><div class="bar-fill ua-fill" id="uaFill"></div></div><span id="uaPercent">0%</span></div>
@@ -159,7 +161,7 @@
     let lobbyState = { player1: { ready: false, team: null }, player2: { ready: false, team: null } };
     let roomId = null;
 
-    // ТИПЫ ВООРУЖЕНИЙ (те же, но добавим отображаемые имена)
+    // ТИПЫ ВООРУЖЕНИЙ
     const weaponTypes = {
         drone:      { name: 'SHAHED', speed: 0.006, damage: 25, cost: 60, pvoChance: 0.08, spriteOffset: 0, img: 'drone.png' },
         cruise:     { name: 'CRUISE', speed: 0.02, damage: 35, cost: 90, pvoChance: 0.10, spriteOffset: 90, img: 'cruise.png' },
@@ -169,7 +171,8 @@
     let attackType = 'drone', attackCount = 1, currentAirport = null;
     const costs = { radar: 180, pvo: 220, powerPlant: 250, refinery: 400, rocketFactory: 500 };
     const maxRadars = 8, maxPvo = 12, maxPowerPlants = 5, maxRefineries = 3;
-    // Прогрессия (без ELO)
+
+    // Прогрессия (локальная)
     let playerXP = 0;
     let playerStats = { wins:0, losses:0, citiesDestroyed:0, buildingsDestroyed:0, missilesLaunched:0, hits:0, totalShots:0 };
     const ranks = [
@@ -197,6 +200,7 @@
         osc.stop(now + duration);
     }
 
+    // ГОРОДА
     const zoneData = [
         { name: 'КИЕВ', center: [50.4501,30.5234], team: 'ukraine', hp: 400, baseHp: 400 },
         { name: 'ОДЕССА', center: [46.4825,30.7233], team: 'ukraine', hp: 320, baseHp: 320 },
@@ -230,48 +234,107 @@
         return L.icon({ iconUrl: url, iconSize: [28,28], iconAnchor: [14,14] });
     }
 
-    function createExplosion(lat,lng){
-        let exp = L.marker([lat,lng], { icon: L.divIcon({ className:'', html:'<div class="explosion"></div>', iconSize:[60,60] }) }).addTo(map);
-        setTimeout(()=>{ map.removeLayer(exp); },500);
+    // ========== ГЕОГРАФИЯ И ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
+    function loadRealBorders(cb) {
+        Promise.all([
+            fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries/RUS.geo.json').then(r=>r.json()),
+            fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries/UKR.geo.json').then(r=>r.json())
+        ]).then(([rus,ukr])=>{
+            russiaGeoJSON=rus; ukraineGeoJSON=ukr; bordersLoaded=true;
+            L.geoJSON(rus,{style:{color:'#ff6666',weight:2,fillOpacity:0.08}}).addTo(map);
+            L.geoJSON(ukr,{style:{color:'#66aaff',weight:2,fillOpacity:0.08}}).addTo(map);
+            if(cb)cb();
+        }).catch(e=>{ console.warn(e); bordersLoaded=false; if(cb)cb(); });
     }
-    function launchInterceptor(start,end){
-        let missile = L.marker([start.lat,start.lng], { icon: getInterceptorIcon() }).addTo(map);
-        let trail = L.polyline([[start.lat,start.lng]], { color:'#ffffaa', weight:3 }).addTo(map);
-        let t=0;
-        const flight=setInterval(()=>{
-            t+=0.03;
-            if(t>=1){
-                clearInterval(flight);
-                map.removeLayer(missile);
-                createExplosion(end.lat,end.lng);
-                setTimeout(()=>{ map.removeLayer(trail); },1500);
-                return;
-            }
-            let lat=start.lat+(end.lat-start.lat)*t;
-            let lng=start.lng+(end.lng-start.lng)*t;
-            let arcHeight=0.15;
-            lat+=Math.sin(t*Math.PI)*arcHeight;
-            missile.setLatLng([lat,lng]);
-            trail.addLatLng([lat,lng]);
-        },20);
+    function isInsideCountry(lat,lng,country) {
+        if(!bordersLoaded||!russiaGeoJSON||!ukraineGeoJSON) return false;
+        const point=turf.point([lng,lat]);
+        const geojson=country==='russia'?russiaGeoJSON:ukraineGeoJSON;
+        let feat=geojson.features?geojson.features[0]:geojson;
+        return turf.booleanPointInPolygon(point,feat);
     }
-
-    function loadRealBorders(cb) { /* ... (как раньше) ... */ Promise.all([fetch...]).then(...); }
-    function isInsideCountry(lat,lng,country) { /* ... */ }
     function isOwnTerritory(lat,lng){ if(!myTeam) return false; return isInsideCountry(lat,lng,myTeam); }
     function canBuildHere(lat,lng){ if(!isOwnTerritory(lat,lng)) return false; for(let b of buildings) if(map.distance([lat,lng],[b.lat,b.lng])<4000) return false; return true; }
     function canBuildForTeam(lat,lng,team){ if(!isInsideCountry(lat,lng,team)) return false; for(let b of buildings) if(map.distance([lat,lng],[b.lat,b.lng])<4000) return false; return true; }
 
-    function updateTotalPercent() { /* ... стандартно ... */ }
-    function initZones(){ /* ... */ }
-    function updateZoneMarkers(){ /* ... */ }
-    function removeZoneIfDestroyed(zone){ /* ... */ }
-    function showHint(text){ /* ... */ }
-    function destroyBuilding(building){ /* ... */ }
-    function getBuildingName(type){ /* ... */ }
+    function updateTotalPercent() {
+        let ruTotal=0,ruBase=0,uaTotal=0,uaBase=0;
+        zones.forEach(z=>{ if(z.team==='russia'){ ruTotal+=z.hp; ruBase+=z.baseHp; } else { uaTotal+=z.hp; uaBase+=z.baseHp; } });
+        let ruPercent=ruBase?(ruTotal/ruBase*100):0;
+        let uaPercent=uaBase?(uaTotal/uaBase*100):0;
+        document.getElementById('ruPercent').innerText=Math.floor(ruPercent)+'%';
+        document.getElementById('uaPercent').innerText=Math.floor(uaPercent)+'%';
+        document.getElementById('ruFill').style.width=ruPercent+'%';
+        document.getElementById('uaFill').style.width=uaPercent+'%';
+        if(ruTotal<=0 && gameActive){
+            gameActive=false;
+            if(myTeam==='ukraine') alert("🏆 ПОБЕДА! Вы уничтожили все города России.");
+            else alert("💀 ПОРАЖЕНИЕ! Ваши города России уничтожены.");
+            updateStatsAfterGame(myTeam==='ukraine');
+            setTimeout(()=>location.reload(),3000);
+        }
+        if(uaTotal<=0 && gameActive){
+            gameActive=false;
+            if(myTeam==='russia') alert("🏆 ПОБЕДА! Вы уничтожили все города Украины.");
+            else alert("💀 ПОРАЖЕНИЕ! Ваши города Украины уничтожены.");
+            updateStatsAfterGame(myTeam==='russia');
+            setTimeout(()=>location.reload(),3000);
+        }
+    }
+
+    function initZones(){
+        zones=[];
+        zoneData.forEach(z=>{
+            let circle=L.circle(z.center,{radius:15000,color:z.team==='russia'?teamColors.russia:teamColors.ukraine,weight:2,fillOpacity:0.25}).addTo(map);
+            let marker=L.marker(z.center,{icon:L.divIcon({html:`<div class="zone-marker" style="border-color: ${z.team==='russia'?'#ff8888':'#88aaff'};">${z.name}<br>${Math.floor((z.hp/z.baseHp)*100)}%</div>`,iconSize:[80,40]})}).addTo(map);
+            zones.push({id:z.name,name:z.name,center:z.center,team:z.team,hp:z.hp,baseHp:z.baseHp,circle:circle,marker:marker});
+        });
+        updateZoneMarkers();
+        updateTotalPercent();
+    }
+    function updateZoneMarkers(){
+        zones.forEach(z=>{
+            let percent=Math.floor((z.hp/z.baseHp)*100);
+            let html=`<div class="zone-marker" style="border-color: ${z.team==='russia'?'#ff8888':'#88aaff'};">${z.name}<br>${percent}%</div>`;
+            z.marker.setIcon(L.divIcon({html,iconSize:[80,40]}));
+        });
+        updateTotalPercent();
+    }
+    function removeZoneIfDestroyed(zone){
+        if(zone.hp<=0){
+            if(zone.circle) map.removeLayer(zone.circle);
+            if(zone.marker) map.removeLayer(zone.marker);
+            const index=zones.findIndex(z=>z.id===zone.id);
+            if(index!==-1) zones.splice(index,1);
+            showHint(`🏙️ Город ${zone.name} уничтожен!`);
+        }
+    }
+    function showHint(text){ let h=document.createElement('div'); h.innerHTML=text; h.style.cssText='position:fixed; top:120px; left:50%; transform:translateX(-50%); background:#000; color:white; padding:15px 25px; border-radius:15px; border:2px solid gold; z-index:9999; font-size:18px; text-align:center; white-space:nowrap;'; document.body.appendChild(h); setTimeout(()=>h.remove(),5000); }
+    function destroyBuilding(building){
+        if(building.marker) map.removeLayer(building.marker);
+        if(building.radarCircle && map.hasLayer(building.radarCircle)) map.removeLayer(building.radarCircle);
+        buildings = buildings.filter(b=>b.id!==building.id);
+        radars = radars.filter(r=>r.id!==building.id);
+        pvoSystems = pvoSystems.filter(p=>p.id!==building.id);
+        powerPlants = powerPlants.filter(p=>p.id!==building.id);
+        refineries = refineries.filter(r=>r.id!==building.id);
+        rocketFactories = rocketFactories.filter(r=>r.id!==building.id);
+        showHint(`⚠️ Здание ${getBuildingName(building.type)} уничтожено!`);
+        addXP(50);
+    }
+    function getBuildingName(type){
+        switch(type){
+            case 'radar': return 'РАДАР';
+            case 'pvo': return 'ПВО';
+            case 'powerPlant': return 'ЭЛЕКТРОСТАНЦИЯ';
+            case 'refinery': return 'НПЗ';
+            case 'rocketFactory': return 'ЗАВОД РАКЕТ';
+            default: return 'ЗДАНИЕ';
+        }
+    }
     function updateUI(){ document.getElementById('energy').innerText=Math.floor(resources); }
 
-    // Простая прогрессия без ELO
+    // Прогрессия
     function addXP(amount){
         playerXP += amount;
         updateRankUI();
@@ -295,12 +358,8 @@
         else playerStats.losses++;
         if(victory) addXP(300);
     }
-    // Ранг в HUD (добавим)
-    let rankTitle = document.createElement('div'); rankTitle.className = 'hud-rank'; rankTitle.id = 'rankDisplay';
-    rankTitle.innerHTML = '⭐ <span id="rankTitle">Рядовой</span> <span id="rankXp">0 XP</span>';
-    // Вставка в HUD после ресурсов
-    window.onload = () => { /* в initGameMapAndLogic добавим */ };
 
+    // Постройка зданий
     function tryBuild(lat,lng,type){
         if(!airportPlaced){ alert("Сначала постройте аэродром!"); return false; }
         if(!canBuildHere(lat,lng)){ alert("Можно строить только на своей территории и не ближе 4 км к другим зданиям!"); return false; }
@@ -518,6 +577,32 @@
         },1500);
     }
 
+    function createExplosion(lat,lng){
+        let exp = L.marker([lat,lng], { icon: L.divIcon({ className:'', html:'<div class="explosion"></div>', iconSize:[60,60] }) }).addTo(map);
+        setTimeout(()=>{ map.removeLayer(exp); },500);
+    }
+    function launchInterceptor(start,end){
+        let missile = L.marker([start.lat,start.lng], { icon: getInterceptorIcon() }).addTo(map);
+        let trail = L.polyline([[start.lat,start.lng]], { color:'#ffffaa', weight:3 }).addTo(map);
+        let t=0;
+        const flight=setInterval(()=>{
+            t+=0.03;
+            if(t>=1){
+                clearInterval(flight);
+                map.removeLayer(missile);
+                createExplosion(end.lat,end.lng);
+                setTimeout(()=>{ map.removeLayer(trail); },1500);
+                return;
+            }
+            let lat=start.lat+(end.lat-start.lat)*t;
+            let lng=start.lng+(end.lng-start.lng)*t;
+            let arcHeight=0.15;
+            lat+=Math.sin(t*Math.PI)*arcHeight;
+            missile.setLatLng([lat,lng]);
+            trail.addLatLng([lat,lng]);
+        },20);
+    }
+
     // ---------- УМНЫЙ ИИ ----------
     const priorityWeights = {
         refinery: 100,
@@ -542,13 +627,11 @@
             candidates.push({ target: z, score: base + hpFactor, type: 'zone' });
         });
         candidates.sort((a,b)=>b.score - a.score);
-        // Добавляем разнообразие на высоких сложностях
         let result = [];
         for(let i=0; i<Math.min(maxTargets, candidates.length); i++){
             result.push(candidates[i].target);
         }
         if(difficulty === "EXTREME" && result.length > 1){
-            // Иногда атакуем 4 цели
             if(Math.random() < 0.4 && candidates.length > 3) result.push(candidates[3].target);
         }
         return result;
@@ -707,14 +790,6 @@
         document.getElementById('menuScreen').style.display='none';
         document.getElementById('lobbyScreen').style.display='none';
         document.getElementById('gameContainer').style.display='block';
-        // Добавляем отображение ранга в HUD
-        let rankDiv = document.createElement('div');
-        rankDiv.className = 'hud-rank';
-        rankDiv.id = 'rankDisplay';
-        rankDiv.innerHTML = '⭐ <span id="rankTitle">Рядовой</span> <span id="rankXp">0 XP</span>';
-        let hud = document.getElementById('gameHUD');
-        hud.insertBefore(rankDiv, document.querySelector('.health-bars'));
-        updateRankUI();
         if(map) map.remove();
         map = L.map('map').setView([55.0,40.0],5);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© CartoDB'}).addTo(map);
@@ -752,7 +827,7 @@
                         document.getElementById('countValue').innerText = attackCount;
                         updateCostDisplay();
                         currentAirport = airportMarker;
-                        buildWeaponGrid(); // обновляем карточки при каждом открытии
+                        buildWeaponGrid();
                         document.getElementById('attackModal').style.display = 'block';
                     });
                     airportPlaced = true; gameActive = true; updateUI(); lastUpdate = performance.now();
