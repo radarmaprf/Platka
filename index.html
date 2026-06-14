@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Sky in Fire — финал (сбалансированное ПВО)</title>
+    <title>Sky in Fire — финал (шансы ПВО из рабочего скрипта)</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
@@ -156,12 +155,12 @@
     let lobbyState = { player1: { ready: false, team: null }, player2: { ready: false, team: null } };
     let roomId = null;
 
-    // ========== ИСПРАВЛЕННЫЕ ШАНСЫ ПВО (НИЖЕ В 2 РАЗА) ==========
+    // ШАНСЫ ПВО КАК В РАБОЧЕМ СКРИПТЕ: ДРОН 8%, ВСЕ РАКЕТЫ 10%
     const weaponTypes = {
-        drone:      { name: 'БПЛА', speed: 0.006, damage: 25, cost: 60, pvoChance: 0.20, icon: '🛸' },
-        cruise:     { name: 'Крылатая', speed: 0.02, damage: 35, cost: 90, pvoChance: 0.08, icon: '✈️' },
-        ballistic:  { name: 'Баллист.', speed: 0.05, damage: 50, cost: 130, pvoChance: 0.06, icon: '💥' },
-        hypersonic: { name: 'Гиперзв.', speed: 0.09, damage: 70, cost: 200, pvoChance: 0.03, icon: '⚡' }
+        drone:      { name: 'БПЛА', speed: 0.006, damage: 25, cost: 60, pvoChance: 0.08, icon: '🛸' },
+        cruise:     { name: 'Крылатая', speed: 0.02, damage: 35, cost: 90, pvoChance: 0.10, icon: '✈️' },
+        ballistic:  { name: 'Баллист.', speed: 0.05, damage: 50, cost: 130, pvoChance: 0.10, icon: '💥' },
+        hypersonic: { name: 'Гиперзв.', speed: 0.09, damage: 70, cost: 200, pvoChance: 0.10, icon: '⚡' }
     };
     let attackType = 'drone', attackCount = 1, currentAirport = null;
     const costs = { radar: 180, pvo: 220, powerPlant: 250, refinery: 400, rocketFactory: 500 };
@@ -430,13 +429,16 @@
         return true;
     }
 
-    // ПЕРЕХВАТ ПВО (с уменьшенными шансами)
+    // ПЕРЕХВАТ ПВО (с шансами из рабочего скрипта: дрон 8%, ракеты 10%)
     function tryIntercept(proj){
+        const now=Date.now(); 
+        if(now - proj.lastInterceptCheck < 2000) return false; 
+        proj.lastInterceptCheck = now;
         const pos = proj.marker.getLatLng();
         for(let pvo of pvoSystems){
             if(pvo.team !== proj.team){
                 let dist = map.distance([pvo.lat,pvo.lng], [pos.lat,pos.lng]);
-                if(dist < 80000){
+                if(dist < 100000){
                     let chance = weaponTypes[proj.type].pvoChance;
                     if(Math.random() < chance){
                         playBeep(600,0.15);
@@ -448,7 +450,7 @@
         }
         if(isAI && aiPvo && aiPvo.team !== proj.team){
             let dist = map.distance([aiPvo.lat,aiPvo.lng], [pos.lat,pos.lng]);
-            if(dist < 80000){
+            if(dist < 100000){
                 let chance = weaponTypes[proj.type].pvoChance;
                 if(Math.random() < chance){
                     playBeep(600,0.15);
@@ -719,7 +721,7 @@
     function closeAttackModal(){ document.getElementById('attackModal').style.display='none'; }
     function updateCostDisplay(){ let cost = weaponTypes[attackType].cost; document.getElementById('costDisplay').innerHTML = `СТОИМОСТЬ: ${cost * attackCount} ⚡`; }
 
-    // ========== СЕТЕВЫЕ ФУНКЦИИ (без изменений) ==========
+    // ========== СЕТЕВЫЕ ФУНКЦИИ ==========
     function handleNetworkData(data){
         if(data.type==='build'){
             let building={id:data.id||Date.now()+Math.random(), lat:data.lat, lng:data.lng, type:data.buildType, team:data.team, hp:(data.buildType==='radar'?120:(data.buildType==='pvo'?180:(data.buildType==='powerPlant'?100:(data.buildType==='refinery'?150:200)))), radarAngle:0, marker:null, radarCircle:null};
@@ -860,7 +862,7 @@
     document.getElementById('diffHard').onclick=()=>{ document.querySelectorAll('.difficulty-btn').forEach(btn=>btn.classList.remove('selected')); document.getElementById('diffHard').classList.add('selected'); difficulty="HARD"; };
     document.getElementById('diffExtreme').onclick=()=>{ document.querySelectorAll('.difficulty-btn').forEach(btn=>btn.classList.remove('selected')); document.getElementById('diffExtreme').classList.add('selected'); difficulty="EXTREME"; };
     document.getElementById('singleBtn').onclick=()=>{ playBeep(400,0.1); setTimeout(()=>{ playBeep(600,0.1); setTimeout(()=>{ playBeep(800,0.1); myTeam='russia'; enemyTeam='ukraine'; isAI=true; initGameMapAndLogic(); },100); },100); };
-    document.getElementById('tutorialBtn').onclick=()=>{ alert("Обучение: постройте аэродром → радар → ПВО → атакуйте врага. У разных ракет разный шанс сбития ПВО."); };
+    document.getElementById('tutorialBtn').onclick=()=>{ alert("Обучение: постройте аэродром → радар → ПВО → атакуйте врага. У разных ракет разный шанс сбития ПВО (БПЛА 8%, ракеты 10%)."); };
     document.getElementById('createGameBtn').onclick=()=>{ createRoom(); };
     document.getElementById('joinGameBtn').onclick=()=>{ document.getElementById('roomCodeInput').style.display='block'; document.getElementById('confirmJoinBtn').style.display='block'; };
     document.getElementById('confirmJoinBtn').onclick=()=>{ let code=document.getElementById('roomCodeInput').value.trim().toUpperCase(); if(code) joinRoom(code); else alert("Введите код"); };
