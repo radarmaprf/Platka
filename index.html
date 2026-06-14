@@ -28,8 +28,8 @@
         .country-btn { flex:1; background:#3a5e5e; border:2px solid #fff; border-radius:40px; padding:10px; cursor:pointer; font-weight:bold; transition:0.1s; }
         .country-btn.selected { background:#ffaa33; border-color:gold; color:#1a2a2a; }
         .ready-btn { background:#ffaa33!important; color:#1a2a2a!important; }
-        #gameHUD { position:fixed; top:12px; left:12px; right:12px; background:rgba(0,0,0,0.75); backdrop-filter:blur(12px); border-radius:30px; padding:8px 16px; display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; z-index:1500; border:1px solid rgba(255,215,0,0.3); font-weight:bold; }
-        .hud-resource { background:#1e2e2e; padding:4px 12px; border-radius:40px; display:inline-flex; align-items:center; gap:6px; }
+        #gameHUD { position:fixed; top:12px; left:12px; right:12px; background:rgba(5,10,15,0.9); backdrop-filter:blur(12px); border-radius:30px; padding:8px 16px; display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; z-index:1500; border:1px solid #00ffaa; box-shadow:0 0 20px rgba(0,255,170,0.25), inset 0 0 15px rgba(0,255,170,0.05); font-weight:bold; }
+        .hud-resource { background:#1e2e2e; padding:4px 12px; border-radius:40px; display:inline-flex; align-items:center; gap:6px; color:#00ffaa; font-size:18px; }
         .health-bars { display:flex; gap:20px; background:rgba(0,0,0,0.5); padding:4px 12px; border-radius:40px; }
         .health-bar { display:flex; align-items:center; gap:8px; }
         .bar-bg { width:120px; height:10px; background:#333; border-radius:10px; overflow:hidden; }
@@ -43,8 +43,9 @@
             .health-bars { justify-content:space-between; }
         }
         #buildPanel { position:fixed; bottom:20px; left:20px; background:rgba(0,0,0,0.8); backdrop-filter:blur(12px); border-radius:30px; padding:12px; display:flex; flex-direction:column; gap:8px; z-index:1500; border:1px solid #ffaa3344; }
-        .build-btn { background:linear-gradient(180deg,#3a5e5e,#1e4a4a); border:none; color:#fff; padding:8px 16px; border-radius:40px; cursor:pointer; font-weight:bold; text-align:left; }
-        .modal { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:linear-gradient(180deg,#1a232c,#0d1318); border-radius:40px; padding:24px; z-index:3000; color:#fff; width:300px; text-align:center; border:1px solid #ffaa33; box-shadow:0 0 30px #000; }
+        .build-btn { background:linear-gradient(180deg,#24353d,#17242b); border:1px solid #00ffaa44; box-shadow:0 0 10px rgba(0,255,170,0.15); transition:0.2s; border:none; color:#fff; padding:8px 16px; border-radius:40px; cursor:pointer; font-weight:bold; text-align:left; }
+        .build-btn:hover { transform:translateX(5px); border-color:#00ffaa; background:linear-gradient(180deg,#2a4a5a,#1a2a3a); }
+        .modal { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:linear-gradient(180deg,#091116,#020508); border-radius:40px; padding:24px; z-index:3000; color:#fff; width:300px; text-align:center; border:2px solid #00ffaa; box-shadow:0 0 40px rgba(0,255,170,0.3); }
         .zone-marker { background:rgba(0,0,0,0.8); border-radius:16px; padding:6px 10px; text-align:center; font-weight:bold; color:#fff; font-size:12px; box-shadow:0 0 10px rgba(0,0,0,0.5); white-space:nowrap; }
         @keyframes radarSpin { from{transform:translateX(-50%) rotate(0deg);} to{transform:translateX(-50%) rotate(360deg);} }
         .leaflet-marker-icon { transform-origin:center center; }
@@ -140,7 +141,6 @@
     let airportMarker = null;
     let enemyAirportMarker = null;
     let airportPlaced = false;
-    let airportHp = 200;
     let lastUpdate = 0;
     let myTeam = null, enemyTeam = null;
     let isAI = false;
@@ -154,11 +154,11 @@
     let lastId = 0;
     function nextId() { return Date.now() + '_' + (++lastId); }
 
-    // Типы ракет
+    // Типы ракет (шанс перехвата – финальный, применяется один раз)
     const weaponTypes = {
-        drone: { name: 'БПЛА', speed: 0.006, damage: 25, cost: 60, pvoChance: 0.25, icon: '🛸' },
-        cruise: { name: 'Крылатая', speed: 0.02, damage: 35, cost: 90, pvoChance: 0.18, icon: '✈️' },
-        ballistic: { name: 'Баллистическая', speed: 0.05, damage: 50, cost: 130, pvoChance: 0.12, icon: '💥' },
+        drone:      { name: 'БПЛА', speed: 0.006, damage: 25, cost: 60, pvoChance: 0.25, icon: '🛸' },
+        cruise:     { name: 'Крылатая', speed: 0.02, damage: 35, cost: 90, pvoChance: 0.18, icon: '✈️' },
+        ballistic:  { name: 'Баллистическая', speed: 0.05, damage: 50, cost: 130, pvoChance: 0.12, icon: '💥' },
         hypersonic: { name: 'Гиперзвуковая', speed: 0.09, damage: 70, cost: 200, pvoChance: 0.05, icon: '⚡' }
     };
     let attackType = 'drone', attackCount = 1, currentAirport = null;
@@ -196,25 +196,16 @@
     ];
     const teamColors = { russia: '#ff5555', ukraine: '#55aaff' };
 
+    // Функции иконок (сокращённо)
     function getAirportIcon() { return L.divIcon({ className: '', iconSize: [48,48], html: `<svg width="48" height="48" viewBox="0 0 100 100"><rect x="40" y="5" width="20" height="90" fill="#444" rx="3"/><rect x="35" y="15" width="30" height="8" fill="#fff" rx="2"/><rect x="35" y="40" width="30" height="8" fill="#fff" rx="2"/><rect x="35" y="65" width="30" height="8" fill="#fff" rx="2"/></svg>` }); }
     function getRadarIcon() { return L.divIcon({ className: '', iconSize: [40,40], html: `<div style="width:40px; height:40px; border-radius:50%; background:#0f2430; border:2px solid #00d4ff; position:relative; box-shadow:0 0 12px #00d4ff;"><div style="position:absolute; left:50%; top:5px; width:2px; height:16px; background:#00ffff; transform-origin:bottom center; animation:radarSpin 2s linear infinite;"></div></div>` }); }
     function getPvoIcon() { return L.divIcon({ className: '', iconSize: [40,40], html: `<svg width="40" height="40" viewBox="0 0 100 100"><rect x="20" y="55" width="60" height="20" rx="4" fill="#444"/><rect x="35" y="25" width="10" height="35" fill="#bbb"/><rect x="55" y="20" width="10" height="40" fill="#ddd"/><circle cx="30" cy="80" r="7" fill="#222"/><circle cx="70" cy="80" r="7" fill="#222"/></svg>` }); }
     function getPowerPlantIcon() { return L.divIcon({ className: '', iconSize: [40,40], html: `<svg width="40" height="40" viewBox="0 0 100 100"><rect x="30" y="30" width="40" height="40" fill="#444"/><rect x="45" y="15" width="10" height="25" fill="#999"/><circle cx="50" cy="50" r="8" fill="#ffaa33"/></svg>` }); }
     function getRefineryIcon() { return L.divIcon({ className: '', iconSize: [40,40], html: `<svg width="40" height="40" viewBox="0 0 100 100"><rect x="20" y="20" width="60" height="60" fill="#444"/><rect x="30" y="10" width="12" height="40" fill="#999"/><rect x="58" y="5" width="12" height="45" fill="#999"/><circle cx="50" cy="50" r="12" fill="#ffaa33"/></svg>` }); }
     function getRocketFactoryIcon() { return L.divIcon({ className: '', iconSize: [40,40], html: `<svg width="40" height="40" viewBox="0 0 100 100"><rect x="25" y="25" width="50" height="50" fill="#444"/><polygon points="50,10 60,30 40,30" fill="#aaa"/><rect x="45" y="60" width="10" height="15" fill="#888"/></svg>` }); }
-    function getMissileIcon(type) { 
+    function getMissileIcon(type) {
         const icons = { drone:'🛸', cruise:'✈️', ballistic:'💥', hypersonic:'⚡' };
         return L.divIcon({ className: '', iconSize: [28,28], html: `<div style="font-size:24px;">${icons[type]}</div>` });
-    }
-    function getBuildingName(type){
-        switch(type){
-            case 'radar': return '📡 РАДАР';
-            case 'pvo': return '🛡️ ПВО';
-            case 'powerPlant': return '⚡ ЭЛЕКТРОСТАНЦИЯ';
-            case 'refinery': return '⛽ НПЗ';
-            case 'rocketFactory': return '🚀 ЗАВОД РАКЕТ';
-            default: return 'ЗДАНИЕ';
-        }
     }
 
     function loadRealBorders(cb) {
@@ -225,14 +216,8 @@
     }
     function isInsideCountry(lat,lng,country) { if(!bordersLoaded||!russiaGeoJSON||!ukraineGeoJSON) return false; const point=turf.point([lng,lat]); const geojson=country==='russia'?russiaGeoJSON:ukraineGeoJSON; let feat=geojson.features?geojson.features[0]:geojson; return turf.booleanPointInPolygon(point,feat); }
     function isOwnTerritory(lat,lng){ if(!myTeam) return false; return isInsideCountry(lat,lng,myTeam); }
-    function canBuildForTeam(lat,lng,team){
-        if(!isInsideCountry(lat,lng,team)) return false;
-        for(let b of buildings){
-            if(map.distance([lat,lng],[b.lat,b.lng])<50000) return false;
-        }
-        return true;
-    }
-    function canBuildHere(lat,lng){ return canBuildForTeam(lat,lng,myTeam); }
+    function canBuildHere(lat,lng){ if(!isOwnTerritory(lat,lng)) return false; for(let b of buildings) if(map.distance([lat,lng],[b.lat,b.lng])<50000) return false; return true; }
+    function canBuildForTeam(lat,lng,team){ if(!isInsideCountry(lat,lng,team)) return false; for(let b of buildings) if(map.distance([lat,lng],[b.lat,b.lng])<50000) return false; return true; }
 
     function updateTotalPercent() {
         let ruTotal=0,ruBase=0,uaTotal=0,uaBase=0;
@@ -297,7 +282,7 @@
         if(type==='refinery' && refineries.length>=maxRefineries){ alert(`Максимум ${maxRefineries} НПЗ`); return false; }
         let cost=costs[type]; if(resources<cost){ alert("Не хватает энергии"); return false; }
         resources-=cost; updateUI();
-        let building={id:nextId(), lat,lng,type,team:myTeam,hp:(type==='radar'?120:(type==='pvo'?180:(type==='powerPlant'?100:(type==='refinery'?150:200)))),radarAngle:0,marker:null,radarCircle:null};
+        let building={id:nextId(),lat,lng,type,team:myTeam,hp:(type==='radar'?120:(type==='pvo'?180:(type==='powerPlant'?100:(type==='refinery'?150:200)))),radarAngle:0,marker:null,radarCircle:null};
         let icon; if(type==='radar') icon=getRadarIcon(); else if(type==='pvo') icon=getPvoIcon(); else if(type==='powerPlant') icon=getPowerPlantIcon(); else if(type==='refinery') icon=getRefineryIcon(); else if(type==='rocketFactory') icon=getRocketFactoryIcon(); else return false;
         let marker=L.marker([lat,lng],{icon}).addTo(map); building.marker=marker; buildings.push(building);
         if(type==='radar'){ radars.push(building); let circle=L.circle([lat,lng],{radius:150000,color:'#00ffff',weight:1,fillOpacity:0.05}).addTo(map); building.radarCircle=circle; showHint("🛡️ Теперь постройте ПВО"); }
@@ -312,19 +297,21 @@
 
     function updateUI(){ document.getElementById('energy').innerText=Math.floor(resources); }
 
+    function getBuildingName(type){
+        switch(type){
+            case 'radar': return '📡 РАДАР';
+            case 'pvo': return '🛡️ ПВО';
+            case 'powerPlant': return '⚡ ЭЛЕКТРОСТАНЦИЯ';
+            case 'refinery': return '⛽ НПЗ';
+            case 'rocketFactory': return '🚀 ЗАВОД РАКЕТ';
+            default: return 'ЗДАНИЕ';
+        }
+    }
+
     function getEnemyTargets(){
         let targets=[];
-        zones.forEach(z=>{
-            if(z.team!==myTeam && z.hp>0){
-                targets.push({ id:z.id, type:'zone', name:z.name, target:z, lat:z.center[0], lng:z.center[1], hp:z.hp, maxHp:z.baseHp, display:`${z.name} (${Math.floor((z.hp/z.baseHp)*100)}%)` });
-            }
-        });
-        buildings.forEach(b=>{
-            if(b.team!==myTeam && b.hp>0){
-                let maxHp=(b.type==='radar'?120:(b.type==='pvo'?180:(b.type==='powerPlant'?100:(b.type==='refinery'?150:200))));
-                targets.push({ id:b.id, type:'building', name:getBuildingName(b.type), target:b, lat:b.lat, lng:b.lng, hp:b.hp, maxHp, display:`${getBuildingName(b.type)} (${Math.floor((b.hp/maxHp)*100)}%)` });
-            }
-        });
+        zones.forEach(z=>{ if(z.team!==myTeam && z.hp>0) targets.push({ id:z.id, type:'zone', name:z.name, target:z, lat:z.center[0], lng:z.center[1], hp:z.hp, maxHp:z.baseHp, display:`${z.name} (${Math.floor((z.hp/z.baseHp)*100)}%)` }); });
+        buildings.forEach(b=>{ if(b.team!==myTeam && b.hp>0){ let maxHp=(b.type==='radar'?120:(b.type==='pvo'?180:(b.type==='powerPlant'?100:(b.type==='refinery'?150:200)))); targets.push({ id:b.id, type:'building', name:getBuildingName(b.type), target:b, lat:b.lat, lng:b.lng, hp:b.hp, maxHp, display:`${getBuildingName(b.type)} (${Math.floor((b.hp/maxHp)*100)}%)` }); } });
         return targets;
     }
 
@@ -373,11 +360,7 @@
         for(let pvo of pvoSystems){
             if(pvo.team!==proj.team){
                 let radarExists = radars.some(r=> r.team===pvo.team && map.distance([r.lat,r.lng],[pvo.lat,pvo.lng])<150000);
-                if(!radarExists){
-                    // без радара ПВО работает только в радиусе 40 км
-                    let dist=map.distance([pvo.lat,pvo.lng],[pos.lat,pos.lng]);
-                    if(dist>40000) continue;
-                }
+                if(!radarExists) continue;
                 if(!isInsideCountry(pos.lat, pos.lng, pvo.team)) continue;
                 let dist=map.distance([pvo.lat,pvo.lng],[pos.lat,pos.lng]);
                 if(dist<100000){
@@ -395,11 +378,7 @@
         }
         if(isAI && aiPvo && aiPvo.team!==proj.team){
             let radarExists = radars.some(r=> r.team===aiPvo.team && map.distance([r.lat,r.lng],[aiPvo.lat,aiPvo.lng])<150000);
-            if(!radarExists){
-                let dist=map.distance([aiPvo.lat,aiPvo.lng],[pos.lat,pos.lng]);
-                if(dist>40000) return false;
-            }
-            if(isInsideCountry(pos.lat, pos.lng, aiPvo.team)){
+            if(radarExists && isInsideCountry(pos.lat, pos.lng, aiPvo.team)){
                 let dist=map.distance([aiPvo.lat,aiPvo.lng],[pos.lat,pos.lng]);
                 if(dist<100000){
                     let chance=weaponTypes[proj.type].pvoChance;
@@ -454,7 +433,7 @@
         },1500);
     }
 
-    // ИИ строительство и атака
+    let aiPvo=null, aiAirportCoords=null;
     let aiBuildInterval=null;
     function aiBuildLogic(){
         if(!gameActive || !isAI) return;
@@ -489,7 +468,6 @@
         }
     }
 
-    let aiPvo=null, aiAirportCoords=null;
     function chooseAITarget(){
         let targets=[];
         buildings.forEach(b=>{
@@ -570,7 +548,7 @@
             else if(difficulty==="NORMAL") resources=300;
             else if(difficulty==="HARD") resources=220;
             else resources=150;
-            airportPlaced=false; airportHp=200; updateUI();
+            airportPlaced=false; updateUI();
             map.off('click');
             map.on('click',(e)=>{
                 if(!airportPlaced){
@@ -651,6 +629,9 @@
                     projectiles.push(proj);
                 }
             }
+        } else if(data.type==='startGame'){
+            lobbyState=data.state;
+            startMultiplayerGame();
         }
     }
 
@@ -703,7 +684,6 @@
             conn=c;
             conn.on('data',data=>{
                 if(data.type==='lobbyUpdate'){ lobbyState=data.state; updateLobbyUI(); }
-                else if(data.type==='startGame'){ lobbyState=data.state; startMultiplayerGame(); }
                 else handleNetworkData(data);
             });
             conn.on('close',()=>alert("Соединение разорвано"));
@@ -728,7 +708,6 @@
             });
             conn.on('data',data=>{
                 if(data.type==='lobbyUpdate'){ lobbyState=data.state; updateLobbyUI(); }
-                else if(data.type==='startGame'){ lobbyState=data.state; startMultiplayerGame(); }
                 else handleNetworkData(data);
             });
             conn.on('close',()=>alert("Соединение разорвано"));
@@ -741,7 +720,7 @@
     document.getElementById('diffHard').onclick=()=>{ document.querySelectorAll('.difficulty-btn').forEach(btn=>btn.classList.remove('selected')); document.getElementById('diffHard').classList.add('selected'); difficulty="HARD"; };
     document.getElementById('diffExtreme').onclick=()=>{ document.querySelectorAll('.difficulty-btn').forEach(btn=>btn.classList.remove('selected')); document.getElementById('diffExtreme').classList.add('selected'); difficulty="EXTREME"; };
     document.getElementById('singleBtn').onclick=()=>{ playBeep(400,0.1); setTimeout(()=>{ playBeep(600,0.1); setTimeout(()=>{ playBeep(800,0.1); myTeam='russia'; enemyTeam='ukraine'; isAI=true; initGameMapAndLogic(); },100); },100); };
-    document.getElementById('tutorialBtn').onclick=()=>{ alert("Обучение: постройте аэродром, затем радар, ПВО, атакуйте вражеские города и здания. Доступно 4 типа ракет с разной скоростью и шансом сбития."); };
+    document.getElementById('tutorialBtn').onclick=()=>{ alert("Обучение: постройте аэродром, затем радар, ПВО, атакуйте вражеские города и здания. Доступно 4 типа ракет с разной скоростью и шансом сбития. Аэродром неуязвим."); };
     document.getElementById('createGameBtn').onclick=()=>{ createRoom(); };
     document.getElementById('joinGameBtn').onclick=()=>{ document.getElementById('roomCodeInput').style.display='block'; document.getElementById('confirmJoinBtn').style.display='block'; };
     document.getElementById('confirmJoinBtn').onclick=()=>{ let code=document.getElementById('roomCodeInput').value.trim().toUpperCase(); if(code) joinRoom(code); else alert("Введите код"); };
