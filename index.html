@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Sky in Fire — поворот ракет с плагином</title>
+    <title>Sky in Fire — динамический поворот ракет</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-rotatedmarker/leaflet.rotatedMarker.js"></script>
@@ -429,7 +429,12 @@
                 lastInterceptCheck: 0,
                 interceptedFlag: false
             };
-            let marker = L.marker([proj.from.lat, proj.from.lng], {icon: getMissileIcon(type)}).addTo(map);
+            // Создаём маркер с поддержкой поворота (rotationOrigin)
+            let marker = L.marker([proj.from.lat, proj.from.lng], {
+                icon: getMissileIcon(type),
+                rotationOrigin: 'center center',
+                rotationAngle: 0
+            }).addTo(map);
             proj.marker = marker;
             projectiles.push(proj);
         }
@@ -468,7 +473,7 @@
         return false;
     }
 
-    // ========== ОБНОВЛЕНИЕ СНАРЯДОВ С ПОВОРОТОМ ЧЕРЕЗ ПЛАГИН ==========
+    // ========== ОБНОВЛЕНИЕ СНАРЯДОВ С ДИНАМИЧЕСКИМ ПОВОРОТОМ ==========
     function updateProjectiles(dt){
         for(let i=0;i<projectiles.length;i++){
             let p=projectiles[i];
@@ -480,6 +485,8 @@
                 i--;
                 continue;
             }
+            // Сохраняем предыдущую позицию для вычисления направления движения
+            const prevPos = p.marker.getLatLng();
             p.progress += p.speed * dt;
             if(p.progress >= 1){
                 p.active=false;
@@ -508,23 +515,16 @@
             let lng = p.from.lng + (p.to.lng - p.from.lng) * p.progress;
             p.marker.setLatLng([lat, lng]);
 
-            // ПОВОРОТ РАКЕТЫ С ИСПОЛЬЗОВАНИЕМ ПЛАГИНА leaflet.rotatedMarker
-            let dx = p.to.lng - p.from.lng;
-            let dy = p.to.lat - p.from.lat;
-            let angle = Math.atan2(dy, dx) * 180 / Math.PI + 90; // +90 т.к. спрайты смотрят вверх
-            // Добавляем поправку на ориентацию спрайта (для гиперзвуковой -45°, остальные 0)
-            if (weaponTypes[p.type] && weaponTypes[p.type].spriteOffset) {
-                angle += weaponTypes[p.type].spriteOffset;
-            }
-            if (p.marker.setRotationAngle) {
-                p.marker.setRotationAngle(angle);
-            } else {
-                // fallback на случай, если плагин не загрузился
-                if(p.marker._icon) {
-                    const currentTransform = p.marker._icon.style.transform || '';
-                    const cleaned = currentTransform.replace(/rotate\([^)]*\)/g, '').trim();
-                    p.marker._icon.style.transformOrigin = 'center center';
-                    p.marker._icon.style.transform = cleaned + ` rotate(${angle}deg)`;
+            // Вычисляем угол по текущему перемещению (динамически)
+            const moveX = lng - prevPos.lng;
+            const moveY = lat - prevPos.lat;
+            if (Math.abs(moveX) > 1e-7 || Math.abs(moveY) > 1e-7) {
+                let angle = Math.atan2(moveX, -moveY) * 180 / Math.PI;
+                if (weaponTypes[p.type] && weaponTypes[p.type].spriteOffset) {
+                    angle += weaponTypes[p.type].spriteOffset;
+                }
+                if (p.marker.setRotationAngle) {
+                    p.marker.setRotationAngle(angle);
                 }
             }
         }
@@ -664,7 +664,11 @@
                     lastInterceptCheck: 0,
                     interceptedFlag: false
                 };
-                let marker = L.marker([proj.from.lat, proj.from.lng], {icon: getMissileIcon(type)}).addTo(map);
+                let marker = L.marker([proj.from.lat, proj.from.lng], {
+                    icon: getMissileIcon(type),
+                    rotationOrigin: 'center center',
+                    rotationAngle: 0
+                }).addTo(map);
                 proj.marker = marker;
                 projectiles.push(proj);
             }
@@ -785,7 +789,11 @@
                         lastInterceptCheck: 0,
                         interceptedFlag: false
                     };
-                    let marker = L.marker([proj.from.lat, proj.from.lng], {icon: getMissileIcon(type)}).addTo(map);
+                    let marker = L.marker([proj.from.lat, proj.from.lng], {
+                        icon: getMissileIcon(type),
+                        rotationOrigin: 'center center',
+                        rotationAngle: 0
+                    }).addTo(map);
                     proj.marker = marker;
                     projectiles.push(proj);
                 }
@@ -882,7 +890,7 @@
     document.getElementById('diffHard').onclick=()=>{ document.querySelectorAll('.difficulty-btn').forEach(btn=>btn.classList.remove('selected')); document.getElementById('diffHard').classList.add('selected'); difficulty="HARD"; };
     document.getElementById('diffExtreme').onclick=()=>{ document.querySelectorAll('.difficulty-btn').forEach(btn=>btn.classList.remove('selected')); document.getElementById('diffExtreme').classList.add('selected'); difficulty="EXTREME"; };
     document.getElementById('singleBtn').onclick=()=>{ playBeep(400,0.1); setTimeout(()=>{ playBeep(600,0.1); setTimeout(()=>{ playBeep(800,0.1); myTeam='russia'; enemyTeam='ukraine'; isAI=true; initGameMapAndLogic(); },100); },100); };
-    document.getElementById('tutorialBtn').onclick=()=>{ alert("Обучение: постройте аэродром → радар → ПВО → атакуйте врага. Ракеты поворачиваются в полёте."); };
+    document.getElementById('tutorialBtn').onclick=()=>{ alert("Обучение: постройте аэродром → радар → ПВО → атакуйте врага. Ракеты поворачиваются динамически."); };
     document.getElementById('createGameBtn').onclick=()=>{ createRoom(); };
     document.getElementById('joinGameBtn').onclick=()=>{ document.getElementById('roomCodeInput').style.display='block'; document.getElementById('confirmJoinBtn').style.display='block'; };
     document.getElementById('confirmJoinBtn').onclick=()=>{ let code=document.getElementById('roomCodeInput').value.trim().toUpperCase(); if(code) joinRoom(code); else alert("Введите код"); };
