@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Sky in Fire — финал с поворотом ракет</title>
+    <title>Sky in Fire — финал (правильный поворот ракет)</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-rotatedmarker/leaflet.rotatedMarker.js"></script>
@@ -157,7 +157,7 @@
     let lobbyState = { player1: { ready: false, team: null }, player2: { ready: false, team: null } };
     let roomId = null;
 
-    // ТИПЫ ВООРУЖЕНИЙ С ПРАВИЛЬНЫМИ СМЕЩЕНИЯМИ ДЛЯ ПОВОРОТА
+    // ТИПЫ ВООРУЖЕНИЙ С ПРАВИЛЬНЫМИ СМЕЩЕНИЯМИ
     const weaponTypes = {
         drone:      { name: 'БПЛА', speed: 0.006, damage: 25, cost: 60, pvoChance: 0.08, spriteOffset: 0 },
         cruise:     { name: 'Крылатая', speed: 0.02, damage: 35, cost: 90, pvoChance: 0.10, spriteOffset: 90 },   // лежит горизонтально, смотрит влево
@@ -402,6 +402,7 @@
         return targets;
     }
 
+    // ========== АТАКА С ВЫЧИСЛЕНИЕМ УГЛА ПРИ ЗАПУСКЕ ==========
     function launchAttack(airport, targetObj, type, count){
         let weapon = weaponTypes[type];
         let costPerUnit = weapon.cost;
@@ -413,6 +414,15 @@
             let offset = (i - (count-1)/2) * 0.03;
             let targetLat = targetObj.lat + offset;
             let targetLng = targetObj.lng + offset * 0.5;
+            
+            // Вычисляем угол один раз для всей траектории
+            let p1 = map.latLngToLayerPoint([fromLatLng.lat, fromLatLng.lng]);
+            let p2 = map.latLngToLayerPoint([targetLat, targetLng]);
+            let dx = p2.x - p1.x;
+            let dy = p2.y - p1.y;
+            let angle = Math.atan2(dx, -dy) * 180 / Math.PI;
+            angle += weapon.spriteOffset; // компенсация наклона спрайта
+            
             let proj = {
                 id: Date.now() + Math.random(),
                 from: fromLatLng,
@@ -427,12 +437,13 @@
                 active: true,
                 marker: null,
                 lastInterceptCheck: 0,
-                interceptedFlag: false
+                interceptedFlag: false,
+                angle: angle  // сохраняем угол
             };
             let marker = L.marker([proj.from.lat, proj.from.lng], {
                 icon: getMissileIcon(type),
                 rotationOrigin: 'center center',
-                rotationAngle: 0
+                rotationAngle: angle
             }).addTo(map);
             proj.marker = marker;
             projectiles.push(proj);
@@ -472,7 +483,7 @@
         return false;
     }
 
-    // ДИНАМИЧЕСКИЙ ПОВОРОТ РАКЕТ ПО ТЕКУЩЕМУ ДВИЖЕНИЮ
+    // ========== ОБНОВЛЕНИЕ СНАРЯДОВ (БЕЗ ПЕРЕВЫЧИСЛЕНИЯ УГЛА) ==========
     function updateProjectiles(dt){
         for(let i=0;i<projectiles.length;i++){
             let p=projectiles[i];
@@ -484,7 +495,6 @@
                 i--;
                 continue;
             }
-            const prevPos = p.marker.getLatLng();
             p.progress += p.speed * dt;
             if(p.progress >= 1){
                 p.active=false;
@@ -512,23 +522,9 @@
             let lat = p.from.lat + (p.to.lat - p.from.lat) * p.progress;
             let lng = p.from.lng + (p.to.lng - p.from.lng) * p.progress;
             p.marker.setLatLng([lat, lng]);
-
-            let moveX = lng - prevPos.lng;
-            let moveY = lat - prevPos.lat;
-            if (Math.abs(moveX) > 1e-7 || Math.abs(moveY) > 1e-7) {
-                // Угол в градусах: 0° = север (вверх), +90° = восток (вправо)
-                let angle = Math.atan2(moveX, moveY) * 180 / Math.PI;
-                // Добавляем компенсацию для конкретного типа ракеты
-                const offsets = {
-                    drone: 0,
-                    cruise: 90,      // лежит горизонтально, смотрит влево
-                    ballistic: -45,  // красная, смотрит вправо-вверх
-                    hypersonic: 0
-                };
-                angle += offsets[p.type] || 0;
-                if (p.marker.setRotationAngle) {
-                    p.marker.setRotationAngle(angle);
-                }
+            // Угол уже задан при создании, не меняем (но если плагин требует переустановки, можно вызвать)
+            if (p.marker.setRotationAngle) {
+                p.marker.setRotationAngle(p.angle);
             }
         }
     }
@@ -648,9 +644,16 @@
             let targetLat, targetLng;
             if(target.center){ targetLat=target.center[0]; targetLng=target.center[1]; }
             else { targetLat=target.lat; targetLng=target.lng; }
+            // Для AI тоже нужно вычислять угол один раз
             for(let i=0;i<count;i++){
                 let offset=(i-(count-1)/2)*0.03;
                 let lat=targetLat+offset, lng=targetLng+offset*0.5;
+                let p1 = map.latLngToLayerPoint([aiAirportCoords.lat, aiAirportCoords.lng]);
+                let p2 = map.latLngToLayerPoint([lat, lng]);
+                let dx = p2.x - p1.x;
+                let dy = p2.y - p1.y;
+                let angle = Math.atan2(dx, -dy) * 180 / Math.PI;
+                angle += weaponTypes[type].spriteOffset;
                 let proj = {
                     id: Date.now()+Math.random(),
                     from: {lat: aiAirportCoords.lat, lng: aiAirportCoords.lng},
@@ -665,12 +668,13 @@
                     active: true,
                     marker: null,
                     lastInterceptCheck: 0,
-                    interceptedFlag: false
+                    interceptedFlag: false,
+                    angle: angle
                 };
                 let marker = L.marker([proj.from.lat, proj.from.lng], {
                     icon: getMissileIcon(type),
                     rotationOrigin: 'center center',
-                    rotationAngle: 0
+                    rotationAngle: angle
                 }).addTo(map);
                 proj.marker = marker;
                 projectiles.push(proj);
@@ -776,6 +780,12 @@
                 for(let i=0;i<count;i++){
                     let offset = (i-(count-1)/2)*0.03;
                     let targetLat = data.lat + offset, targetLng = data.lng + offset*0.5;
+                    let p1 = map.latLngToLayerPoint([fromLatLng.lat, fromLatLng.lng]);
+                    let p2 = map.latLngToLayerPoint([targetLat, targetLng]);
+                    let dx = p2.x - p1.x;
+                    let dy = p2.y - p1.y;
+                    let angle = Math.atan2(dx, -dy) * 180 / Math.PI;
+                    angle += weaponTypes[type].spriteOffset;
                     let proj = {
                         id: Date.now()+Math.random(),
                         from: fromLatLng,
@@ -790,12 +800,13 @@
                         active: true,
                         marker: null,
                         lastInterceptCheck: 0,
-                        interceptedFlag: false
+                        interceptedFlag: false,
+                        angle: angle
                     };
                     let marker = L.marker([proj.from.lat, proj.from.lng], {
                         icon: getMissileIcon(type),
                         rotationOrigin: 'center center',
-                        rotationAngle: 0
+                        rotationAngle: angle
                     }).addTo(map);
                     proj.marker = marker;
                     projectiles.push(proj);
@@ -893,7 +904,7 @@
     document.getElementById('diffHard').onclick=()=>{ document.querySelectorAll('.difficulty-btn').forEach(btn=>btn.classList.remove('selected')); document.getElementById('diffHard').classList.add('selected'); difficulty="HARD"; };
     document.getElementById('diffExtreme').onclick=()=>{ document.querySelectorAll('.difficulty-btn').forEach(btn=>btn.classList.remove('selected')); document.getElementById('diffExtreme').classList.add('selected'); difficulty="EXTREME"; };
     document.getElementById('singleBtn').onclick=()=>{ playBeep(400,0.1); setTimeout(()=>{ playBeep(600,0.1); setTimeout(()=>{ playBeep(800,0.1); myTeam='russia'; enemyTeam='ukraine'; isAI=true; initGameMapAndLogic(); },100); },100); };
-    document.getElementById('tutorialBtn').onclick=()=>{ alert("Обучение: постройте аэродром → радар → ПВО → атакуйте врага. Ракеты поворачиваются динамически."); };
+    document.getElementById('tutorialBtn').onclick=()=>{ alert("Обучение: постройте аэродром → радар → ПВО → атакуйте врага. Ракеты поворачиваются один раз при запуске, вычислив угол по экранным координатам."); };
     document.getElementById('createGameBtn').onclick=()=>{ createRoom(); };
     document.getElementById('joinGameBtn').onclick=()=>{ document.getElementById('roomCodeInput').style.display='block'; document.getElementById('confirmJoinBtn').style.display='block'; };
     document.getElementById('confirmJoinBtn').onclick=()=>{ let code=document.getElementById('roomCodeInput').value.trim().toUpperCase(); if(code) joinRoom(code); else alert("Введите код"); };
