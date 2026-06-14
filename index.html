@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Sky in Fire — платная версия </title>
+    <title>Sky in Fire — кастомные иконки</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
-    <style>* { margin:0; padding:0; box-sizing:border-box; user-select:none; }
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; user-select:none; }
         body { font-family:'Segoe UI',system-ui; background:#0a0f12; overflow:hidden; height:100vh; color:#eef; }
         .screen { position:absolute; top:0; left:0; width:100%; height:100%; display:flex; justify-content:center; align-items:center; z-index:2000; background:radial-gradient(circle at 20% 30%,#0a1f1a,#030a08); }
         .missile-bg { position:absolute; inset:0; background:radial-gradient(circle at 20% 20%,rgba(255,102,0,0.15),transparent 50%), radial-gradient(circle at 80% 60%,rgba(0,170,255,0.15),transparent 50%), repeating-linear-gradient(45deg,rgba(255,255,255,0.02) 0px,rgba(255,255,255,0.02) 2px,transparent 2px,transparent 8px); pointer-events:none; }
@@ -155,12 +156,12 @@
     let lobbyState = { player1: { ready: false, team: null }, player2: { ready: false, team: null } };
     let roomId = null;
 
-    // ШАНСЫ ПВО КАК В РАБОЧЕМ СКРИПТЕ: ДРОН 8%, ВСЕ РАКЕТЫ 10%
+    // ТИПЫ ВООРУЖЕНИЙ (ШАНСЫ ПВО: ДРОН 8%, РАКЕТЫ 10%)
     const weaponTypes = {
-        drone:      { name: 'БПЛА', speed: 0.006, damage: 25, cost: 60, pvoChance: 0.08, icon: '🛸' },
-        cruise:     { name: 'Крылатая', speed: 0.02, damage: 35, cost: 90, pvoChance: 0.10, icon: '✈️' },
-        ballistic:  { name: 'Баллист.', speed: 0.05, damage: 50, cost: 130, pvoChance: 0.10, icon: '💥' },
-        hypersonic: { name: 'Гиперзв.', speed: 0.09, damage: 70, cost: 200, pvoChance: 0.10, icon: '⚡' }
+        drone:      { name: 'БПЛА', speed: 0.006, damage: 25, cost: 60, pvoChance: 0.08, icon: 'drone' },
+        cruise:     { name: 'Крылатая', speed: 0.02, damage: 35, cost: 90, pvoChance: 0.10, icon: 'missile' },
+        ballistic:  { name: 'Баллист.', speed: 0.05, damage: 50, cost: 130, pvoChance: 0.10, icon: 'missile' },
+        hypersonic: { name: 'Гиперзв.', speed: 0.09, damage: 70, cost: 200, pvoChance: 0.10, icon: 'missile' }
     };
     let attackType = 'drone', attackCount = 1, currentAirport = null;
     const costs = { radar: 180, pvo: 220, powerPlant: 250, refinery: 400, rocketFactory: 500 };
@@ -198,16 +199,66 @@
     ];
     const teamColors = { russia: '#ff5555', ukraine: '#55aaff' };
 
-    // ИКОНКИ
-    function getAirportIcon() { return L.divIcon({ className: '', iconSize: [48,48], html: `<svg width="48" height="48" viewBox="0 0 100 100"><rect x="40" y="5" width="20" height="90" fill="#444" rx="3"/><rect x="35" y="15" width="30" height="8" fill="#fff" rx="2"/><rect x="35" y="40" width="30" height="8" fill="#fff" rx="2"/><rect x="35" y="65" width="30" height="8" fill="#fff" rx="2"/></svg>` }); }
-    function getRadarIcon() { return L.divIcon({ className: '', iconSize: [40,40], html: `<div style="width:40px; height:40px; border-radius:50%; background:#0f2430; border:2px solid #00d4ff; position:relative; box-shadow:0 0 12px #00d4ff;"><div style="position:absolute; left:50%; top:5px; width:2px; height:16px; background:#00ffff; transform-origin:bottom center; animation:radarSpin 2s linear infinite;"></div></div>` }); }
-    function getPvoIcon() { return L.divIcon({ className: '', iconSize: [40,40], html: `<svg width="40" height="40" viewBox="0 0 100 100"><rect x="20" y="55" width="60" height="20" rx="4" fill="#444"/><rect x="35" y="25" width="10" height="35" fill="#bbb"/><rect x="55" y="20" width="10" height="40" fill="#ddd"/><circle cx="30" cy="80" r="7" fill="#222"/><circle cx="70" cy="80" r="7" fill="#222"/></svg>` }); }
-    function getPowerPlantIcon() { return L.divIcon({ className: '', iconSize: [40,40], html: `<svg width="40" height="40" viewBox="0 0 100 100"><rect x="30" y="30" width="40" height="40" fill="#444"/><rect x="45" y="15" width="10" height="25" fill="#999"/><circle cx="50" cy="50" r="8" fill="#ffaa33"/></svg>` }); }
-    function getRefineryIcon() { return L.divIcon({ className: '', iconSize: [40,40], html: `<svg width="40" height="40" viewBox="0 0 100 100"><rect x="20" y="20" width="60" height="60" fill="#444"/><rect x="30" y="10" width="12" height="40" fill="#999"/><rect x="58" y="5" width="12" height="45" fill="#999"/><circle cx="50" cy="50" r="12" fill="#ffaa33"/></svg>` }); }
-    function getRocketFactoryIcon() { return L.divIcon({ className: '', iconSize: [40,40], html: `<svg width="40" height="40" viewBox="0 0 100 100"><rect x="25" y="25" width="50" height="50" fill="#444"/><polygon points="50,10 60,30 40,30" fill="#aaa"/><rect x="45" y="60" width="10" height="15" fill="#888"/></svg>` }); }
+    // ========== КАСТОМНЫЕ ИКОНКИ (PNG) ==========
+    // Для зданий и аэродрома – используем L.icon с картинкой из папки images
+    function getAirportIcon() { 
+        return L.icon({ 
+            iconUrl: 'images/airport.png', 
+            iconSize: [48,48], 
+            iconAnchor: [24,24],
+            popupAnchor: [0,-20]
+        }); 
+    }
+    function getRadarIcon() { 
+        return L.icon({ 
+            iconUrl: 'images/radar.png', 
+            iconSize: [40,40], 
+            iconAnchor: [20,20] 
+        }); 
+    }
+    function getPvoIcon() { 
+        return L.icon({ 
+            iconUrl: 'images/pvo.png', 
+            iconSize: [40,40], 
+            iconAnchor: [20,20] 
+        }); 
+    }
+    function getPowerPlantIcon() { 
+        return L.icon({ 
+            iconUrl: 'images/powerplant.png', 
+            iconSize: [40,40], 
+            iconAnchor: [20,20] 
+        }); 
+    }
+    function getRefineryIcon() { 
+        return L.icon({ 
+            iconUrl: 'images/refinery.png', 
+            iconSize: [40,40], 
+            iconAnchor: [20,20] 
+        }); 
+    }
+    function getRocketFactoryIcon() { 
+        return L.icon({ 
+            iconUrl: 'images/rocket_factory.png', 
+            iconSize: [40,20], 
+            iconAnchor: [20,10] 
+        }); 
+    }
+
+    // Для ракет и дронов – divIcon с <img> и поддержкой поворота
     function getMissileIcon(type) {
-        const icons = { drone:'🛸', cruise:'✈️', ballistic:'💥', hypersonic:'⚡' };
-        return L.divIcon({ className: '', iconSize: [28,28], html: `<div style="font-size:24px;">${icons[type]}</div>` });
+        let imgSrc;
+        if (type === 'drone') {
+            imgSrc = 'images/drone.png';
+        } else {
+            imgSrc = 'images/missile.png'; // для всех ракет одна картинка, можно заменить на разные
+        }
+        return L.divIcon({
+            className: 'custom-missile',
+            iconSize: [32, 32],
+            iconAnchor: [16, 16],
+            html: `<img src="${imgSrc}" style="width:32px; height:32px; display:block; transform-origin: center center;">`
+        });
     }
 
     function createExplosion(lat,lng){
@@ -429,7 +480,7 @@
         return true;
     }
 
-    // ПЕРЕХВАТ ПВО (с шансами из рабочего скрипта: дрон 8%, ракеты 10%)
+    // ПЕРЕХВАТ ПВО (с шансами)
     function tryIntercept(proj){
         const now=Date.now(); 
         if(now - proj.lastInterceptCheck < 2000) return false; 
@@ -507,6 +558,9 @@
                 continue;
             }
             p.marker.setLatLng([lat, lng]);
+            // Поворот иконки (для divIcon с картинкой)
+            let angle = Math.atan2(p.to.lng - p.from.lng, p.to.lat - p.from.lat) * 180 / Math.PI;
+            if(p.marker._icon) p.marker._icon.style.transform = `rotate(${angle}deg)`;
         }
     }
 
@@ -533,6 +587,7 @@
             for(let r of radars){
                 if(r.marker){
                     r.radarAngle = (r.radarAngle + 30) % 360;
+                    // Для кастомных PNG анимация радиолуча не работает (можно убрать)
                     let iconDiv = r.marker._icon?.querySelector('.radar-icon');
                     if(iconDiv) iconDiv.style.transform = `rotate(${r.radarAngle}deg)`;
                 }
@@ -862,7 +917,7 @@
     document.getElementById('diffHard').onclick=()=>{ document.querySelectorAll('.difficulty-btn').forEach(btn=>btn.classList.remove('selected')); document.getElementById('diffHard').classList.add('selected'); difficulty="HARD"; };
     document.getElementById('diffExtreme').onclick=()=>{ document.querySelectorAll('.difficulty-btn').forEach(btn=>btn.classList.remove('selected')); document.getElementById('diffExtreme').classList.add('selected'); difficulty="EXTREME"; };
     document.getElementById('singleBtn').onclick=()=>{ playBeep(400,0.1); setTimeout(()=>{ playBeep(600,0.1); setTimeout(()=>{ playBeep(800,0.1); myTeam='russia'; enemyTeam='ukraine'; isAI=true; initGameMapAndLogic(); },100); },100); };
-    document.getElementById('tutorialBtn').onclick=()=>{ alert("Обучение: постройте аэродром → радар → ПВО → атакуйте врага. У разных ракет разный шанс сбития ПВО (БПЛА 8%, ракеты 10%)."); };
+    document.getElementById('tutorialBtn').onclick=()=>{ alert("Обучение: постройте аэродром → радар → ПВО → атакуйте врага. Для кастомных иконок положите PNG в папку images."); };
     document.getElementById('createGameBtn').onclick=()=>{ createRoom(); };
     document.getElementById('joinGameBtn').onclick=()=>{ document.getElementById('roomCodeInput').style.display='block'; document.getElementById('confirmJoinBtn').style.display='block'; };
     document.getElementById('confirmJoinBtn').onclick=()=>{ let code=document.getElementById('roomCodeInput').value.trim().toUpperCase(); if(code) joinRoom(code); else alert("Введите код"); };
