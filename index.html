@@ -1,15 +1,15 @@
+
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Sky in Fire — ПВО с шансами</title>
+    <title>Sky in Fire — финал (сбалансированное ПВО)</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
-    <style>
-        * { margin:0; padding:0; box-sizing:border-box; user-select:none; }
+    <style>* { margin:0; padding:0; box-sizing:border-box; user-select:none; }
         body { font-family:'Segoe UI',system-ui; background:#0a0f12; overflow:hidden; height:100vh; color:#eef; }
         .screen { position:absolute; top:0; left:0; width:100%; height:100%; display:flex; justify-content:center; align-items:center; z-index:2000; background:radial-gradient(circle at 20% 30%,#0a1f1a,#030a08); }
         .missile-bg { position:absolute; inset:0; background:radial-gradient(circle at 20% 20%,rgba(255,102,0,0.15),transparent 50%), radial-gradient(circle at 80% 60%,rgba(0,170,255,0.15),transparent 50%), repeating-linear-gradient(45deg,rgba(255,255,255,0.02) 0px,rgba(255,255,255,0.02) 2px,transparent 2px,transparent 8px); pointer-events:none; }
@@ -156,12 +156,12 @@
     let lobbyState = { player1: { ready: false, team: null }, player2: { ready: false, team: null } };
     let roomId = null;
 
-    // ТИПЫ ВООРУЖЕНИЙ (СКОРОСТИ И ШАНСЫ ПВО)
+    // ========== ИСПРАВЛЕННЫЕ ШАНСЫ ПВО (НИЖЕ В 2 РАЗА) ==========
     const weaponTypes = {
         drone:      { name: 'БПЛА', speed: 0.006, damage: 25, cost: 60, pvoChance: 0.20, icon: '🛸' },
         cruise:     { name: 'Крылатая', speed: 0.02, damage: 35, cost: 90, pvoChance: 0.08, icon: '✈️' },
-        ballistic:  { name: 'Баллист.', speed: 0.05, damage: 50, cost: 130, pvoChance: 0.04, icon: '💥' },
-        hypersonic: { name: 'Гиперзв.', speed: 0.09, damage: 70, cost: 200, pvoChance: 0.01, icon: '⚡' }
+        ballistic:  { name: 'Баллист.', speed: 0.05, damage: 50, cost: 130, pvoChance: 0.06, icon: '💥' },
+        hypersonic: { name: 'Гиперзв.', speed: 0.09, damage: 70, cost: 200, pvoChance: 0.03, icon: '⚡' }
     };
     let attackType = 'drone', attackCount = 1, currentAirport = null;
     const costs = { radar: 180, pvo: 220, powerPlant: 250, refinery: 400, rocketFactory: 500 };
@@ -354,7 +354,7 @@
 
     function updateUI(){ document.getElementById('energy').innerText=Math.floor(resources); }
 
-    // ПОЛУЧЕНИЕ ВСЕХ ВРАЖЕСКИХ ЦЕЛЕЙ С ПРИОРИТЕТОМ
+    // ПОЛУЧЕНИЕ ВСЕХ ВРАЖЕСКИХ ЦЕЛЕЙ (ГОРОДА + ЗДАНИЯ) С ПРИОРИТЕТОМ
     function getEnemyTargets(){
         let targets = [];
         buildings.forEach(b => {
@@ -393,6 +393,7 @@
         return targets;
     }
 
+    // АТАКА (гарантированные координаты)
     function launchAttack(airport, targetObj, type, count){
         let weapon = weaponTypes[type];
         let costPerUnit = weapon.cost;
@@ -429,14 +430,13 @@
         return true;
     }
 
-    // ПЕРЕХВАТ ПВО С ШАНСАМИ ИЗ weaponTypes
+    // ПЕРЕХВАТ ПВО (с уменьшенными шансами)
     function tryIntercept(proj){
         const pos = proj.marker.getLatLng();
-        // Сначала проверяем все ПВО (свои и вражеские) – перехватывает только то, что не своей команды
         for(let pvo of pvoSystems){
             if(pvo.team !== proj.team){
                 let dist = map.distance([pvo.lat,pvo.lng], [pos.lat,pos.lng]);
-                if(dist < 80000){ // радиус 80 км
+                if(dist < 80000){
                     let chance = weaponTypes[proj.type].pvoChance;
                     if(Math.random() < chance){
                         playBeep(600,0.15);
@@ -446,7 +446,6 @@
                 }
             }
         }
-        // Для AI (если есть специальное ПВО)
         if(isAI && aiPvo && aiPvo.team !== proj.team){
             let dist = map.distance([aiPvo.lat,aiPvo.lng], [pos.lat,pos.lng]);
             if(dist < 80000){
@@ -720,7 +719,7 @@
     function closeAttackModal(){ document.getElementById('attackModal').style.display='none'; }
     function updateCostDisplay(){ let cost = weaponTypes[attackType].cost; document.getElementById('costDisplay').innerHTML = `СТОИМОСТЬ: ${cost * attackCount} ⚡`; }
 
-    // ========== СЕТЕВЫЕ ФУНКЦИИ ==========
+    // ========== СЕТЕВЫЕ ФУНКЦИИ (без изменений) ==========
     function handleNetworkData(data){
         if(data.type==='build'){
             let building={id:data.id||Date.now()+Math.random(), lat:data.lat, lng:data.lng, type:data.buildType, team:data.team, hp:(data.buildType==='radar'?120:(data.buildType==='pvo'?180:(data.buildType==='powerPlant'?100:(data.buildType==='refinery'?150:200)))), radarAngle:0, marker:null, radarCircle:null};
@@ -861,7 +860,7 @@
     document.getElementById('diffHard').onclick=()=>{ document.querySelectorAll('.difficulty-btn').forEach(btn=>btn.classList.remove('selected')); document.getElementById('diffHard').classList.add('selected'); difficulty="HARD"; };
     document.getElementById('diffExtreme').onclick=()=>{ document.querySelectorAll('.difficulty-btn').forEach(btn=>btn.classList.remove('selected')); document.getElementById('diffExtreme').classList.add('selected'); difficulty="EXTREME"; };
     document.getElementById('singleBtn').onclick=()=>{ playBeep(400,0.1); setTimeout(()=>{ playBeep(600,0.1); setTimeout(()=>{ playBeep(800,0.1); myTeam='russia'; enemyTeam='ukraine'; isAI=true; initGameMapAndLogic(); },100); },100); };
-    document.getElementById('tutorialBtn').onclick=()=>{ alert("Обучение: постройте аэродром, затем радар, ПВО, атакуйте вражеские здания и города. Шанс сбития ПВО: БПЛА 20%, крылатая 8%, баллистическая 4%, гиперзвуковая 1%."); };
+    document.getElementById('tutorialBtn').onclick=()=>{ alert("Обучение: постройте аэродром → радар → ПВО → атакуйте врага. У разных ракет разный шанс сбития ПВО."); };
     document.getElementById('createGameBtn').onclick=()=>{ createRoom(); };
     document.getElementById('joinGameBtn').onclick=()=>{ document.getElementById('roomCodeInput').style.display='block'; document.getElementById('confirmJoinBtn').style.display='block'; };
     document.getElementById('confirmJoinBtn').onclick=()=>{ let code=document.getElementById('roomCodeInput').value.trim().toUpperCase(); if(code) joinRoom(code); else alert("Введите код"); };
