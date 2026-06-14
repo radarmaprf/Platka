@@ -1,1 +1,573 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Skyinfire</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; user-select:none; }
+        body { font-family:'Segoe UI',system-ui; background:#0a0f12; overflow:hidden; height:100vh; color:#eef; }
+        .screen { position:absolute; top:0; left:0; width:100%; height:100%; display:flex; justify-content:center; align-items:center; z-index:2000; background:radial-gradient(circle at 20% 30%,#0a1f1a,#030a08); }
+        .missile-bg { position:absolute; inset:0; background:radial-gradient(circle at 20% 20%,rgba(255,102,0,0.15),transparent 50%), radial-gradient(circle at 80% 60%,rgba(0,170,255,0.15),transparent 50%), repeating-linear-gradient(45deg,rgba(255,255,255,0.02) 0px,rgba(255,255,255,0.02) 2px,transparent 2px,transparent 8px); pointer-events:none; }
+        .scan-line { position:absolute; top:0; left:0; width:100%; height:2px; background:linear-gradient(90deg,transparent,#00ffaa,transparent); animation:scan 8s linear infinite; opacity:0.3; pointer-events:none; }
+        @keyframes scan { 0%{top:0;} 100%{top:100%;} }
+        .card { background:rgba(20,30,35,0.7); backdrop-filter:blur(14px); border-radius:48px; padding:40px 32px; text-align:center; max-width:90%; width:480px; color:#fff; box-shadow:0 25px 45px rgba(0,0,0,0.5),0 0 0 1px rgba(255,215,0,0.2); border:1px solid rgba(255,215,0,0.3); position:relative; z-index:10; }
+        .logo { font-size:3rem; font-weight:900; letter-spacing:4px; text-transform:uppercase; background:linear-gradient(135deg,#ffb347,#ff8c00); -webkit-background-clip:text; background-clip:text; color:transparent; text-shadow:0 0 15px rgba(255,140,0,0.5); margin-bottom:0.5rem; }
+        .sub { font-size:0.8rem; letter-spacing:2px; opacity:0.8; margin-bottom:30px; }
+        .card button { display:block; width:100%; background:rgba(255,255,255,0.08); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,0.15); color:white; padding:14px; margin:12px 0; font-size:1.1rem; font-weight:bold; border-radius:60px; cursor:pointer; transition:0.2s; box-shadow:0 2px 5px rgba(0,0,0,0.2); }
+        .card button:hover { transform:translateY(-2px); background:rgba(255,255,255,0.15); border-color:rgba(255,215,0,0.5); }
+        .card input { width:100%; padding:12px; border-radius:60px; border:none; margin:12px 0; text-align:center; background:rgba(42,58,58,0.8); color:#fff; }
+        .lobby-info { margin:12px 0; background:rgba(0,0,0,0.5); border-radius:40px; padding:8px; }
+        .country-select { display:flex; gap:15px; justify-content:center; margin:20px 0; }
+        .country-btn { flex:1; background:#3a5e5e; border:2px solid #fff; border-radius:40px; padding:10px; cursor:pointer; font-weight:bold; transition:0.1s; }
+        .country-btn.selected { background:#ffaa33; border-color:gold; color:#1a2a2a; }
+        .ready-btn { background:#ffaa33!important; color:#1a2a2a!important; }
+        #gameHUD { position:fixed; top:12px; left:12px; right:12px; background:rgba(0,0,0,0.75); backdrop-filter:blur(12px); border-radius:30px; padding:8px 16px; display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; z-index:1500; border:1px solid rgba(255,215,0,0.3); font-weight:bold; }
+        .hud-resource { background:#1e2e2e; padding:4px 12px; border-radius:40px; display:inline-flex; align-items:center; gap:6px; }
+        .health-bars { display:flex; gap:20px; background:rgba(0,0,0,0.5); padding:4px 12px; border-radius:40px; }
+        .health-bar { display:flex; align-items:center; gap:8px; }
+        .bar-bg { width:120px; height:10px; background:#333; border-radius:10px; overflow:hidden; }
+        .bar-fill { height:100%; width:0%; transition:width 0.3s; }
+        .ru-fill { background:#ff5555; }
+        .ua-fill { background:#55aaff; }
+        @media (max-width:700px) {
+            .health-bar { font-size:11px; }
+            .bar-bg { width:80px; }
+            #gameHUD { font-size:11px; padding:6px 12px; flex-direction:column; align-items:stretch; gap:6px; }
+            .health-bars { justify-content:space-between; }
+        }
+        #buildPanel { position:fixed; bottom:20px; left:20px; background:rgba(0,0,0,0.8); backdrop-filter:blur(12px); border-radius:30px; padding:12px; display:flex; flex-direction:column; gap:8px; z-index:1500; border:1px solid #ffaa3344; }
+        .build-btn { background:linear-gradient(180deg,#3a5e5e,#1e4a4a); border:none; color:#fff; padding:8px 16px; border-radius:40px; cursor:pointer; font-weight:bold; text-align:left; }
+        .modal { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:linear-gradient(180deg,#1a232c,#0d1318); border-radius:40px; padding:24px; z-index:3000; color:#fff; width:300px; text-align:center; border:1px solid #ffaa33; box-shadow:0 0 30px #000; }
+        .zone-marker { background:rgba(0,0,0,0.8); border-radius:16px; padding:6px 10px; text-align:center; font-weight:bold; color:#fff; font-size:12px; box-shadow:0 0 10px rgba(0,0,0,0.5); white-space:nowrap; }
+        @keyframes radarSpin { from{transform:translateX(-50%) rotate(0deg);} to{transform:translateX(-50%) rotate(360deg);} }
+        .leaflet-marker-icon { transform-origin:center center; }
+        .hidden-projectile { display:none !important; }
+        .loading-indicator { background:rgba(0,0,0,0.7); color:white; padding:8px 16px; border-radius:30px; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:3000; }
+    </style>
+</head>
+<body>
+<div id="menuScreen" class="screen">
+    <div class="missile-bg"></div>
+    <div class="scan-line"></div>
+    <div class="card">
+        <div class="logo">☢️ Sky in Fire</div;
+        <div class="sub"></div>
+        <button id="singleBtn">⚔️ ОДИНОЧНАЯ ИГРА</button>
+        <button id="tutorialBtn">📖 ОБУЧЕНИЕ</button>
+        <button id="createGameBtn">🌐 СОЗДАТЬ КОМНАТУ</button>
+        <button id="joinGameBtn">🔌 ПОДКЛЮЧИТЬСЯ</button>
+        <input type="text" id="roomCodeInput" placeholder="КОД КОМНАТЫ" style="display:none;">
+        <button id="confirmJoinBtn" style="display:none;">ПОДКЛЮЧИТЬСЯ</button>
+        <div id="roomDisplay" style="margin-top:10px; font-size:12px; opacity:0.8;"></div>
+    </div>
+</div>
+<div id="lobbyScreen" class="screen" style="display:none;">
+    <div class="card" style="width:400px;">
+        <h1>ЛОББИ</h1>
+        <div class="lobby-info">Код комнаты: <span id="lobbyRoomCode"></span></div>
+        <div class="lobby-info">Игрок 1: <span id="player1Name">—</span> <span id="player1Ready">⚪</span></div>
+        <div class="lobby-info">Игрок 2: <span id="player2Name">—</span> <span id="player2Ready">⚪</span></div>
+        <div class="country-select">
+            <div id="chooseRussia" class="country-btn">РОССИЯ</div>
+            <div id="chooseUkraine" class="country-btn">УКРАИНА</div>
+        </div>
+        <button id="readyBtn" class="ready-btn">ГОТОВ</button>
+        <div id="lobbyMessage"></div>
+    </div>
+</div>
+<div id="attackModal" class="modal" style="display:none;">
+    <h3>🎯 КОМАНДНЫЙ ЦЕНТР</h3>
+    <select id="targetSelect"></select>
+    <div class="flex">
+        <span>ТИП:</span>
+        <button id="typeDroneBtn">🛸 БПЛА</button>
+        <button id="typeMissileBtn">💥 РАКЕТА</button>
+    </div>
+    <div class="flex">
+        <span>КОЛ-ВО:</span>
+        <button id="countMinus">-</button>
+        <span id="countValue">1</span>
+        <button id="countPlus">+</button>
+    </div>
+    <div id="costDisplay" style="margin:10px 0; font-weight:bold;">СТОИМОСТЬ: 0 ⚡</div>
+    <button id="attackConfirmBtn">АТАКОВАТЬ</button>
+    <button id="attackCancelBtn">ОТМЕНА</button>
+</div>
+<div id="gameContainer" style="display:none; width:100%; height:100%; position:relative;">
+    <div id="map" style="width:100%; height:100%;"></div>
+    <div id="gameHUD">
+        <div class="hud-resource">⚡ <span id="energy">300</span></div>
+        <div class="health-bars">
+            <div class="health-bar"><span>🇷🇺</span><div class="bar-bg"><div class="bar-fill ru-fill" id="ruFill"></div></div><span id="ruPercent">0%</span></div>
+            <div class="health-bar"><span>🇺🇦</span><div class="bar-bg"><div class="bar-fill ua-fill" id="uaFill"></div></div><span id="uaPercent">0%</span></div>
+        </div>
+    </div>
+    <div id="buildPanel">
+        <button class="build-btn" id="buildRadarBtn">📡 РАДАР (180)</button>
+        <button class="build-btn" id="buildPvoBtn">🛡️ ПВО (220)</button>
+        <button class="build-btn" id="buildPowerPlantBtn">⚡ ЭЛЕКТРОСТАНЦИЯ (250)</button>
+        <button class="build-btn" id="buildRefineryBtn">⛽ НПЗ (400)</button>
+        <button class="build-btn" id="buildRocketFactoryBtn">🚀 ЗАВОД РАКЕТ (500)</button>
+        <button class="build-btn" id="cancelBuild">❌ ОТМЕНА</button>
+    </div>
+</div>
 
+<script>
+    // ========== ЛИМИТЫ: РАДАРЫ 8, ПВО 12 ==========
+    let map, gameActive = false;
+    let resources = 300;
+    let buildings = [];
+    let zones = [];
+    let projectiles = [];
+    let radars = [];
+    let pvoSystems = [];
+    let powerPlants = [], refineries = [], rocketFactories = [];
+    let buildMode = null;
+    let airportMarker = null;
+    let airportPlaced = false;
+    let airportHp = 200;
+    let lastUpdate = 0;
+    let myTeam = null, enemyTeam = null;
+    let isAI = false;
+    let russiaGeoJSON = null, ukraineGeoJSON = null, bordersLoaded = false;
+    let radarAnimationInterval = null, aiInterval = null, economyInterval = null;
+    let peer = null, conn = null;
+    let isHost = false;
+    let lobbyState = { player1: { ready: false, team: null }, player2: { ready: false, team: null } };
+    let roomId = null;
+
+    // ИЗМЕНЁННЫЕ ЛИМИТЫ
+    const maxRadars = 8;
+    const maxPvo = 12;
+    const maxPowerPlants = 5;
+    const maxRefineries = 3;
+
+    const missileBaseCost = 100;
+    const projectileStats = {
+        drone: { name: 'БПЛА', speed: 0.006, damage: 25, cost: 60 },
+        missile: { name: 'Ракета', speed: 0.08, damage: 55, cost: () => (rocketFactories.length > 0 ? Math.floor(missileBaseCost * 0.8) : missileBaseCost) }
+    };
+    const costs = { radar: 180, pvo: 220, powerPlant: 250, refinery: 400, rocketFactory: 500 };
+    let attackType = 'drone', attackCount = 1, currentAirport = null;
+    let audioCtx = null;
+    function playBeep(freq, duration, type='sine') {
+        if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.frequency.value = freq;
+        osc.type = type;
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.00001, now + duration);
+        osc.start();
+        osc.stop(now + duration);
+    }
+
+    const zoneData = [
+        { name: 'КИЕВ', center: [50.4501,30.5234], team: 'ukraine', hp: 100, baseHp: 100 },
+        { name: 'ОДЕССА', center: [46.4825,30.7233], team: 'ukraine', hp: 80, baseHp: 80 },
+        { name: 'ХАРЬКОВ', center: [49.9935,36.2304], team: 'ukraine', hp: 90, baseHp: 90 },
+        { name: 'ДНЕПР', center: [48.4647,35.0467], team: 'ukraine', hp: 85, baseHp: 85 },
+        { name: 'ЛЬВОВ', center: [49.8397,24.0297], team: 'ukraine', hp: 70, baseHp: 70 },
+        { name: 'МОСКВА', center: [55.7558,37.6173], team: 'russia', hp: 120, baseHp: 120 },
+        { name: 'БЕЛГОРОД', center: [50.5975,36.5858], team: 'russia', hp: 60, baseHp: 60 },
+        { name: 'РОСТОВ', center: [47.2357,39.7015], team: 'russia', hp: 75, baseHp: 75 },
+        { name: 'ВОРОНЕЖ', center: [51.6605,39.2003], team: 'russia', hp: 80, baseHp: 80 },
+        { name: 'ВОЛГОГРАД', center: [48.7047,44.5133], team: 'russia', hp: 85, baseHp: 85 },
+        { name: 'КРАСНОДАР', center: [45.0355,38.9753], team: 'russia', hp: 70, baseHp: 70 }
+    ];
+    const teamColors = { russia: '#ff5555', ukraine: '#55aaff' };
+
+    function getAirportIcon() { return L.divIcon({ className: '', iconSize: [48,48], html: `<svg width="48" height="48" viewBox="0 0 100 100"><rect x="40" y="5" width="20" height="90" fill="#444" rx="3"/><rect x="35" y="15" width="30" height="8" fill="#fff" rx="2"/><rect x="35" y="40" width="30" height="8" fill="#fff" rx="2"/><rect x="35" y="65" width="30" height="8" fill="#fff" rx="2"/></svg>` }); }
+    function getRadarIcon() { return L.divIcon({ className: '', iconSize: [40,40], html: `<div style="width:40px; height:40px; border-radius:50%; background:#0f2430; border:2px solid #00d4ff; position:relative; box-shadow:0 0 12px #00d4ff;"><div style="position:absolute; left:50%; top:5px; width:2px; height:16px; background:#00ffff; transform-origin:bottom center; animation:radarSpin 2s linear infinite;"></div></div>` }); }
+    function getPvoIcon() { return L.divIcon({ className: '', iconSize: [40,40], html: `<svg width="40" height="40" viewBox="0 0 100 100"><rect x="20" y="55" width="60" height="20" rx="4" fill="#444"/><rect x="35" y="25" width="10" height="35" fill="#bbb"/><rect x="55" y="20" width="10" height="40" fill="#ddd"/><circle cx="30" cy="80" r="7" fill="#222"/><circle cx="70" cy="80" r="7" fill="#222"/></svg>` }); }
+    function getPowerPlantIcon() { return L.divIcon({ className: '', iconSize: [40,40], html: `<svg width="40" height="40" viewBox="0 0 100 100"><rect x="30" y="30" width="40" height="40" fill="#444"/><rect x="45" y="15" width="10" height="25" fill="#999"/><circle cx="50" cy="50" r="8" fill="#ffaa33"/></svg>` }); }
+    function getRefineryIcon() { return L.divIcon({ className: '', iconSize: [40,40], html: `<svg width="40" height="40" viewBox="0 0 100 100"><rect x="20" y="20" width="60" height="60" fill="#444"/><rect x="30" y="10" width="12" height="40" fill="#999"/><rect x="58" y="5" width="12" height="45" fill="#999"/><circle cx="50" cy="50" r="12" fill="#ffaa33"/></svg>` }); }
+    function getRocketFactoryIcon() { return L.divIcon({ className: '', iconSize: [40,40], html: `<svg width="40" height="40" viewBox="0 0 100 100"><rect x="25" y="25" width="50" height="50" fill="#444"/><polygon points="50,10 60,30 40,30" fill="#aaa"/><rect x="45" y="60" width="10" height="15" fill="#888"/></svg>` }); }
+    function getMissileIcon() { return L.divIcon({ className: '', iconSize: [24,24], html: `<svg width="24" height="24" viewBox="0 0 100 100"><rect x="20" y="42" width="45" height="16" rx="6" fill="#d9d9d9"/><polygon points="65,42 90,50 65,58" fill="#b0b0b0"/><polygon points="20,42 8,35 20,50" fill="#ff9933"/><polygon points="20,58 8,65 20,50" fill="#ff9933"/><circle cx="35" cy="50" r="4" fill="#4db3ff"/></svg>` }); }
+    function getDroneIcon() { return L.divIcon({ className: '', iconSize: [24,24], html: `<svg width="24" height="24" viewBox="0 0 100 100"><rect x="25" y="40" width="50" height="20" rx="4" fill="#2a6b2a"/><ellipse cx="35" cy="50" rx="8" ry="6" fill="#1e4a1e"/><ellipse cx="65" cy="50" rx="8" ry="6" fill="#1e4a1e"/><circle cx="35" cy="50" r="3" fill="#fff"/><circle cx="65" cy="50" r="3" fill="#fff"/></svg>` }); }
+
+    function loadRealBorders(cb) {
+        Promise.all([
+            fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries/RUS.geo.json').then(r=>r.json()),
+            fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries/UKR.geo.json').then(r=>r.json())
+        ]).then(([rus,ukr])=>{ russiaGeoJSON=rus; ukraineGeoJSON=ukr; bordersLoaded=true; L.geoJSON(rus,{style:{color:'#ff6666',weight:2,fillOpacity:0.08}}).addTo(map); L.geoJSON(ukr,{style:{color:'#66aaff',weight:2,fillOpacity:0.08}}).addTo(map); if(cb)cb(); }).catch(e=>{ console.warn(e); bordersLoaded=false; if(cb)cb(); });
+    }
+    function isInsideCountry(lat,lng,country) { if(!bordersLoaded||!russiaGeoJSON||!ukraineGeoJSON) return false; const point=turf.point([lng,lat]); const geojson=country==='russia'?russiaGeoJSON:ukraineGeoJSON; let feat=geojson.features?geojson.features[0]:geojson; return turf.booleanPointInPolygon(point,feat); }
+    function isOwnTerritory(lat,lng){ if(!myTeam) return false; return isInsideCountry(lat,lng,myTeam); }
+    function canBuildHere(lat,lng){ if(!isOwnTerritory(lat,lng)) return false; for(let b of buildings) if(map.distance([lat,lng],[b.lat,b.lng])<1000) return false; return true; }
+
+    function updateTotalPercent() {
+        let ruTotal = 0, ruBase = 0, uaTotal = 0, uaBase = 0;
+        zones.forEach(z => { if(z.team === 'russia') { ruTotal += z.hp; ruBase += z.baseHp; } else { uaTotal += z.hp; uaBase += z.baseHp; } });
+        let ruPercent = ruBase ? (ruTotal / ruBase * 100) : 0;
+        let uaPercent = uaBase ? (uaTotal / uaBase * 100) : 0;
+        document.getElementById('ruPercent').innerText = Math.floor(ruPercent) + '%';
+        document.getElementById('uaPercent').innerText = Math.floor(uaPercent) + '%';
+        document.getElementById('ruFill').style.width = ruPercent + '%';
+        document.getElementById('uaFill').style.width = uaPercent + '%';
+        if(ruTotal <= 0 && gameActive && myTeam === 'ukraine') { gameActive=false; alert("🏆 ПОБЕДА! Все города России уничтожены."); setTimeout(()=>location.reload(),2000); }
+        if(uaTotal <= 0 && gameActive && myTeam === 'russia') { gameActive=false; alert("🏆 ПОБЕДА! Все города Украины уничтожены."); setTimeout(()=>location.reload(),2000); }
+    }
+
+    function initZones(){
+        zones=[];
+        zoneData.forEach(z=>{
+            let circle=L.circle(z.center,{radius:15000,color:z.team==='russia'?teamColors.russia:teamColors.ukraine,weight:2,fillOpacity:0.25}).addTo(map);
+            let marker=L.marker(z.center,{icon:L.divIcon({html:`<div class="zone-marker" style="border-color: ${z.team==='russia'?'#ff8888':'#88aaff'};">${z.name}<br>${Math.floor((z.hp/z.baseHp)*100)}%</div>`,iconSize:[80,40]})}).addTo(map);
+            zones.push({id:z.name,name:z.name,center:z.center,team:z.team,hp:z.hp,baseHp:z.baseHp,circle:circle,marker:marker});
+        });
+        updateZoneMarkers();
+        updateTotalPercent();
+    }
+    function updateZoneMarkers(){
+        zones.forEach(z=>{
+            let percent = Math.floor((z.hp / z.baseHp) * 100);
+            let html = `<div class="zone-marker" style="border-color: ${z.team==='russia'?'#ff8888':'#88aaff'};">${z.name}<br>${percent}%</div>`;
+            z.marker.setIcon(L.divIcon({html,iconSize:[80,40]}));
+        });
+        updateTotalPercent();
+    }
+    function showHint(text){ let h=document.createElement('div'); h.innerHTML=text; h.style.cssText='position:fixed; top:120px; left:50%; transform:translateX(-50%); background:#000; color:white; padding:15px 25px; border-radius:15px; border:2px solid gold; z-index:9999; font-size:18px; text-align:center; white-space:nowrap;'; document.body.appendChild(h); setTimeout(()=>h.remove(),5000); }
+
+    function tryBuild(lat,lng,type){
+        if(!airportPlaced){ alert("Сначала постройте аэродром!"); return false; }
+        if(!canBuildHere(lat,lng)){ alert("Можно строить только на своей территории и не ближе 1 км к другим зданиям!"); return false; }
+        // Новые лимиты
+        if(type==='radar' && radars.length >= maxRadars){ alert(`Максимум ${maxRadars} радаров`); return false; }
+        if(type==='pvo' && pvoSystems.length >= maxPvo){ alert(`Максимум ${maxPvo} ПВО`); return false; }
+        if(type==='powerPlant' && powerPlants.length >= maxPowerPlants){ alert(`Максимум ${maxPowerPlants} электростанций`); return false; }
+        if(type==='refinery' && refineries.length >= maxRefineries){ alert(`Максимум ${maxRefineries} НПЗ`); return false; }
+        let cost=costs[type]; if(resources<cost){ alert("Не хватает энергии"); return false; }
+        resources-=cost; updateUI();
+        let building={id:Math.random(),lat,lng,type,team:myTeam,hp:(type==='radar'?120:(type==='pvo'?180:(type==='powerPlant'?100:(type==='refinery'?150:200)))),radarAngle:0,marker:null,radarCircle:null};
+        let icon; if(type==='radar') icon=getRadarIcon(); else if(type==='pvo') icon=getPvoIcon(); else if(type==='powerPlant') icon=getPowerPlantIcon(); else if(type==='refinery') icon=getRefineryIcon(); else if(type==='rocketFactory') icon=getRocketFactoryIcon(); else return false;
+        let marker=L.marker([lat,lng],{icon}).addTo(map); building.marker=marker; buildings.push(building);
+        if(type==='radar'){ radars.push(building); let circle=L.circle([lat,lng],{radius:150000,color:'#00ffff',weight:1,fillOpacity:0.05}).addTo(map); building.radarCircle=circle; showHint("🛡️ Теперь постройте ПВО"); }
+        if(type==='pvo'){ pvoSystems.push(building); showHint("⚡ Постройте Электростанцию"); }
+        if(type==='powerPlant'){ powerPlants.push(building); showHint("⛽ Постройте НПЗ"); }
+        if(type==='refinery') refineries.push(building);
+        if(type==='rocketFactory') rocketFactories.push(building);
+        updateUI();
+        if(!isAI && conn && conn.open) conn.send({ type:'build', buildType:type, lat, lng, team:myTeam });
+        return true;
+    }
+
+    function updateUI(){ document.getElementById('energy').innerText=Math.floor(resources); }
+
+    function launchAttack(airport,targetZone,type,count){
+        let costPerUnit=(type==='drone')?projectileStats.drone.cost:(rocketFactories.length>0?Math.floor(missileBaseCost*0.8):missileBaseCost);
+        if(resources<costPerUnit*count){ alert("Не хватает энергии"); return false; }
+        for(let i=0;i<count;i++){
+            resources-=costPerUnit;
+            let offset=(i-(count-1)/2)*0.03;
+            let targetLat=targetZone.center[0]+offset, targetLng=targetZone.center[1]+offset*0.5;
+            let proj={id:Math.random(),from:airport.getLatLng(),to:{lat:targetLat,lng:targetLng},progress:0,speed:projectileStats[type].speed,damage:projectileStats[type].damage,team:myTeam,targetZoneId:targetZone.id,type:type,active:true,marker:null,lastInterceptCheck:0};
+            let icon=(type==='drone')?getDroneIcon():getMissileIcon();
+            let marker=L.marker([proj.from.lat,proj.from.lng],{icon}).addTo(map); proj.marker=marker; projectiles.push(proj);
+        }
+        updateUI(); playBeep(800,0.2);
+        if(!isAI && conn && conn.open) conn.send({ type:'launch', targetId:targetZone.id, weapon:type, count, team:myTeam });
+        return true;
+    }
+
+    function tryIntercept(proj){
+        const now=Date.now(); if(now-proj.lastInterceptCheck<2000) return false; proj.lastInterceptCheck=now;
+        const pos=proj.marker.getLatLng();
+        for(let pvo of pvoSystems){
+            if(pvo.team!==proj.team){
+                let dist=map.distance([pvo.lat,pvo.lng],[pos.lat,pos.lng]);
+                if(dist<100000){
+                    let chance=(proj.type==='drone')?0.08:0.10;
+                    if(Math.random()<chance){
+                        playBeep(600,0.15);
+                        let start={lat:pvo.lat,lng:pvo.lng}, end=pos;
+                        let bulletMarker=L.marker([start.lat,start.lng],{icon:L.divIcon({html:'➡️',iconSize:[16,16]})}).addTo(map);
+                        let step=0, bulletInt=setInterval(()=>{ step+=0.1; let lat=start.lat+(end.lat-start.lat)*step, lng=start.lng+(end.lng-start.lng)*step; bulletMarker.setLatLng([lat,lng]); if(step>=1){ clearInterval(bulletInt); map.removeLayer(bulletMarker); let exp=L.marker([end.lat,end.lng],{icon:L.divIcon({html:'💥',iconSize:[24,24]})}).addTo(map); setTimeout(()=>map.removeLayer(exp),400); playBeep(300,0.3); } },40);
+                        return true;
+                    }
+                }
+            }
+        }
+        if(isAI && aiPvo && aiPvo.team!==proj.team){
+            let dist=map.distance([aiPvo.lat,aiPvo.lng],[pos.lat,pos.lng]);
+            if(dist<100000){
+                let chance=(proj.type==='drone')?0.08:0.10;
+                if(Math.random()<chance){
+                    playBeep(600,0.15);
+                    let start={lat:aiPvo.lat,lng:aiPvo.lng}, end=pos;
+                    let bulletMarker=L.marker([start.lat,start.lng],{icon:L.divIcon({html:'➡️',iconSize:[16,16]})}).addTo(map);
+                    let step=0, bulletInt=setInterval(()=>{ step+=0.1; let lat=start.lat+(end.lat-start.lat)*step, lng=start.lng+(end.lng-start.lng)*step; bulletMarker.setLatLng([lat,lng]); if(step>=1){ clearInterval(bulletInt); map.removeLayer(bulletMarker); let exp=L.marker([end.lat,end.lng],{icon:L.divIcon({html:'💥',iconSize:[24,24]})}).addTo(map); setTimeout(()=>map.removeLayer(exp),400); playBeep(300,0.3); } },40);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    function updateProjectileVisibility(){
+        for(let p of projectiles){
+            if(p.team===myTeam){ p.marker._icon?.classList.remove('hidden-projectile'); continue; }
+            let detected=false;
+            for(let r of radars){ if(r.team!==myTeam) continue; let dist=map.distance([r.lat,r.lng],[p.marker.getLatLng().lat,p.marker.getLatLng().lng]); if(dist<150000){ detected=true; break; } }
+            if(detected) p.marker._icon?.classList.remove('hidden-projectile'); else p.marker._icon?.classList.add('hidden-projectile');
+        }
+    }
+
+    function updateProjectiles(dt){
+        for(let i=0;i<projectiles.length;i++){
+            let p=projectiles[i]; if(!p.active) continue;
+            p.progress+=p.speed*dt;
+            if(tryIntercept(p)){ p.active=false; map.removeLayer(p.marker); projectiles.splice(i,1); i--; continue; }
+            if(p.progress>=1){
+                p.active=false; map.removeLayer(p.marker);
+                let targetZone=zones.find(z=>z.id===p.targetZoneId);
+                if(targetZone && targetZone.hp>0){
+                    let chance=(p.type==='drone')?0.08:0.10;
+                    let intercepted = (Math.random()<chance);
+                    if(intercepted){
+                        playBeep(600,0.15);
+                        let start={lat:p.marker.getLatLng().lat,lng:p.marker.getLatLng().lng};
+                        let bulletMarker=L.marker([start.lat,start.lng],{icon:L.divIcon({html:'➡️',iconSize:[16,16]})}).addTo(map);
+                        setTimeout(()=>map.removeLayer(bulletMarker),400);
+                        playBeep(300,0.3);
+                    } else {
+                        targetZone.hp=Math.max(0,targetZone.hp-p.damage);
+                        updateZoneMarkers(); playBeep(200,0.4);
+                    }
+                }
+                projectiles.splice(i,1); i--;
+                continue;
+            }
+            let lat=p.from.lat+(p.to.lat-p.from.lat)*p.progress, lng=p.from.lng+(p.to.lng-p.from.lng)*p.progress;
+            p.marker.setLatLng([lat,lng]);
+        }
+    }
+
+    function startRadarAnimation(){
+        if(radarAnimationInterval) clearInterval(radarAnimationInterval);
+        radarAnimationInterval=setInterval(()=>{
+            for(let r of radars){ if(r.marker){ r.radarAngle=(r.radarAngle+30)%360; let iconDiv=r.marker._icon?.querySelector('.radar-icon'); if(iconDiv) iconDiv.style.transform=`rotate(${r.radarAngle}deg)`; } }
+            updateProjectileVisibility();
+        },1500);
+    }
+    let aiPvo=null;
+    function initAI(){
+        let ukrZones=zones.filter(z=>z.team==='ukraine');
+        if(ukrZones.length===0) return;
+        let getCenter=(z)=>z.center;
+        let aiAirport={lat:getCenter(ukrZones[0])[0]+(Math.random()-0.5)*0.3, lng:getCenter(ukrZones[0])[1]+(Math.random()-0.5)*0.3};
+        aiPvo={lat:getCenter(ukrZones[2]||ukrZones[0])[0]+(Math.random()-0.5)*0.3, lng:getCenter(ukrZones[2]||ukrZones[0])[1]+(Math.random()-0.5)*0.3, team:'ukraine'};
+        if(aiInterval) clearInterval(aiInterval);
+        aiInterval=setInterval(()=>{
+            if(!gameActive) return;
+            let russianZones=zones.filter(z=>z.team===myTeam && z.hp>0);
+            if(russianZones.length===0) return;
+            let targetZone=russianZones[Math.floor(Math.random()*russianZones.length)];
+            let type=Math.random()<0.6?'drone':'missile';
+            let count=Math.floor(Math.random()*3)+1;
+            for(let i=0;i<count;i++){
+                let offset=(i-(count-1)/2)*0.03;
+                let targetLat=targetZone.center[0]+offset, targetLng=targetZone.center[1]+offset*0.5;
+                let proj={id:Math.random(),from:{lat:aiAirport.lat,lng:aiAirport.lng},to:{lat:targetLat,lng:targetLng},progress:0,speed:projectileStats[type].speed,damage:projectileStats[type].damage,team:'ukraine',targetZoneId:targetZone.id,type:type,active:true,marker:null,lastInterceptCheck:0};
+                let icon=(type==='drone')?getDroneIcon():getMissileIcon();
+                let marker=L.marker([proj.from.lat,proj.from.lng],{icon}).addTo(map); proj.marker=marker; projectiles.push(proj);
+            }
+        },25000);
+    }
+
+    function initGameMapAndLogic(){
+        document.getElementById('menuScreen').style.display='none';
+        document.getElementById('lobbyScreen').style.display='none';
+        document.getElementById('gameContainer').style.display='block';
+        if(map) map.remove();
+        map=L.map('map').setView([55.0,40.0],5);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© CartoDB'}).addTo(map);
+        let ld=document.createElement('div'); ld.className='loading-indicator'; ld.innerText='Загрузка границ...'; document.body.appendChild(ld);
+        loadRealBorders(()=>{
+            if(ld) ld.remove();
+            initZones();
+            buildings=[]; radars=[]; pvoSystems=[]; powerPlants=[]; refineries=[]; rocketFactories=[]; projectiles=[];
+            resources=300; airportPlaced=false; airportHp=200; updateUI();
+            map.off('click');
+            map.on('click',(e)=>{
+                if(!airportPlaced){
+                    let lat=e.latlng.lat, lng=e.latlng.lng;
+                    if(!isOwnTerritory(lat,lng)){ alert("Аэродром можно поставить только на своей территории!"); return; }
+                    let icon=getAirportIcon();
+                    airportMarker=L.marker([lat,lng],{icon}).addTo(map);
+                    airportMarker.bindPopup('<b>АЭРОДРОМ</b>');
+                    airportMarker.on('click',()=>showAttackModal(airportMarker));
+                    airportPlaced=true; gameActive=true; updateUI(); lastUpdate=performance.now();
+                    if(isAI) initAI();
+                    startRadarAnimation();
+                    requestAnimationFrame(gameLoop);
+                    if(economyInterval) clearInterval(economyInterval);
+                    economyInterval=setInterval(()=>{ if(gameActive){ let income=3+powerPlants.length*3+refineries.length*15; resources+=income; updateUI(); } },1000);
+                    showHint("📡 Теперь постройте Радар");
+                    if(!isAI && conn && conn.open) conn.send({ type:'airportPlaced', lat, lng, team:myTeam });
+                    return;
+                }
+                if(buildMode){ tryBuild(e.latlng.lat,e.latlng.lng,buildMode); buildMode=null; }
+            });
+        });
+    }
+    function gameLoop(now){ if(!gameActive) return; let dt=Math.min(0.1,(now-lastUpdate)/1000); lastUpdate=now; updateProjectiles(dt); requestAnimationFrame(gameLoop); }
+    function showAttackModal(airport){
+        currentAirport=airport;
+        let enemyZones=zones.filter(z=>z.team!==myTeam && z.hp>0);
+        let select=document.getElementById('targetSelect'); select.innerHTML='';
+        if(enemyZones.length===0){ alert("Нет вражеских целей!"); return; }
+        enemyZones.forEach(z=>{ let opt=document.createElement('option'); opt.value=z.id; opt.text=`${z.name} (${Math.floor((z.hp/z.baseHp)*100)}%)`; select.appendChild(opt); });
+        attackType='drone'; attackCount=1; document.getElementById('countValue').innerText=attackCount; updateCostDisplay(); document.getElementById('attackModal').style.display='block';
+    }
+    function closeAttackModal(){ document.getElementById('attackModal').style.display='none'; }
+    function updateCostDisplay(){ let cost=(attackType==='drone')?projectileStats.drone.cost:(rocketFactories.length>0?Math.floor(missileBaseCost*0.8):missileBaseCost); document.getElementById('costDisplay').innerHTML=`СТОИМОСТЬ: ${cost*attackCount} ⚡`; }
+
+    function handleNetworkData(data){
+        if(data.type==='build'){
+            let building={id:Math.random(),lat:data.lat,lng:data.lng,type:data.buildType,team:data.team,hp:(data.buildType==='radar'?120:(data.buildType==='pvo'?180:(data.buildType==='powerPlant'?100:(data.buildType==='refinery'?150:200)))),radarAngle:0,marker:null,radarCircle:null};
+            let icon; if(data.buildType==='radar') icon=getRadarIcon(); else if(data.buildType==='pvo') icon=getPvoIcon(); else if(data.buildType==='powerPlant') icon=getPowerPlantIcon(); else if(data.buildType==='refinery') icon=getRefineryIcon(); else if(data.buildType==='rocketFactory') icon=getRocketFactoryIcon();
+            if(icon){
+                let marker=L.marker([data.lat,data.lng],{icon}).addTo(map);
+                building.marker=marker;
+                buildings.push(building);
+                if(data.buildType==='radar') radars.push(building);
+                else if(data.buildType==='pvo') pvoSystems.push(building);
+                else if(data.buildType==='powerPlant') powerPlants.push(building);
+                else if(data.buildType==='refinery') refineries.push(building);
+                else if(data.buildType==='rocketFactory') rocketFactories.push(building);
+            }
+        } else if(data.type==='airportPlaced'){
+            let icon=getAirportIcon();
+            let marker=L.marker([data.lat,data.lng],{icon}).addTo(map);
+            marker.bindPopup('<b>АЭРОДРОМ ПРОТИВНИКА</b>');
+        } else if(data.type==='launch'){
+            let targetZone=zones.find(z=>z.id===data.targetId);
+            if(targetZone && targetZone.hp>0 && data.team===enemyTeam){
+                let airportPos=airportMarker?airportMarker.getLatLng():{lat:55.0,lng:37.0};
+                let type=data.weapon;
+                let count=data.count;
+                for(let i=0;i<count;i++){
+                    let offset=(i-(count-1)/2)*0.03;
+                    let targetLat=targetZone.center[0]+offset, targetLng=targetZone.center[1]+offset*0.5;
+                    let proj={id:Math.random(),from:airportPos,to:{lat:targetLat,lng:targetLng},progress:0,speed:projectileStats[type].speed,damage:projectileStats[type].damage,team:data.team,targetZoneId:targetZone.id,type:type,active:true,marker:null,lastInterceptCheck:0};
+                    let icon=(type==='drone')?getDroneIcon():getMissileIcon();
+                    let marker=L.marker([proj.from.lat,proj.from.lng],{icon}).addTo(map);
+                    proj.marker=marker;
+                    projectiles.push(proj);
+                }
+            }
+        }
+    }
+
+    function generateRoomId(){
+        let chars='ABCDEFGHJKLMNPQRSTUVWXYZ0123456789', res='';
+        for(let i=0;i<8;i++) res+=chars.charAt(Math.floor(Math.random()*chars.length));
+        return res;
+    }
+    function updateLobbyUI(){
+        let p1Team=lobbyState.player1.team?(lobbyState.player1.team==='russia'?'РОССИЯ':'УКРАИНА'):'—';
+        let p2Team=lobbyState.player2.team?(lobbyState.player2.team==='russia'?'РОССИЯ':'УКРАИНА'):'—';
+        document.getElementById('player1Name').innerHTML=`${p1Team} ${lobbyState.player1.ready?'✅':'⚪'}`;
+        document.getElementById('player2Name').innerHTML=`${p2Team} ${lobbyState.player2.ready?'✅':'⚪'}`;
+        let mySide=isHost?'player1':'player2';
+        let myTeamChoice=lobbyState[mySide]?.team;
+        document.getElementById('chooseRussia').classList.toggle('selected',myTeamChoice==='russia');
+        document.getElementById('chooseUkraine').classList.toggle('selected',myTeamChoice==='ukraine');
+        let isReady=lobbyState[mySide]?.ready;
+        document.getElementById('chooseRussia').style.pointerEvents=isReady?'none':'auto';
+        document.getElementById('chooseUkraine').style.pointerEvents=isReady?'none':'auto';
+        let readyBtn=document.getElementById('readyBtn');
+        if(isReady){ readyBtn.disabled=true; readyBtn.style.opacity='0.5'; }
+        else{ readyBtn.disabled=!myTeamChoice; readyBtn.style.opacity=readyBtn.disabled?'0.5':'1'; }
+        if(isHost && lobbyState.player1.ready && lobbyState.player2.ready && lobbyState.player1.team && lobbyState.player2.team && lobbyState.player1.team!==lobbyState.player2.team){
+            startMultiplayerGame();
+        }
+    }
+    function startMultiplayerGame(){
+        myTeam = isHost ? lobbyState.player1.team : lobbyState.player2.team;
+        enemyTeam = (myTeam === 'russia') ? 'ukraine' : 'russia';
+        isAI = false;
+        initGameMapAndLogic();
+    }
+    function sendLobbyUpdate(){ if(conn && conn.open) conn.send({type:'lobbyUpdate',state:lobbyState}); }
+    window.createRoom = function(){
+        const roomId = generateRoomId();
+        const peerConfig = { host: '0.peerjs.com', port: 443, path: '/peerjs', secure: true };
+        peer = new Peer(roomId, peerConfig);
+        peer.on('open', id => {
+            document.getElementById('roomDisplay').innerHTML = `КОД: <b>${id}</b>`;
+            document.getElementById('lobbyRoomCode').innerText = id;
+            document.getElementById('menuScreen').style.display = 'none';
+            document.getElementById('lobbyScreen').style.display = 'flex';
+            lobbyState = { player1: { ready: false, team: null }, player2: { ready: false, team: null } };
+            updateLobbyUI();
+        });
+        peer.on('connection', c => {
+            conn = c;
+            conn.on('data', data => {
+                if(data.type === 'lobbyUpdate') { lobbyState = data.state; updateLobbyUI(); }
+                else handleNetworkData(data);
+            });
+            conn.on('close', () => alert("Соединение разорвано"));
+            lobbyState.player2 = { ready: false, team: null };
+            updateLobbyUI();
+            sendLobbyUpdate();
+        });
+        peer.on('error', err => alert("Ошибка подключения: "+err));
+    };
+    window.joinRoom = function(roomIdStr){
+        const peerConfig = { host: '0.peerjs.com', port: 443, path: '/peerjs', secure: true };
+        peer = new Peer(peerConfig);
+        peer.on('open', () => {
+            conn = peer.connect(roomIdStr);
+            conn.on('open', () => {
+                document.getElementById('menuScreen').style.display = 'none';
+                document.getElementById('lobbyScreen').style.display = 'flex';
+                document.getElementById('lobbyRoomCode').innerText = roomIdStr;
+                lobbyState = { player1: { ready: false, team: null }, player2: { ready: false, team: null } };
+                updateLobbyUI();
+            });
+            conn.on('data', data => {
+                if(data.type === 'lobbyUpdate') { lobbyState = data.state; updateLobbyUI(); }
+                else handleNetworkData(data);
+            });
+            conn.on('close', () => alert("Соединение разорвано"));
+        });
+        peer.on('error', err => alert("Ошибка подключения: "+err));
+    };
+
+    // Обработчики кнопок
+    document.getElementById('singleBtn').onclick = () => {
+        playBeep(400,0.1); setTimeout(()=>{ playBeep(600,0.1); setTimeout(()=>{ playBeep(800,0.1); myTeam='russia'; enemyTeam='ukraine'; isAI=true; initGameMapAndLogic(); },100); },100);
+    };
+    document.getElementById('tutorialBtn').onclick = () => { alert("Обучение: постройте аэродром, затем радар, ПВО, атакуйте вражеские города."); };
+    document.getElementById('createGameBtn').onclick = () => { createRoom(); };
+    document.getElementById('joinGameBtn').onclick = () => { document.getElementById('roomCodeInput').style.display='block'; document.getElementById('confirmJoinBtn').style.display='block'; };
+    document.getElementById('confirmJoinBtn').onclick = () => { let code = document.getElementById('roomCodeInput').value.trim().toUpperCase(); if(code) joinRoom(code); else alert("Введите код"); };
+    document.getElementById('chooseRussia').onclick = () => { if(lobbyState[isHost?'player1':'player2']?.ready) return; lobbyState[isHost?'player1':'player2'].team = 'russia'; lobbyState[isHost?'player1':'player2'].ready = false; updateLobbyUI(); sendLobbyUpdate(); };
+    document.getElementById('chooseUkraine').onclick = () => { if(lobbyState[isHost?'player1':'player2']?.ready) return; lobbyState[isHost?'player1':'player2'].team = 'ukraine'; lobbyState[isHost?'player1':'player2'].ready = false; updateLobbyUI(); sendLobbyUpdate(); };
+    document.getElementById('readyBtn').onclick = () => { if(!lobbyState[isHost?'player1':'player2']?.team) { alert("Выберите страну!"); return; } lobbyState[isHost?'player1':'player2'].ready = true; updateLobbyUI(); sendLobbyUpdate(); };
+    document.getElementById('buildRadarBtn').onclick = () => { buildMode='radar'; };
+    document.getElementById('buildPvoBtn').onclick = () => { buildMode='pvo'; };
+    document.getElementById('buildPowerPlantBtn').onclick = () => { buildMode='powerPlant'; };
+    document.getElementById('buildRefineryBtn').onclick = () => { buildMode='refinery'; };
+    document.getElementById('buildRocketFactoryBtn').onclick = () => { buildMode='rocketFactory'; };
+    document.getElementById('cancelBuild').onclick = () => { buildMode=null; };
+    document.getElementById('typeDroneBtn').onclick = () => { attackType='drone'; updateCostDisplay(); };
+    document.getElementById('typeMissileBtn').onclick = () => { attackType='missile'; updateCostDisplay(); };
+    document.getElementById('countMinus').onclick = () => { if(attackCount>1) attackCount--; document.getElementById('countValue').innerText=attackCount; updateCostDisplay(); };
+    document.getElementById('countPlus').onclick = () => { if(attackCount<5) attackCount++; document.getElementById('countValue').innerText=attackCount; updateCostDisplay(); };
+    document.getElementById('attackConfirmBtn').onclick = () => { let targetId=document.getElementById('targetSelect').value; let targetZone=zones.find(z=>z.id===targetId); if(!targetZone){ alert("Цель не найдена"); return; } if(currentAirport) launchAttack(currentAirport,targetZone,attackType,attackCount); closeAttackModal(); };
+    document.getElementById('attackCancelBtn').onclick = () => closeAttackModal();
+</script>
+</body>
+</html>
