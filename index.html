@@ -156,7 +156,7 @@
     let lobbyState = { player1: { ready: false, team: null }, player2: { ready: false, team: null } };
     let roomId = null;
 
-    // ТИПЫ ВООРУЖЕНИЙ (СКОРОСТИ КАК В ТВОЁМ РАБОЧЕМ СКРИПТЕ)
+    // ТИПЫ ВООРУЖЕНИЙ (СКОРОСТИ КАК В ВАШЕМ РАБОЧЕМ СКРИПТЕ)
     const weaponTypes = {
         drone:      { name: 'БПЛА', speed: 0.006, damage: 25, cost: 60, pvoChance: 0.25, icon: '🛸' },
         cruise:     { name: 'Крылатая', speed: 0.02, damage: 35, cost: 90, pvoChance: 0.18, icon: '✈️' },
@@ -409,7 +409,7 @@
         return true;
     }
 
-    // ПЕРЕХВАТ ПВО (ИЗ ТВОЕГО РАБОЧЕГО СКРИПТА)
+    // ПЕРЕХВАТ ПВО (ИЗ ВАШЕГО РАБОЧЕГО СКРИПТА)
     function tryIntercept(proj){
         const now=Date.now(); if(now-proj.lastInterceptCheck<2000) return false; proj.lastInterceptCheck=now;
         const pos=proj.marker.getLatLng();
@@ -444,7 +444,7 @@
         return false;
     }
 
-    // ========== ОБНОВЛЕНИЕ СНАРЯДОВ (ПОЛНОСТЬЮ КАК В ТВОЁМ РАБОЧЕМ СКРИПТЕ) ==========
+    // ========== ОБНОВЛЕНИЕ СНАРЯДОВ (ПОЛНОСТЬЮ КАК В ВАШЕМ РАБОЧЕМ СКРИПТЕ) ==========
     function updateProjectiles(dt){
         for(let i=0;i<projectiles.length;i++){
             let p=projectiles[i];
@@ -488,6 +488,17 @@
 
             let lat = p.from.lat + (p.to.lat - p.from.lat) * p.progress;
             let lng = p.from.lng + (p.to.lng - p.from.lng) * p.progress;
+            
+            // Защита от NaN
+            if (isNaN(lat) || isNaN(lng)) {
+                console.error("Проектиль с NaN координатами", p);
+                p.active = false;
+                if (p.marker) map.removeLayer(p.marker);
+                projectiles.splice(i,1);
+                i--;
+                continue;
+            }
+            
             p.marker.setLatLng([lat, lng]);
         }
     }
@@ -703,7 +714,7 @@
     function closeAttackModal(){ document.getElementById('attackModal').style.display='none'; }
     function updateCostDisplay(){ let cost = weaponTypes[attackType].cost; document.getElementById('costDisplay').innerHTML = `СТОИМОСТЬ: ${cost * attackCount} ⚡`; }
 
-    // ========== СЕТЕВЫЕ ФУНКЦИИ (ИЗ ТВОЕГО РАБОЧЕГО СКРИПТА) ==========
+    // ========== СЕТЕВЫЕ ФУНКЦИИ (ИЗ ВАШЕГО РАБОЧЕГО СКРИПТА) ==========
     function handleNetworkData(data){
         if(data.type==='build'){
             let building={id:data.id||Date.now()+Math.random(), lat:data.lat, lng:data.lng, type:data.buildType, team:data.team, hp:(data.buildType==='radar'?120:(data.buildType==='pvo'?180:(data.buildType==='powerPlant'?100:(data.buildType==='refinery'?150:200)))), radarAngle:0, marker:null, radarCircle:null};
@@ -863,13 +874,37 @@
     document.getElementById('typeHypersonicBtn').onclick=()=>{ attackType='hypersonic'; updateCostDisplay(); };
     document.getElementById('countMinus').onclick=()=>{ if(attackCount>1) attackCount--; document.getElementById('countValue').innerText=attackCount; updateCostDisplay(); };
     document.getElementById('countPlus').onclick=()=>{ if(attackCount<5) attackCount++; document.getElementById('countValue').innerText=attackCount; updateCostDisplay(); };
-    document.getElementById('attackConfirmBtn').onclick=()=>{
+    
+    // ИСПРАВЛЕННЫЙ ОБРАБОТЧИК АТАКИ (создаём временный объект с lat/lng)
+    document.getElementById('attackConfirmBtn').onclick = () => {
         let select = document.getElementById('targetSelect');
         let targetId = select.value;
         let targetType = select.options[select.selectedIndex].getAttribute('data-type');
-        let target = (targetType === 'zone') ? zones.find(z=>z.id===targetId) : buildings.find(b=>b.id===targetId);
-        if(!target){ alert("Цель не найдена"); return; }
-        if(currentAirport) launchAttack(currentAirport, target, attackType, attackCount);
+        
+        let target;
+        if (targetType === 'zone') {
+            let z = zones.find(z => z.id === targetId);
+            if (!z) { alert("Цель не найдена"); return; }
+            target = {
+                id: z.id,
+                type: 'zone',
+                lat: z.center[0],
+                lng: z.center[1],
+                target: z
+            };
+        } else {
+            let b = buildings.find(b => b.id === targetId);
+            if (!b) { alert("Цель не найдена"); return; }
+            target = {
+                id: b.id,
+                type: 'building',
+                lat: b.lat,
+                lng: b.lng,
+                target: b
+            };
+        }
+        
+        if (currentAirport) launchAttack(currentAirport, target, attackType, attackCount);
         closeAttackModal();
     };
     document.getElementById('attackCancelBtn').onclick=()=>closeAttackModal();
