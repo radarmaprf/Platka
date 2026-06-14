@@ -51,7 +51,6 @@
         .leaflet-marker-icon { transform-origin:center center; }
         .hidden-projectile { display:none !important; }
         .loading-indicator { background:rgba(0,0,0,0.7); color:white; padding:8px 16px; border-radius:30px; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:3000; }
-        /* Взрыв */
         .explosion{
             width:30px;
             height:30px;
@@ -167,12 +166,12 @@
     let lastId = 0;
     function nextId() { return Date.now() + '_' + (++lastId); }
 
-    // Типы ракет
+    // ========== ИСПРАВЛЕННЫЕ СКОРОСТИ РАКЕТ (ТЕПЕРЬ ЛЕТЯТ БЫСТРО) ==========
     const weaponTypes = {
-        drone:      { name: 'БПЛА', speed: 0.006, damage: 25, cost: 60, pvoChance: 0.25, icon: '🛸' },
-        cruise:     { name: 'Крылатая', speed: 0.02, damage: 35, cost: 90, pvoChance: 0.18, icon: '✈️' },
-        ballistic:  { name: 'Баллистическая', speed: 0.05, damage: 50, cost: 130, pvoChance: 0.12, icon: '💥' },
-        hypersonic: { name: 'Гиперзвуковая', speed: 0.09, damage: 70, cost: 200, pvoChance: 0.05, icon: '⚡' }
+        drone:      { name: 'БПЛА', speed: 0.25, damage: 25, cost: 60, pvoChance: 0.25, icon: '🛸' },
+        cruise:     { name: 'Крылатая', speed: 0.5, damage: 35, cost: 90, pvoChance: 0.18, icon: '✈️' },
+        ballistic:  { name: 'Баллистическая', speed: 0.8, damage: 50, cost: 130, pvoChance: 0.12, icon: '💥' },
+        hypersonic: { name: 'Гиперзвуковая', speed: 1.2, damage: 70, cost: 200, pvoChance: 0.05, icon: '⚡' }
     };
     let attackType = 'drone', attackCount = 1, currentAirport = null;
     const costs = { radar: 180, pvo: 220, powerPlant: 250, refinery: 400, rocketFactory: 500 };
@@ -194,7 +193,7 @@
         osc.stop(now + duration);
     }
 
-    // Города с увеличенным HP (баланс: БПЛА ~15 выстрелов)
+    // Города с увеличенным HP
     const zoneData = [
         { name: 'КИЕВ', center: [50.4501,30.5234], team: 'ukraine', hp: 400, baseHp: 400 },
         { name: 'ОДЕССА', center: [46.4825,30.7233], team: 'ukraine', hp: 320, baseHp: 320 },
@@ -222,8 +221,8 @@
     }
 
     function createExplosion(lat,lng){
-        let exp=L.marker([lat,lng],{
-            icon:L.divIcon({ className:'', html:'<div class="explosion"></div>', iconSize:[60,60] })
+        let exp = L.marker([lat,lng], {
+            icon: L.divIcon({ className:'', html:'<div class="explosion"></div>', iconSize:[60,60] })
         }).addTo(map);
         setTimeout(()=>{ map.removeLayer(exp); },500);
     }
@@ -260,8 +259,9 @@
     }
     function isInsideCountry(lat,lng,country) { if(!bordersLoaded||!russiaGeoJSON||!ukraineGeoJSON) return false; const point=turf.point([lng,lat]); const geojson=country==='russia'?russiaGeoJSON:ukraineGeoJSON; let feat=geojson.features?geojson.features[0]:geojson; return turf.booleanPointInPolygon(point,feat); }
     function isOwnTerritory(lat,lng){ if(!myTeam) return false; return isInsideCountry(lat,lng,myTeam); }
-    function canBuildHere(lat,lng){ if(!isOwnTerritory(lat,lng)) return false; for(let b of buildings) if(map.distance([lat,lng],[b.lat,b.lng])<50000) return false; return true; }
-    function canBuildForTeam(lat,lng,team){ if(!isInsideCountry(lat,lng,team)) return false; for(let b of buildings) if(map.distance([lat,lng],[b.lat,b.lng])<50000) return false; return true; }
+    // ДИСТАНЦИЯ 4 КМ (4000 м)
+    function canBuildHere(lat,lng){ if(!isOwnTerritory(lat,lng)) return false; for(let b of buildings) if(map.distance([lat,lng],[b.lat,b.lng])<4000) return false; return true; }
+    function canBuildForTeam(lat,lng,team){ if(!isInsideCountry(lat,lng,team)) return false; for(let b of buildings) if(map.distance([lat,lng],[b.lat,b.lng])<4000) return false; return true; }
 
     function updateTotalPercent() {
         let ruTotal=0,ruBase=0,uaTotal=0,uaBase=0;
@@ -319,7 +319,7 @@
 
     function tryBuild(lat,lng,type){
         if(!airportPlaced){ alert("Сначала постройте аэродром!"); return false; }
-        if(!canBuildHere(lat,lng)){ alert("Можно строить только на своей территории и не ближе 50 км к другим зданиям!"); return false; }
+        if(!canBuildHere(lat,lng)){ alert("Можно строить только на своей территории и не ближе 4 км к другим зданиям!"); return false; }
         if(type==='radar' && radars.length>=maxRadars){ alert(`Максимум ${maxRadars} радаров`); return false; }
         if(type==='pvo' && pvoSystems.length>=maxPvo){ alert(`Максимум ${maxPvo} ПВО`); return false; }
         if(type==='powerPlant' && powerPlants.length>=maxPowerPlants){ alert(`Максимум ${maxPowerPlants} электростанций`); return false; }
@@ -436,19 +436,42 @@
         return false;
     }
 
+    // ========== ГЛАВНОЕ ИСПРАВЛЕНИЕ: РАКЕТЫ ЛЕТЯТ, ПЕРЕХВАТ РАБОТАЕТ, ПОВОРОТ ==========
     function updateProjectiles(dt){
         for(let i=0;i<projectiles.length;i++){
             let p=projectiles[i];
             if(!p.active) continue;
+
+            // ПЕРЕХВАТ ПВО (раньше не вызывался)
+            if(tryIntercept(p)){
+                p.active=false;
+                createExplosion(p.marker.getLatLng().lat, p.marker.getLatLng().lng);
+                map.removeLayer(p.marker);
+                projectiles.splice(i,1);
+                i--;
+                continue;
+            }
+
             p.progress += p.speed * dt;
-            if(p.progress >= 1){
+            let lat = p.from.lat + (p.to.lat - p.from.lat) * p.progress;
+            let lng = p.from.lng + (p.to.lng - p.from.lng) * p.progress;
+            p.marker.setLatLng([lat,lng]);
+
+            // ПОВОРОТ ИКОНКИ ПО НАПРАВЛЕНИЮ
+            let angle = Math.atan2(p.to.lng - p.from.lng, p.to.lat - p.from.lat) * 180 / Math.PI;
+            if(p.marker._icon) p.marker._icon.style.transform = `rotate(${angle}deg)`;
+
+            // ПРОВЕРКА ДОСТИЖЕНИЯ ЦЕЛИ ПО РАССТОЯНИЮ (надёжнее чем progress>=1)
+            let distToTarget = map.distance([lat,lng], [p.to.lat, p.to.lng]);
+            if(distToTarget < 5000) {
                 p.active=false;
                 map.removeLayer(p.marker);
                 if(p.targetType==='zone'){
                     let targetZone=zones.find(z=>z.id===p.targetId);
                     if(targetZone && targetZone.hp>0){
                         targetZone.hp=Math.max(0,targetZone.hp-p.damage);
-                        updateZoneMarkers(); playBeep(200,0.4);
+                        updateZoneMarkers();
+                        playBeep(200,0.4);
                     }
                 } else if(p.targetType==='building'){
                     let targetBuilding=buildings.find(b=>b.id===p.targetId);
@@ -460,11 +483,7 @@
                 }
                 projectiles.splice(i,1);
                 i--;
-                continue;
             }
-            let lat=p.from.lat+(p.to.lat-p.from.lat)*p.progress;
-            let lng=p.from.lng+(p.to.lng-p.from.lng)*p.progress;
-            p.marker.setLatLng([lat,lng]);
         }
     }
 
