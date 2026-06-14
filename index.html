@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Sky in Fire — динамический поворот ракет</title>
+    <title>Sky in Fire — финал с поворотом ракет</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-rotatedmarker/leaflet.rotatedMarker.js"></script>
@@ -157,12 +157,12 @@
     let lobbyState = { player1: { ready: false, team: null }, player2: { ready: false, team: null } };
     let roomId = null;
 
-    // ШАНСЫ ПВО
+    // ТИПЫ ВООРУЖЕНИЙ С ПРАВИЛЬНЫМИ СМЕЩЕНИЯМИ ДЛЯ ПОВОРОТА
     const weaponTypes = {
         drone:      { name: 'БПЛА', speed: 0.006, damage: 25, cost: 60, pvoChance: 0.08, spriteOffset: 0 },
-        cruise:     { name: 'Крылатая', speed: 0.02, damage: 35, cost: 90, pvoChance: 0.10, spriteOffset: 0 },
-        ballistic:  { name: 'Баллист.', speed: 0.05, damage: 50, cost: 130, pvoChance: 0.10, spriteOffset: 0 },
-        hypersonic: { name: 'Гиперзв.', speed: 0.09, damage: 70, cost: 200, pvoChance: 0.10, spriteOffset: -45 }
+        cruise:     { name: 'Крылатая', speed: 0.02, damage: 35, cost: 90, pvoChance: 0.10, spriteOffset: 90 },   // лежит горизонтально, смотрит влево
+        ballistic:  { name: 'Баллист.', speed: 0.05, damage: 50, cost: 130, pvoChance: 0.10, spriteOffset: -45 },  // красная, смотрит вправо-вверх
+        hypersonic: { name: 'Гиперзв.', speed: 0.09, damage: 70, cost: 200, pvoChance: 0.10, spriteOffset: 0 }
     };
     let attackType = 'drone', attackCount = 1, currentAirport = null;
     const costs = { radar: 180, pvo: 220, powerPlant: 250, refinery: 400, rocketFactory: 500 };
@@ -429,7 +429,6 @@
                 lastInterceptCheck: 0,
                 interceptedFlag: false
             };
-            // Создаём маркер с поддержкой поворота (rotationOrigin)
             let marker = L.marker([proj.from.lat, proj.from.lng], {
                 icon: getMissileIcon(type),
                 rotationOrigin: 'center center',
@@ -473,7 +472,7 @@
         return false;
     }
 
-    // ========== ОБНОВЛЕНИЕ СНАРЯДОВ С ДИНАМИЧЕСКИМ ПОВОРОТОМ ==========
+    // ДИНАМИЧЕСКИЙ ПОВОРОТ РАКЕТ ПО ТЕКУЩЕМУ ДВИЖЕНИЮ
     function updateProjectiles(dt){
         for(let i=0;i<projectiles.length;i++){
             let p=projectiles[i];
@@ -485,7 +484,6 @@
                 i--;
                 continue;
             }
-            // Сохраняем предыдущую позицию для вычисления направления движения
             const prevPos = p.marker.getLatLng();
             p.progress += p.speed * dt;
             if(p.progress >= 1){
@@ -515,14 +513,19 @@
             let lng = p.from.lng + (p.to.lng - p.from.lng) * p.progress;
             p.marker.setLatLng([lat, lng]);
 
-            // Вычисляем угол по текущему перемещению (динамически)
-            const moveX = lng - prevPos.lng;
-            const moveY = lat - prevPos.lat;
+            let moveX = lng - prevPos.lng;
+            let moveY = lat - prevPos.lat;
             if (Math.abs(moveX) > 1e-7 || Math.abs(moveY) > 1e-7) {
-                let angle = Math.atan2(moveX, -moveY) * 180 / Math.PI;
-                if (weaponTypes[p.type] && weaponTypes[p.type].spriteOffset) {
-                    angle += weaponTypes[p.type].spriteOffset;
-                }
+                // Угол в градусах: 0° = север (вверх), +90° = восток (вправо)
+                let angle = Math.atan2(moveX, moveY) * 180 / Math.PI;
+                // Добавляем компенсацию для конкретного типа ракеты
+                const offsets = {
+                    drone: 0,
+                    cruise: 90,      // лежит горизонтально, смотрит влево
+                    ballistic: -45,  // красная, смотрит вправо-вверх
+                    hypersonic: 0
+                };
+                angle += offsets[p.type] || 0;
                 if (p.marker.setRotationAngle) {
                     p.marker.setRotationAngle(angle);
                 }
