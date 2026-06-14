@@ -51,6 +51,19 @@
         .leaflet-marker-icon { transform-origin:center center; }
         .hidden-projectile { display:none !important; }
         .loading-indicator { background:rgba(0,0,0,0.7); color:white; padding:8px 16px; border-radius:30px; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:3000; }
+        /* Взрыв */
+        .explosion{
+            width:30px;
+            height:30px;
+            border-radius:50%;
+            background:#ffcc00;
+            box-shadow:0 0 20px #ffcc00,0 0 40px orange,0 0 80px red;
+            animation:explode .5s forwards;
+        }
+        @keyframes explode{
+            from{ transform:scale(.2); opacity:1; }
+            to{ transform:scale(3); opacity:0; }
+        }
     </style>
 </head>
 <body>
@@ -206,6 +219,39 @@
     function getMissileIcon(type) {
         const icons = { drone:'🛸', cruise:'✈️', ballistic:'💥', hypersonic:'⚡' };
         return L.divIcon({ className: '', iconSize: [28,28], html: `<div style="font-size:24px;">${icons[type]}</div>` });
+    }
+
+    // Создание взрыва
+    function createExplosion(lat,lng){
+        let exp=L.marker([lat,lng],{
+            icon:L.divIcon({ className:'', html:'<div class="explosion"></div>', iconSize:[60,60] })
+        }).addTo(map);
+        setTimeout(()=>{ map.removeLayer(exp); },500);
+    }
+
+    // Запуск красивой ракеты ПВО (с баллистической дугой, следом)
+    function launchInterceptor(start,end){
+        let missile=L.marker([start.lat,start.lng],{
+            icon:L.divIcon({ html:'🚀', iconSize:[20,20] })
+        }).addTo(map);
+        let trail=L.polyline([[start.lat,start.lng]],{ color:'#ffffaa', weight:3 }).addTo(map);
+        let t=0;
+        const flight=setInterval(()=>{
+            t+=0.03;
+            if(t>=1){
+                clearInterval(flight);
+                map.removeLayer(missile);
+                createExplosion(end.lat,end.lng);
+                setTimeout(()=>{ map.removeLayer(trail); },1500);
+                return;
+            }
+            let lat=start.lat+(end.lat-start.lat)*t;
+            let lng=start.lng+(end.lng-start.lng)*t;
+            let arcHeight=0.15;
+            lat+=Math.sin(t*Math.PI)*arcHeight;
+            missile.setLatLng([lat,lng]);
+            trail.addLatLng([lat,lng]);
+        },20);
     }
 
     function loadRealBorders(cb) {
@@ -368,9 +414,7 @@
                     if(Math.random()<chance){
                         proj.interceptedFlag=true;
                         playBeep(600,0.15);
-                        let start={lat:pvo.lat,lng:pvo.lng}, end=pos;
-                        let bulletMarker=L.marker([start.lat,start.lng],{icon:L.divIcon({html:'➡️',iconSize:[16,16]})}).addTo(map);
-                        let step=0, bulletInt=setInterval(()=>{ step+=0.1; let lat=start.lat+(end.lat-start.lat)*step, lng=start.lng+(end.lng-start.lng)*step; bulletMarker.setLatLng([lat,lng]); if(step>=1){ clearInterval(bulletInt); map.removeLayer(bulletMarker); let exp=L.marker([end.lat,end.lng],{icon:L.divIcon({html:'💥',iconSize:[24,24]})}).addTo(map); setTimeout(()=>map.removeLayer(exp),400); playBeep(300,0.3); } },40);
+                        launchInterceptor({lat:pvo.lat,lng:pvo.lng}, pos);
                         return true;
                     }
                 }
@@ -385,9 +429,7 @@
                     if(Math.random()<chance){
                         proj.interceptedFlag=true;
                         playBeep(600,0.15);
-                        let start={lat:aiPvo.lat,lng:aiPvo.lng}, end=pos;
-                        let bulletMarker=L.marker([start.lat,start.lng],{icon:L.divIcon({html:'➡️',iconSize:[16,16]})}).addTo(map);
-                        let step=0, bulletInt=setInterval(()=>{ step+=0.1; let lat=start.lat+(end.lat-start.lat)*step, lng=start.lng+(end.lng-start.lng)*step; bulletMarker.setLatLng([lat,lng]); if(step>=1){ clearInterval(bulletInt); map.removeLayer(bulletMarker); let exp=L.marker([end.lat,end.lng],{icon:L.divIcon({html:'💥',iconSize:[24,24]})}).addTo(map); setTimeout(()=>map.removeLayer(exp),400); playBeep(300,0.3); } },40);
+                        launchInterceptor({lat:aiPvo.lat,lng:aiPvo.lng}, pos);
                         return true;
                     }
                 }
