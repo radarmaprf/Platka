@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Sky in Fire — разные ракеты, без поворота</title>
+    <title>Sky in Fire — поворот ракет с коррекцией</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
@@ -48,7 +48,7 @@
         .modal { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:linear-gradient(180deg,#091116,#020508); border-radius:40px; padding:24px; z-index:3000; color:#fff; width:350px; text-align:center; border:2px solid #00ffaa; box-shadow:0 0 40px rgba(0,255,170,0.3); }
         .zone-marker { background:rgba(0,0,0,0.8); border-radius:16px; padding:6px 10px; text-align:center; font-weight:bold; color:#fff; font-size:12px; box-shadow:0 0 10px rgba(0,0,0,0.5); white-space:nowrap; }
         @keyframes radarSpin { from{transform:translateX(-50%) rotate(0deg);} to{transform:translateX(-50%) rotate(360deg);} }
-        .leaflet-marker-icon { transform-origin:center center; }
+        .leaflet-marker-icon { transform-origin: center center; }
         .hidden-projectile { display:none !important; }
         .loading-indicator { background:rgba(0,0,0,0.7); color:white; padding:8px 16px; border-radius:30px; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:3000; }
         .explosion{
@@ -156,12 +156,12 @@
     let lobbyState = { player1: { ready: false, team: null }, player2: { ready: false, team: null } };
     let roomId = null;
 
-    // ШАНСЫ ПВО
+    // ШАНСЫ ПВО И ПОПРАВКИ НАКЛОНА ДЛЯ КАЖДОЙ РАКЕТЫ (spriteOffset)
     const weaponTypes = {
-        drone:      { name: 'БПЛА', speed: 0.006, damage: 25, cost: 60, pvoChance: 0.08, icon: '🛸' },
-        cruise:     { name: 'Крылатая', speed: 0.02, damage: 35, cost: 90, pvoChance: 0.10, icon: '✈️' },
-        ballistic:  { name: 'Баллист.', speed: 0.05, damage: 50, cost: 130, pvoChance: 0.10, icon: '💥' },
-        hypersonic: { name: 'Гиперзв.', speed: 0.09, damage: 70, cost: 200, pvoChance: 0.10, icon: '⚡' }
+        drone:      { name: 'БПЛА', speed: 0.006, damage: 25, cost: 60, pvoChance: 0.08, spriteOffset: 0 },
+        cruise:     { name: 'Крылатая', speed: 0.02, damage: 35, cost: 90, pvoChance: 0.10, spriteOffset: -90 },
+        ballistic:  { name: 'Баллист.', speed: 0.05, damage: 50, cost: 130, pvoChance: 0.10, spriteOffset: -90 },
+        hypersonic: { name: 'Гиперзв.', speed: 0.09, damage: 70, cost: 200, pvoChance: 0.10, spriteOffset: -45 }
     };
     let attackType = 'drone', attackCount = 1, currentAirport = null;
     const costs = { radar: 180, pvo: 220, powerPlant: 250, refinery: 400, rocketFactory: 500 };
@@ -211,15 +211,13 @@
 
     // РАЗНЫЕ КАРТИНКИ ДЛЯ КАЖДОГО ТИПА РАКЕТЫ
     function getMissileIcon(type) {
-        // Соответствие типа -> путь к картинке
         const missileImages = {
             drone: 'images/drone.png',
             cruise: 'images/cruise.png',
             ballistic: 'images/ballistic.png',
             hypersonic: 'images/hypersonic.png'
         };
-        const imgUrl = missileImages[type] || 'images/missile.png'; // запасной вариант
-        // Все ракеты 28x28, центр 14,14
+        const imgUrl = missileImages[type] || 'images/missile.png';
         return L.icon({ iconUrl: imgUrl, iconSize: [28,28], iconAnchor: [14,14] });
     }
 
@@ -470,6 +468,7 @@
         return false;
     }
 
+    // ========== ОСНОВНАЯ ФУНКЦИЯ ОБНОВЛЕНИЯ СНАРЯДОВ (С ПОВОРОТОМ И ПОПРАВКОЙ) ==========
     function updateProjectiles(dt){
         for(let i=0;i<projectiles.length;i++){
             let p=projectiles[i];
@@ -515,7 +514,16 @@
                 continue;
             }
             p.marker.setLatLng([lat, lng]);
-            // ПОВОРОТ УБРАН
+
+            // ПОВОРОТ С УЧЁТОМ ИСХОДНОГО НАКЛОНА КАРТИНКИ
+            let dx = p.to.lng - p.from.lng;
+            let dy = p.to.lat - p.from.lat;
+            let angle = Math.atan2(dx, dy) * 180 / Math.PI;
+            angle += weaponTypes[p.type].spriteOffset;  // поправка на ориентацию спрайта
+            if (p.marker._icon) {
+                p.marker._icon.style.transformOrigin = 'center center';
+                p.marker._icon.style.transform = `rotate(${angle}deg)`;
+            }
         }
     }
 
