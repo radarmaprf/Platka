@@ -167,7 +167,7 @@
     let lastId = 0;
     function nextId() { return Date.now() + '_' + (++lastId); }
 
-    // Типы ракет (шанс перехвата – финальный, применяется один раз)
+    // Типы ракет
     const weaponTypes = {
         drone:      { name: 'БПЛА', speed: 0.006, damage: 25, cost: 60, pvoChance: 0.25, icon: '🛸' },
         cruise:     { name: 'Крылатая', speed: 0.02, damage: 35, cost: 90, pvoChance: 0.18, icon: '✈️' },
@@ -194,22 +194,22 @@
         osc.stop(now + duration);
     }
 
+    // Города с увеличенным HP (баланс: БПЛА ~15 выстрелов)
     const zoneData = [
-        { name: 'КИЕВ', center: [50.4501,30.5234], team: 'ukraine', hp: 100, baseHp: 100 },
-        { name: 'ОДЕССА', center: [46.4825,30.7233], team: 'ukraine', hp: 80, baseHp: 80 },
-        { name: 'ХАРЬКОВ', center: [49.9935,36.2304], team: 'ukraine', hp: 90, baseHp: 90 },
-        { name: 'ДНЕПР', center: [48.4647,35.0467], team: 'ukraine', hp: 85, baseHp: 85 },
-        { name: 'ЛЬВОВ', center: [49.8397,24.0297], team: 'ukraine', hp: 70, baseHp: 70 },
-        { name: 'МОСКВА', center: [55.7558,37.6173], team: 'russia', hp: 120, baseHp: 120 },
-        { name: 'БЕЛГОРОД', center: [50.5975,36.5858], team: 'russia', hp: 60, baseHp: 60 },
-        { name: 'РОСТОВ', center: [47.2357,39.7015], team: 'russia', hp: 75, baseHp: 75 },
-        { name: 'ВОРОНЕЖ', center: [51.6605,39.2003], team: 'russia', hp: 80, baseHp: 80 },
-        { name: 'ВОЛГОГРАД', center: [48.7047,44.5133], team: 'russia', hp: 85, baseHp: 85 },
-        { name: 'КРАСНОДАР', center: [45.0355,38.9753], team: 'russia', hp: 70, baseHp: 70 }
+        { name: 'КИЕВ', center: [50.4501,30.5234], team: 'ukraine', hp: 400, baseHp: 400 },
+        { name: 'ОДЕССА', center: [46.4825,30.7233], team: 'ukraine', hp: 320, baseHp: 320 },
+        { name: 'ХАРЬКОВ', center: [49.9935,36.2304], team: 'ukraine', hp: 360, baseHp: 360 },
+        { name: 'ДНЕПР', center: [48.4647,35.0467], team: 'ukraine', hp: 340, baseHp: 340 },
+        { name: 'ЛЬВОВ', center: [49.8397,24.0297], team: 'ukraine', hp: 280, baseHp: 280 },
+        { name: 'МОСКВА', center: [55.7558,37.6173], team: 'russia', hp: 480, baseHp: 480 },
+        { name: 'БЕЛГОРОД', center: [50.5975,36.5858], team: 'russia', hp: 240, baseHp: 240 },
+        { name: 'РОСТОВ', center: [47.2357,39.7015], team: 'russia', hp: 300, baseHp: 300 },
+        { name: 'ВОРОНЕЖ', center: [51.6605,39.2003], team: 'russia', hp: 320, baseHp: 320 },
+        { name: 'ВОЛГОГРАД', center: [48.7047,44.5133], team: 'russia', hp: 340, baseHp: 340 },
+        { name: 'КРАСНОДАР', center: [45.0355,38.9753], team: 'russia', hp: 280, baseHp: 280 }
     ];
     const teamColors = { russia: '#ff5555', ukraine: '#55aaff' };
 
-    // Функции иконок (сокращённо)
     function getAirportIcon() { return L.divIcon({ className: '', iconSize: [48,48], html: `<svg width="48" height="48" viewBox="0 0 100 100"><rect x="40" y="5" width="20" height="90" fill="#444" rx="3"/><rect x="35" y="15" width="30" height="8" fill="#fff" rx="2"/><rect x="35" y="40" width="30" height="8" fill="#fff" rx="2"/><rect x="35" y="65" width="30" height="8" fill="#fff" rx="2"/></svg>` }); }
     function getRadarIcon() { return L.divIcon({ className: '', iconSize: [40,40], html: `<div style="width:40px; height:40px; border-radius:50%; background:#0f2430; border:2px solid #00d4ff; position:relative; box-shadow:0 0 12px #00d4ff;"><div style="position:absolute; left:50%; top:5px; width:2px; height:16px; background:#00ffff; transform-origin:bottom center; animation:radarSpin 2s linear infinite;"></div></div>` }); }
     function getPvoIcon() { return L.divIcon({ className: '', iconSize: [40,40], html: `<svg width="40" height="40" viewBox="0 0 100 100"><rect x="20" y="55" width="60" height="20" rx="4" fill="#444"/><rect x="35" y="25" width="10" height="35" fill="#bbb"/><rect x="55" y="20" width="10" height="40" fill="#ddd"/><circle cx="30" cy="80" r="7" fill="#222"/><circle cx="70" cy="80" r="7" fill="#222"/></svg>` }); }
@@ -221,7 +221,6 @@
         return L.divIcon({ className: '', iconSize: [28,28], html: `<div style="font-size:24px;">${icons[type]}</div>` });
     }
 
-    // Создание взрыва
     function createExplosion(lat,lng){
         let exp=L.marker([lat,lng],{
             icon:L.divIcon({ className:'', html:'<div class="explosion"></div>', iconSize:[60,60] })
@@ -229,7 +228,6 @@
         setTimeout(()=>{ map.removeLayer(exp); },500);
     }
 
-    // Запуск красивой ракеты ПВО (с баллистической дугой, следом)
     function launchInterceptor(start,end){
         let missile=L.marker([start.lat,start.lng],{
             icon:L.divIcon({ html:'🚀', iconSize:[20,20] })
@@ -440,11 +438,12 @@
 
     function updateProjectiles(dt){
         for(let i=0;i<projectiles.length;i++){
-            let p=projectiles[i]; if(!p.active) continue;
-            p.progress+=p.speed*dt;
-            if(tryIntercept(p)){ p.active=false; map.removeLayer(p.marker); projectiles.splice(i,1); i--; continue; }
-            if(p.progress>=1){
-                p.active=false; map.removeLayer(p.marker);
+            let p=projectiles[i];
+            if(!p.active) continue;
+            p.progress += p.speed * dt;
+            if(p.progress >= 1){
+                p.active=false;
+                map.removeLayer(p.marker);
                 if(p.targetType==='zone'){
                     let targetZone=zones.find(z=>z.id===p.targetId);
                     if(targetZone && targetZone.hp>0){
@@ -459,10 +458,12 @@
                         playBeep(200,0.4);
                     }
                 }
-                projectiles.splice(i,1); i--;
+                projectiles.splice(i,1);
+                i--;
                 continue;
             }
-            let lat=p.from.lat+(p.to.lat-p.from.lat)*p.progress, lng=p.from.lng+(p.to.lng-p.from.lng)*p.progress;
+            let lat=p.from.lat+(p.to.lat-p.from.lat)*p.progress;
+            let lng=p.from.lng+(p.to.lng-p.from.lng)*p.progress;
             p.marker.setLatLng([lat,lng]);
         }
     }
@@ -631,7 +632,14 @@
             });
         });
     }
-    function gameLoop(now){ if(!gameActive) return; let dt=Math.min(0.1,(now-lastUpdate)/1000); lastUpdate=now; updateProjectiles(dt); requestAnimationFrame(gameLoop); }
+    function gameLoop(now){
+        if(!gameActive) return;
+        let dt=Math.min(0.1,(now-lastUpdate)/1000);
+        if(dt<0.001) dt=0.033;
+        lastUpdate=now;
+        updateProjectiles(dt);
+        requestAnimationFrame(gameLoop);
+    }
     function closeAttackModal(){ document.getElementById('attackModal').style.display='none'; }
     function updateCostDisplay(){ let cost=weaponTypes[attackType].cost; document.getElementById('costDisplay').innerHTML=`СТОИМОСТЬ: ${cost*attackCount} ⚡`; }
 
