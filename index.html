@@ -166,7 +166,7 @@
     let lastId = 0;
     function nextId() { return Date.now() + '_' + (++lastId); }
 
-    // ИСПРАВЛЕННЫЕ СКОРОСТИ — ТЕПЕРЬ ЛЕТЯТ БЫСТРО
+    // ========== ИСПРАВЛЕННЫЕ СКОРОСТИ (ТЕПЕРЬ ЛЕТЯТ БЫСТРО) ==========
     const weaponTypes = {
         drone:      { name: 'БПЛА', speed: 0.25, damage: 25, cost: 60, pvoChance: 0.25, icon: '🛸' },
         cruise:     { name: 'Крылатая', speed: 0.5, damage: 35, cost: 90, pvoChance: 0.18, icon: '✈️' },
@@ -358,7 +358,7 @@
             if(z.team!==myTeam && z.hp>0) 
                 targets.push({ 
                     id:z.id, type:'zone', name:z.name, target:z, 
-                    lat:z.center[0], lng:z.center[1],   // ← исправлено: координаты из центра
+                    lat:z.center[0], lng:z.center[1],   // ← координаты из центра
                     hp:z.hp, maxHp:z.baseHp, 
                     display:`${z.name} (${Math.floor((z.hp/z.baseHp)*100)}%)` 
                 }); 
@@ -380,15 +380,19 @@
         let weapon=weaponTypes[type];
         let costPerUnit=weapon.cost;
         if(resources<costPerUnit*count){ alert("Не хватает энергии"); return false; }
+        let fromLatLng = airport.getLatLng();
+        if (!fromLatLng || typeof fromLatLng.lat !== 'number') {
+            console.error("Неверные координаты аэродрома");
+            return false;
+        }
         for(let i=0;i<count;i++){
             resources-=costPerUnit;
             let offset=(i-(count-1)/2)*0.03;
-            // ГЛАВНОЕ ИСПРАВЛЕНИЕ: правильные координаты цели
-            let baseLat = target.type === 'zone' ? target.lat : target.lat;
-            let baseLng = target.type === 'zone' ? target.lng : target.lng;
+            let baseLat = target.lat;
+            let baseLng = target.lng;
             let targetLat = baseLat + offset;
             let targetLng = baseLng + offset * 0.5;
-            let proj={id:nextId(), from:airport.getLatLng(), to:{lat:targetLat,lng:targetLng}, progress:0, speed:weapon.speed, damage:weapon.damage, team:myTeam, targetType:target.type, targetId:target.id, type:type, active:true, marker:null, lastInterceptCheck:0, interceptedFlag:false };
+            let proj={id:nextId(), from:fromLatLng, to:{lat:targetLat,lng:targetLng}, progress:0, speed:weapon.speed, damage:weapon.damage, team:myTeam, targetType:target.type, targetId:target.id, type:type, active:true, marker:null, lastInterceptCheck:0, interceptedFlag:false };
             let marker=L.marker([proj.from.lat,proj.from.lng],{icon:getMissileIcon(type)}).addTo(map);
             proj.marker=marker;
             projectiles.push(proj);
@@ -457,13 +461,13 @@
         return false;
     }
 
-    // ОБНОВЛЁННАЯ ФУНКЦИЯ С ПЕРЕХВАТОМ, ПОВОРОТОМ И ПРОВЕРКОЙ ПО РАССТОЯНИЮ
+    // ========== ГЛАВНАЯ ФУНКЦИЯ ОБНОВЛЕНИЯ СНАРЯДОВ ==========
     function updateProjectiles(dt){
         for(let i=0;i<projectiles.length;i++){
             let p=projectiles[i];
             if(!p.active) continue;
 
-            // ПЕРЕХВАТ
+            // Перехват ПВО
             if(tryIntercept(p)){
                 p.active=false;
                 createExplosion(p.marker.getLatLng().lat, p.marker.getLatLng().lng);
@@ -474,31 +478,34 @@
             }
 
             p.progress += p.speed * dt;
+            // Ограничиваем прогресс, чтобы не улететь за цель
+            if(p.progress > 1.0) p.progress = 1.0;
+
             let lat = p.from.lat + (p.to.lat - p.from.lat) * p.progress;
             let lng = p.from.lng + (p.to.lng - p.from.lng) * p.progress;
             p.marker.setLatLng([lat,lng]);
 
-            // ПОВОРОТ ИКОНКИ
+            // Поворот иконки
             let angle = Math.atan2(p.to.lng - p.from.lng, p.to.lat - p.from.lat) * 180 / Math.PI;
             if(p.marker._icon) p.marker._icon.style.transform = `rotate(${angle}deg)`;
 
-            // ПРОВЕРКА ДОСТИЖЕНИЯ ЦЕЛИ ПО РАССТОЯНИЮ
+            // Проверяем попадание: или прогресс достиг 1.0, или расстояние меньше 5 км
             let distToTarget = map.distance([lat,lng], [p.to.lat, p.to.lng]);
-            if(distToTarget < 5000) {
-                p.active=false;
+            if(p.progress >= 1.0 || distToTarget < 5000) {
+                p.active = false;
                 map.removeLayer(p.marker);
-                if(p.targetType==='zone'){
-                    let targetZone=zones.find(z=>z.id===p.targetId);
-                    if(targetZone && targetZone.hp>0){
-                        targetZone.hp=Math.max(0,targetZone.hp-p.damage);
+                if(p.targetType === 'zone'){
+                    let targetZone = zones.find(z => z.id === p.targetId);
+                    if(targetZone && targetZone.hp > 0){
+                        targetZone.hp = Math.max(0, targetZone.hp - p.damage);
                         updateZoneMarkers();
                         playBeep(200,0.4);
                     }
-                } else if(p.targetType==='building'){
-                    let targetBuilding=buildings.find(b=>b.id===p.targetId);
-                    if(targetBuilding && targetBuilding.hp>0){
-                        targetBuilding.hp-=p.damage;
-                        if(targetBuilding.hp<=0) destroyBuilding(targetBuilding);
+                } else if(p.targetType === 'building'){
+                    let targetBuilding = buildings.find(b => b.id === p.targetId);
+                    if(targetBuilding && targetBuilding.hp > 0){
+                        targetBuilding.hp -= p.damage;
+                        if(targetBuilding.hp <= 0) destroyBuilding(targetBuilding);
                         playBeep(200,0.4);
                     }
                 }
