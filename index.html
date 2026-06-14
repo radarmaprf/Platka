@@ -210,9 +210,13 @@
     
     function getInterceptorIcon() { return L.icon({ iconUrl: 'images/pvo_rocket.png', iconSize: [24,24], iconAnchor: [12,12] }); }
 
-    function getMissileIcon(type) {
+    // Функция получения иконки ракеты/дрона. Для дрона разные картинки в зависимости от команды.
+    function getMissileIcon(type, team) {
+        if (type === 'drone') {
+            const img = (team === 'ukraine') ? 'images/drone_ua.png' : 'images/drone.png'; // для России - drone.png, для Украины - drone_ua.png
+            return L.icon({ iconUrl: img, iconSize: [28,28], iconAnchor: [14,14] });
+        }
         const missileImages = {
-            drone: 'images/drone.png',
             cruise: 'images/cruise.png',
             ballistic: 'images/ballistic.png',
             hypersonic: 'images/hypersonic.png'
@@ -441,7 +445,7 @@
                 angle: angle  // сохраняем угол
             };
             let marker = L.marker([proj.from.lat, proj.from.lng], {
-                icon: getMissileIcon(type),
+                icon: getMissileIcon(type, myTeam),
                 rotationOrigin: 'center center',
                 rotationAngle: angle
             }).addTo(map);
@@ -672,7 +676,7 @@
                     angle: angle
                 };
                 let marker = L.marker([proj.from.lat, proj.from.lng], {
-                    icon: getMissileIcon(type),
+                    icon: getMissileIcon(type, enemyTeam),
                     rotationOrigin: 'center center',
                     rotationAngle: angle
                 }).addTo(map);
@@ -804,7 +808,7 @@
                         angle: angle
                     };
                     let marker = L.marker([proj.from.lat, proj.from.lng], {
-                        icon: getMissileIcon(type),
+                        icon: getMissileIcon(type, data.team),
                         rotationOrigin: 'center center',
                         rotationAngle: angle
                     }).addTo(map);
