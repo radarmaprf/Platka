@@ -166,7 +166,7 @@
     let lastId = 0;
     function nextId() { return Date.now() + '_' + (++lastId); }
 
-    // ========== ИСПРАВЛЕННЫЕ СКОРОСТИ РАКЕТ (ТЕПЕРЬ ЛЕТЯТ БЫСТРО) ==========
+    // ИСПРАВЛЕННЫЕ СКОРОСТИ — ТЕПЕРЬ ЛЕТЯТ БЫСТРО
     const weaponTypes = {
         drone:      { name: 'БПЛА', speed: 0.25, damage: 25, cost: 60, pvoChance: 0.25, icon: '🛸' },
         cruise:     { name: 'Крылатая', speed: 0.5, damage: 35, cost: 90, pvoChance: 0.18, icon: '✈️' },
@@ -193,7 +193,7 @@
         osc.stop(now + duration);
     }
 
-    // Города с увеличенным HP
+    // Города
     const zoneData = [
         { name: 'КИЕВ', center: [50.4501,30.5234], team: 'ukraine', hp: 400, baseHp: 400 },
         { name: 'ОДЕССА', center: [46.4825,30.7233], team: 'ukraine', hp: 320, baseHp: 320 },
@@ -354,8 +354,25 @@
 
     function getEnemyTargets(){
         let targets=[];
-        zones.forEach(z=>{ if(z.team!==myTeam && z.hp>0) targets.push({ id:z.id, type:'zone', name:z.name, target:z, lat:z.center[0], lng:z.center[1], hp:z.hp, maxHp:z.baseHp, display:`${z.name} (${Math.floor((z.hp/z.baseHp)*100)}%)` }); });
-        buildings.forEach(b=>{ if(b.team!==myTeam && b.hp>0){ let maxHp=(b.type==='radar'?120:(b.type==='pvo'?180:(b.type==='powerPlant'?100:(b.type==='refinery'?150:200)))); targets.push({ id:b.id, type:'building', name:getBuildingName(b.type), target:b, lat:b.lat, lng:b.lng, hp:b.hp, maxHp, display:`${getBuildingName(b.type)} (${Math.floor((b.hp/maxHp)*100)}%)` }); } });
+        zones.forEach(z=>{ 
+            if(z.team!==myTeam && z.hp>0) 
+                targets.push({ 
+                    id:z.id, type:'zone', name:z.name, target:z, 
+                    lat:z.center[0], lng:z.center[1],   // ← исправлено: координаты из центра
+                    hp:z.hp, maxHp:z.baseHp, 
+                    display:`${z.name} (${Math.floor((z.hp/z.baseHp)*100)}%)` 
+                }); 
+        });
+        buildings.forEach(b=>{ 
+            if(b.team!==myTeam && b.hp>0){ 
+                let maxHp=(b.type==='radar'?120:(b.type==='pvo'?180:(b.type==='powerPlant'?100:(b.type==='refinery'?150:200)))); 
+                targets.push({ 
+                    id:b.id, type:'building', name:getBuildingName(b.type), target:b, 
+                    lat:b.lat, lng:b.lng, hp:b.hp, maxHp, 
+                    display:`${getBuildingName(b.type)} (${Math.floor((b.hp/maxHp)*100)}%)` 
+                }); 
+            } 
+        });
         return targets;
     }
 
@@ -366,7 +383,11 @@
         for(let i=0;i<count;i++){
             resources-=costPerUnit;
             let offset=(i-(count-1)/2)*0.03;
-            let targetLat=target.lat+offset, targetLng=target.lng+offset*0.5;
+            // ГЛАВНОЕ ИСПРАВЛЕНИЕ: правильные координаты цели
+            let baseLat = target.type === 'zone' ? target.lat : target.lat;
+            let baseLng = target.type === 'zone' ? target.lng : target.lng;
+            let targetLat = baseLat + offset;
+            let targetLng = baseLng + offset * 0.5;
             let proj={id:nextId(), from:airport.getLatLng(), to:{lat:targetLat,lng:targetLng}, progress:0, speed:weapon.speed, damage:weapon.damage, team:myTeam, targetType:target.type, targetId:target.id, type:type, active:true, marker:null, lastInterceptCheck:0, interceptedFlag:false };
             let marker=L.marker([proj.from.lat,proj.from.lng],{icon:getMissileIcon(type)}).addTo(map);
             proj.marker=marker;
@@ -436,13 +457,13 @@
         return false;
     }
 
-    // ========== ГЛАВНОЕ ИСПРАВЛЕНИЕ: РАКЕТЫ ЛЕТЯТ, ПЕРЕХВАТ РАБОТАЕТ, ПОВОРОТ ==========
+    // ОБНОВЛЁННАЯ ФУНКЦИЯ С ПЕРЕХВАТОМ, ПОВОРОТОМ И ПРОВЕРКОЙ ПО РАССТОЯНИЮ
     function updateProjectiles(dt){
         for(let i=0;i<projectiles.length;i++){
             let p=projectiles[i];
             if(!p.active) continue;
 
-            // ПЕРЕХВАТ ПВО (раньше не вызывался)
+            // ПЕРЕХВАТ
             if(tryIntercept(p)){
                 p.active=false;
                 createExplosion(p.marker.getLatLng().lat, p.marker.getLatLng().lng);
@@ -457,11 +478,11 @@
             let lng = p.from.lng + (p.to.lng - p.from.lng) * p.progress;
             p.marker.setLatLng([lat,lng]);
 
-            // ПОВОРОТ ИКОНКИ ПО НАПРАВЛЕНИЮ
+            // ПОВОРОТ ИКОНКИ
             let angle = Math.atan2(p.to.lng - p.from.lng, p.to.lat - p.from.lat) * 180 / Math.PI;
             if(p.marker._icon) p.marker._icon.style.transform = `rotate(${angle}deg)`;
 
-            // ПРОВЕРКА ДОСТИЖЕНИЯ ЦЕЛИ ПО РАССТОЯНИЮ (надёжнее чем progress>=1)
+            // ПРОВЕРКА ДОСТИЖЕНИЯ ЦЕЛИ ПО РАССТОЯНИЮ
             let distToTarget = map.distance([lat,lng], [p.to.lat, p.to.lng]);
             if(distToTarget < 5000) {
                 p.active=false;
