@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Sky in Fire — кастомные иконки, без поворота</title>
+    <title>Sky in Fire — разные ракеты, без поворота</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
@@ -209,9 +209,18 @@
     
     function getInterceptorIcon() { return L.icon({ iconUrl: 'images/pvo_rocket.png', iconSize: [24,24], iconAnchor: [12,12] }); }
 
+    // РАЗНЫЕ КАРТИНКИ ДЛЯ КАЖДОГО ТИПА РАКЕТЫ
     function getMissileIcon(type) {
-        if (type === 'drone') return L.icon({ iconUrl: 'images/drone.png', iconSize: [28,28], iconAnchor: [14,14] });
-        else return L.icon({ iconUrl: 'images/missile.png', iconSize: [28,28], iconAnchor: [14,14] });
+        // Соответствие типа -> путь к картинке
+        const missileImages = {
+            drone: 'images/drone.png',
+            cruise: 'images/cruise.png',
+            ballistic: 'images/ballistic.png',
+            hypersonic: 'images/hypersonic.png'
+        };
+        const imgUrl = missileImages[type] || 'images/missile.png'; // запасной вариант
+        // Все ракеты 28x28, центр 14,14
+        return L.icon({ iconUrl: imgUrl, iconSize: [28,28], iconAnchor: [14,14] });
     }
 
     function createExplosion(lat,lng){
@@ -506,7 +515,7 @@
                 continue;
             }
             p.marker.setLatLng([lat, lng]);
-            // ПОВОРОТ УБРАН — ракеты не вращаются
+            // ПОВОРОТ УБРАН
         }
     }
 
