@@ -392,7 +392,7 @@
                 speed: weapon.speed,
                 damage: weapon.damage,
                 team: myTeam,
-                targetType: targetObj.type,   // 'zone' или 'building'
+                targetType: targetObj.type,
                 targetId: targetObj.id,
                 type: type,
                 active: true,
@@ -449,49 +449,51 @@
         return false;
     }
 
-    // ОБНОВЛЕНИЕ СНАРЯДОВ (С ПОДДЕРЖКОЙ ЗДАНИЙ)
-    function updateProjectiles(dt){
-        for(let i=0;i<projectiles.length;i++){
+    // ========== ДВИЖЕНИЕ СНАРЯДОВ (ПОЛНОСТЬЮ ИЗ ТВОЕГО РАБОЧЕГО СКРИПТА) ==========
+    function updateProjectiles(dt) {
+        for (let i = 0; i < projectiles.length; i++) {
             let p = projectiles[i];
-            if(!p.active) continue;
-            if(tryIntercept(p)){
+            if (!p.active) continue;
+
+            // Перехват ПВО (как в твоём коде)
+            if (tryIntercept(p)) {
                 p.active = false;
-                createExplosion(p.marker.getLatLng().lat, p.marker.getLatLng().lng);
                 map.removeLayer(p.marker);
-                projectiles.splice(i,1);
+                projectiles.splice(i, 1);
                 i--;
                 continue;
             }
+
             p.progress += p.speed * dt;
-            if(p.progress > 1.0) p.progress = 1.0;
-            let lat = p.from.lat + (p.to.lat - p.from.lat) * p.progress;
-            let lng = p.from.lng + (p.to.lng - p.from.lng) * p.progress;
-            p.marker.setLatLng([lat,lng]);
-            // Проверка достижения цели (по расстоянию или прогрессу)
-            let distToTarget = map.distance([lat,lng], [p.to.lat, p.to.lng]);
-            if(p.progress >= 1.0 || distToTarget < 5000){
+
+            if (p.progress >= 1) {
                 p.active = false;
                 map.removeLayer(p.marker);
-                if(p.targetType === 'zone'){
+
+                if (p.targetType === 'zone') {
                     let targetZone = zones.find(z => z.id === p.targetId);
-                    if(targetZone && targetZone.hp > 0){
+                    if (targetZone && targetZone.hp > 0) {
                         targetZone.hp = Math.max(0, targetZone.hp - p.damage);
                         updateZoneMarkers();
-                        playBeep(200,0.4);
+                        playBeep(200, 0.4);
                     }
-                } else if(p.targetType === 'building'){
+                } else if (p.targetType === 'building') {
                     let targetBuilding = buildings.find(b => b.id === p.targetId);
-                    if(targetBuilding && targetBuilding.hp > 0){
+                    if (targetBuilding && targetBuilding.hp > 0) {
                         targetBuilding.hp -= p.damage;
-                        playBeep(200,0.4);
-                        if(targetBuilding.hp <= 0){
-                            destroyBuilding(targetBuilding);
-                        }
+                        playBeep(200, 0.4);
+                        if (targetBuilding.hp <= 0) destroyBuilding(targetBuilding);
                     }
                 }
-                projectiles.splice(i,1);
+
+                projectiles.splice(i, 1);
                 i--;
+                continue;
             }
+
+            let lat = p.from.lat + (p.to.lat - p.from.lat) * p.progress;
+            let lng = p.from.lng + (p.to.lng - p.from.lng) * p.progress;
+            p.marker.setLatLng([lat, lng]);
         }
     }
 
@@ -638,6 +640,14 @@
         aiBuildInterval = setInterval(()=>aiBuildLogic(), 30000);
     }
 
+    function gameLoop(now) {
+        if (!gameActive) return;
+        let dt = Math.min(0.1, (now - lastUpdate) / 1000);
+        lastUpdate = now;
+        updateProjectiles(dt);
+        requestAnimationFrame(gameLoop);
+    }
+
     function initGameMapAndLogic(){
         document.getElementById('menuScreen').style.display='none';
         document.getElementById('lobbyScreen').style.display='none';
@@ -694,14 +704,6 @@
                 if(buildMode){ tryBuild(e.latlng.lat, e.latlng.lng, buildMode); buildMode = null; }
             });
         });
-    }
-    function gameLoop(now){
-        if(!gameActive) return;
-        let dt = Math.min(0.1, (now - lastUpdate)/1000);
-        if(dt < 0.001) dt = 0.033;
-        lastUpdate = now;
-        updateProjectiles(dt);
-        requestAnimationFrame(gameLoop);
     }
     function closeAttackModal(){ document.getElementById('attackModal').style.display='none'; }
     function updateCostDisplay(){ let cost = weaponTypes[attackType].cost; document.getElementById('costDisplay').innerHTML = `СТОИМОСТЬ: ${cost * attackCount} ⚡`; }
