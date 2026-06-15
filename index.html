@@ -1,14 +1,18 @@
+
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Sky in Fire — лицензионная версия (аккаунты + ключи)</title>
+    <title>Sky in Fire — лицензионная версия (глобальные ключи)</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-rotatedmarker/leaflet.rotatedMarker.js"></script>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
     <style>
         /* Стили авторизации */
         .auth-overlay {
@@ -213,8 +217,23 @@
 </div>
 
 <script>
-    // ========== ЛИЦЕНЗИОННАЯ СИСТЕМА (аккаунты + ключи) ==========
-    // 50 одноразовых ключей
+    // ========== НАСТРОЙКИ FIREBASE (ВАШИ ДАННЫЕ) ==========
+    const firebaseConfig = {
+        apiKey: "AIzaSyCksMAKAI1U2gXRHefO0vAZYbY4Y6ES1Sg",
+        authDomain: "keys-c7467.firebaseapp.com",
+        databaseURL: "https://keys-c7467-default-rtdb.firebaseio.com",
+        projectId: "keys-c7467",
+        storageBucket: "keys-c7467.firebasestorage.app",
+        messagingSenderId: "573161424340",
+        appId: "1:573161424340:web:6fe203312d2a18079f0241"
+    };
+    // Инициализация Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const usedKeysRef = db.ref('usedKeys');
+
+    // ========== ЛИЦЕНЗИОННАЯ СИСТЕМА (глобальная база ключей) ==========
+    // 50 одноразовых ключей (локальный список для валидации формата)
     const VALID_KEYS = [
         "theoqjzn6heuwn478-yeneis528y", "kf92jdn30qpeor83-xmz73kdl", "h8d73jf92kdn392u-jd83mz",
         "vgs392kf92jdn30qpe-xy81m4n", "pq83jf92kdn30qpeor-74hs8w2", "mz73kdl92jdn30qpe-93jsk2l",
@@ -290,14 +309,28 @@
         return false;
     }
 
-    function activateKey(key) {
+    // Глобальная проверка ключа через Firebase
+    async function activateKey(key) {
         if(!key) { authMessage.innerText = "Введите ключ"; return false; }
+        if(!VALID_KEYS.includes(key)) { authMessage.innerText = "Неверный ключ (не соответствует формату)"; return false; }
         const acc = accounts[currentUser];
         if(!acc) { authMessage.innerText = "Ошибка аккаунта"; return false; }
         if(acc.keyUsed) { authMessage.innerText = "Игра уже активирована"; return false; }
-        if(!VALID_KEYS.includes(key)) { authMessage.innerText = "Неверный ключ"; return false; }
+
+        // Проверяем в Firebase, не использован ли ключ глобально
+        authMessage.innerText = "Проверка ключа...";
+        const snapshot = await usedKeysRef.child(key).get();
+        if(snapshot.exists()) {
+            authMessage.innerText = "Этот ключ уже был использован другим игроком!";
+            return false;
+        }
+
+        // Помечаем ключ как использованный в Firebase
+        await usedKeysRef.child(key).set(true);
+        // Удаляем ключ из локального массива (опционально)
         const index = VALID_KEYS.indexOf(key);
         if(index !== -1) VALID_KEYS.splice(index,1);
+        
         acc.keyUsed = key;
         saveAccounts();
         authMessage.innerText = "Ключ активирован! Игра запускается...";
@@ -437,6 +470,35 @@
         try { return L.icon({ iconUrl: url, iconSize: [28,28], iconAnchor: [14,14] }); } catch(e){ return L.divIcon({ html: '💥', iconSize:[28,28] }); }
     }
 
+    // ---------- УПРОЩЁННЫЕ ВСТРОЕННЫЕ ГРАНИЦЫ (FALLBACK) ----------
+    const fallbackRussiaGeo = {
+        "type": "FeatureCollection",
+        "features": [{
+            "type": "Feature",
+            "properties": {},
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [19.6, 41.2], [60.0, 41.2], [85.0, 45.0], [105.0, 45.0], [105.0, 55.0],
+                    [85.0, 55.0], [60.0, 50.0], [19.6, 50.0], [19.6, 41.2]
+                ]]
+            }
+        }]
+    };
+    const fallbackUkraineGeo = {
+        "type": "FeatureCollection",
+        "features": [{
+            "type": "Feature",
+            "properties": {},
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[
+                    [22.0, 44.3], [40.0, 44.3], [40.0, 52.4], [22.0, 52.4], [22.0, 44.3]
+                ]]
+            }
+        }]
+    };
+
     function loadRealBorders(cb) {
         Promise.all([
             fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries/RUS.geo.json').then(r=>r.json()),
@@ -446,14 +508,28 @@
             L.geoJSON(rus,{style:{color:'#ff6666',weight:2,fillOpacity:0.08}}).addTo(map);
             L.geoJSON(ukr,{style:{color:'#66aaff',weight:2,fillOpacity:0.08}}).addTo(map);
             if(cb)cb();
-        }).catch(e=>{ console.warn(e); bordersLoaded=false; if(cb)cb(); });
+        }).catch(e=>{
+            console.warn("Ошибка загрузки границ, использую fallback", e);
+            russiaGeoJSON = fallbackRussiaGeo;
+            ukraineGeoJSON = fallbackUkraineGeo;
+            bordersLoaded = true;
+            L.geoJSON(fallbackRussiaGeo,{style:{color:'#ff6666',weight:2,fillOpacity:0.08}}).addTo(map);
+            L.geoJSON(fallbackUkraineGeo,{style:{color:'#66aaff',weight:2,fillOpacity:0.08}}).addTo(map);
+            if(cb)cb();
+        });
     }
     function isInsideCountry(lat,lng,country) {
         if(!bordersLoaded||!russiaGeoJSON||!ukraineGeoJSON) return false;
         const point=turf.point([lng,lat]);
         const geojson=country==='russia'?russiaGeoJSON:ukraineGeoJSON;
         let feat=geojson.features?geojson.features[0]:geojson;
-        return turf.booleanPointInPolygon(point,feat);
+        try {
+            return turf.booleanPointInPolygon(point,feat);
+        } catch(e) {
+            // fallback: приблизительная зона
+            if(country === 'russia') return (lat>41 && lat<82 && lng>19 && lng<190);
+            else return (lat>44 && lat<53 && lng>22 && lng<41);
+        }
     }
     function isOwnTerritory(lat,lng){ if(!myTeam) return false; return isInsideCountry(lat,lng,myTeam); }
     function canBuildHere(lat,lng){ if(!isOwnTerritory(lat,lng)) return false; for(let b of buildings) if(map.distance([lat,lng],[b.lat,b.lng])<4000) return false; return true; }
@@ -951,7 +1027,7 @@
         });
     }
 
-    // Обработчики кнопок игры (часть уже есть выше, добавим недостающие)
+    // Обработчики кнопок игры
     document.getElementById('singleBtn').onclick = () => {
         playBeep(400,0.1); setTimeout(()=>{ playBeep(600,0.1); setTimeout(()=>{ playBeep(800,0.1); myTeam='russia'; enemyTeam='ukraine'; isAI=true; initGameMapAndLogic(); },100); },100);
     };
