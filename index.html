@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Sky in Fire — авиация (полная версия)</title>
+    <title>Sky in Fire — каталог вооружений, умный ИИ</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-rotatedmarker/leaflet.rotatedMarker.js"></script>
@@ -49,13 +49,12 @@
         .build-btn:hover { transform:translateX(5px); border-color:#00ffaa; background:linear-gradient(180deg,#2a4a5a,#1a2a3a); }
         .modal { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:linear-gradient(180deg,#091116,#020508); border-radius:40px; padding:24px; z-index:3000; color:#fff; width:450px; text-align:center; border:2px solid #00ffaa; box-shadow:0 0 40px rgba(0,255,170,0.3); }
         .weapon-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:15px 0; }
-        .weapon-card, .aircraft-card { background:#101820; border:2px solid #333; border-radius:20px; padding:12px; cursor:pointer; transition:0.2s; text-align:center; }
-        .weapon-card:hover, .aircraft-card:hover { transform:scale(1.02); background:#1a2830; }
-        .weapon-card.selected, .aircraft-card.selected { border-color:#00ffaa; box-shadow:0 0 15px rgba(0,255,170,0.4); background:#1e3038; }
-        .weapon-card img, .aircraft-card img { width:100%; height:80px; object-fit:contain; margin-bottom:6px; }
-        .weapon-name, .aircraft-name { font-weight:bold; font-size:14px; margin:4px 0; }
-        .weapon-stats, .aircraft-stats { font-size:11px; opacity:0.8; }
-        .aircraft-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:15px 0; }
+        .weapon-card { background:#101820; border:2px solid #333; border-radius:20px; padding:12px; cursor:pointer; transition:0.2s; text-align:center; }
+        .weapon-card:hover { transform:scale(1.02); background:#1a2830; }
+        .weapon-card.selected { border-color:#00ffaa; box-shadow:0 0 15px rgba(0,255,170,0.4); background:#1e3038; }
+        .weapon-card img { width:100%; height:80px; object-fit:contain; margin-bottom:6px; }
+        .weapon-name { font-weight:bold; font-size:14px; margin:4px 0; }
+        .weapon-stats { font-size:11px; opacity:0.8; }
         .zone-marker { background:rgba(0,0,0,0.8); border-radius:16px; padding:6px 10px; text-align:center; font-weight:bold; color:#fff; font-size:12px; box-shadow:0 0 10px rgba(0,0,0,0.5); white-space:nowrap; }
         @keyframes radarSpin { from{transform:translateX(-50%) rotate(0deg);} to{transform:translateX(-50%) rotate(360deg);} }
         .leaflet-marker-icon { transform-origin:center center; }
@@ -120,14 +119,6 @@
     <button id="attackConfirmBtn">АТАКОВАТЬ</button>
     <button id="attackCancelBtn">ОТМЕНА</button>
 </div>
-<div id="airModal" class="modal" style="display:none;">
-    <h3>✈️ АВИАЦИЯ</h3>
-    <div id="aircraftGrid" class="aircraft-grid"></div>
-    <div>⚡ КОЛИЧЕСТВО: <button id="airMinus">-</button> <span id="airCount">1</span> <button id="airPlus">+</button></div>
-    <div id="airCostDisplay" style="margin:10px 0; font-weight:bold;">СТОИМОСТЬ: 0 ⚡</div>
-    <button id="launchAircraftBtn">ОТПРАВИТЬ</button>
-    <button id="closeAirModalBtn">ЗАКРЫТЬ</button>
-</div>
 <div id="gameContainer" style="display:none; width:100%; height:100%; position:relative;">
     <div id="map" style="width:100%; height:100%;"></div>
     <div id="gameHUD">
@@ -143,7 +134,7 @@
         <button class="build-btn" id="buildPvoBtn">🛡️ ПВО (220)</button>
         <button class="build-btn" id="buildPowerPlantBtn">⚡ ЭЛЕКТРОСТАНЦИЯ (250)</button>
         <button class="build-btn" id="buildRefineryBtn">⛽ НПЗ (400)</button>
-        <button class="build-btn" id="buildHangarBtn">✈️ АНГАР (350)</button>
+        <button class="build-btn" id="buildRocketFactoryBtn">🚀 ЗАВОД РАКЕТ (500)</button>
         <button class="build-btn" id="cancelBuild">❌ ОТМЕНА</button>
     </div>
 </div>
@@ -155,7 +146,7 @@
     let buildings = [];
     let zones = [];
     let projectiles = [];
-    let radars = [], pvoSystems = [], powerPlants = [], refineries = [], hangars = [];
+    let radars = [], pvoSystems = [], powerPlants = [], refineries = [], rocketFactories = [];
     let buildMode = null;
     let airportMarker = null, enemyAirportMarker = null;
     let airportPlaced = false;
@@ -170,28 +161,18 @@
     let lobbyState = { player1: { ready: false, team: null }, player2: { ready: false, team: null } };
     let roomId = null;
 
-    // ТИПЫ ВООРУЖЕНИЙ (ракеты)
+    // ТИПЫ ВООРУЖЕНИЙ
     const weaponTypes = {
         drone:      { name: 'SHAHED', speed: 0.006, damage: 25, cost: 60, pvoChance: 0.08, spriteOffset: 0, img: 'drone.png' },
         cruise:     { name: 'CRUISE', speed: 0.02, damage: 35, cost: 90, pvoChance: 0.10, spriteOffset: 90, img: 'cruise.png' },
         ballistic:  { name: 'BALLISTIC', speed: 0.05, damage: 50, cost: 130, pvoChance: 0.10, spriteOffset: -45, img: 'ballistic.png' },
         hypersonic: { name: 'HYPERSONIC', speed: 0.09, damage: 70, cost: 200, pvoChance: 0.10, spriteOffset: 0, img: 'hypersonic.png' }
     };
-    
-    // ТИПЫ САМОЛЁТОВ
-    const aircraftTypes = {
-        fighter: { name: 'FIGHTER', cost: 100, speed: 0.03, img: 'fighter.png', type: 'fighter', interceptorRadius: 30000, damage: 0, duration: 0 },
-        awacs:   { name: 'AWACS',   cost: 180, speed: 0.02, img: 'awacs.png',   type: 'awacs',   duration: 60, damage: 0 },
-        bomber:  { name: 'BOMBER',  cost: 220, speed: 0.015, img: 'bomber.png',  type: 'bomber',  damage: 120, spriteOffset: 0 }
-    };
-    
     let attackType = 'drone', attackCount = 1, currentAirport = null;
-    let selectedAircraftType = 'fighter', aircraftCount = 1, currentHangar = null;
-    
-    const costs = { radar: 180, pvo: 220, powerPlant: 250, refinery: 400, hangar: 350 };
-    const maxRadars = 8, maxPvo = 12, maxPowerPlants = 5, maxRefineries = 3, maxHangars = 3;
+    const costs = { radar: 180, pvo: 220, powerPlant: 250, refinery: 400, rocketFactory: 500 };
+    const maxRadars = 8, maxPvo = 12, maxPowerPlants = 5, maxRefineries = 3;
 
-    // Прогрессия
+    // Прогрессия (локальная)
     let playerXP = 0;
     let playerStats = { wins:0, losses:0, citiesDestroyed:0, buildingsDestroyed:0, missilesLaunched:0, hits:0, totalShots:0 };
     const ranks = [
@@ -241,7 +222,7 @@
     function getPvoIcon() { return L.icon({ iconUrl: 'images/pvo.png', iconSize: [40,40], iconAnchor: [20,20] }); }
     function getPowerPlantIcon() { return L.icon({ iconUrl: 'images/powerplant.png', iconSize: [40,40], iconAnchor: [20,20] }); }
     function getRefineryIcon() { return L.icon({ iconUrl: 'images/refinery.png', iconSize: [40,40], iconAnchor: [20,20] }); }
-    function getHangarIcon() { return L.icon({ iconUrl: 'images/hangar.png', iconSize: [44,44], iconAnchor: [22,22] }); }
+    function getRocketFactoryIcon() { return L.icon({ iconUrl: 'images/rocket_factory.png', iconSize: [40,40], iconAnchor: [20,20] }); }
     function getInterceptorIcon() { return L.icon({ iconUrl: 'images/pvo_rocket.png', iconSize: [24,24], iconAnchor: [12,12] }); }
     function getMissileIcon(type, team) {
         if(type === 'drone') {
@@ -251,10 +232,6 @@
         const map = { cruise:'images/cruise.png', ballistic:'images/ballistic.png', hypersonic:'images/hypersonic.png' };
         const url = map[type] || 'images/missile.png';
         return L.icon({ iconUrl: url, iconSize: [28,28], iconAnchor: [14,14] });
-    }
-    function getAircraftIcon(type) {
-        const map = { fighter:'fighter.png', awacs:'awacs.png', bomber:'bomber.png' };
-        return L.icon({ iconUrl: `images/${map[type]}`, iconSize: [32,32], iconAnchor: [16,16] });
     }
 
     // ========== ГЕОГРАФИЯ И ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
@@ -341,7 +318,7 @@
         pvoSystems = pvoSystems.filter(p=>p.id!==building.id);
         powerPlants = powerPlants.filter(p=>p.id!==building.id);
         refineries = refineries.filter(r=>r.id!==building.id);
-        hangars = hangars.filter(h=>h.id!==building.id);
+        rocketFactories = rocketFactories.filter(r=>r.id!==building.id);
         showHint(`⚠️ Здание ${getBuildingName(building.type)} уничтожено!`);
         addXP(50);
     }
@@ -351,7 +328,7 @@
             case 'pvo': return 'ПВО';
             case 'powerPlant': return 'ЭЛЕКТРОСТАНЦИЯ';
             case 'refinery': return 'НПЗ';
-            case 'hangar': return 'АНГАР';
+            case 'rocketFactory': return 'ЗАВОД РАКЕТ';
             default: return 'ЗДАНИЕ';
         }
     }
@@ -382,35 +359,28 @@
         if(victory) addXP(300);
     }
 
-    // Постройка зданий (включая ангар)
+    // Постройка зданий
     function tryBuild(lat,lng,type){
-        if(!airportPlaced && type !== 'hangar'){ alert("Сначала постройте аэродром!"); return false; }
+        if(!airportPlaced){ alert("Сначала постройте аэродром!"); return false; }
         if(!canBuildHere(lat,lng)){ alert("Можно строить только на своей территории и не ближе 4 км к другим зданиям!"); return false; }
         let myRadars = radars.filter(r => r.team === myTeam).length;
         let myPvo = pvoSystems.filter(p => p.team === myTeam).length;
         let myPowerPlants = powerPlants.filter(p => p.team === myTeam).length;
         let myRefineries = refineries.filter(r => r.team === myTeam).length;
-        let myHangars = hangars.filter(h => h.team === myTeam).length;
         if(type==='radar' && myRadars >= maxRadars){ alert(`Максимум ${maxRadars} радаров`); return false; }
         if(type==='pvo' && myPvo >= maxPvo){ alert(`Максимум ${maxPvo} ПВО`); return false; }
         if(type==='powerPlant' && myPowerPlants >= maxPowerPlants){ alert(`Максимум ${maxPowerPlants} электростанций`); return false; }
         if(type==='refinery' && myRefineries >= maxRefineries){ alert(`Максимум ${maxRefineries} НПЗ`); return false; }
-        if(type==='hangar' && myHangars >= maxHangars){ alert(`Максимум ${maxHangars} ангаров`); return false; }
         let cost=costs[type]; if(resources<cost){ alert("Не хватает энергии"); return false; }
         resources-=cost; updateUI();
-        let building={id:Date.now()+Math.random(), lat, lng, type, team:myTeam, hp:(type==='radar'?120:(type==='pvo'?180:(type==='powerPlant'?100:(type==='refinery'?150:(type==='hangar'?250:200))))), radarAngle:0, marker:null, radarCircle:null};
-        let icon; if(type==='radar') icon=getRadarIcon(); else if(type==='pvo') icon=getPvoIcon(); else if(type==='powerPlant') icon=getPowerPlantIcon(); else if(type==='refinery') icon=getRefineryIcon(); else if(type==='hangar') icon=getHangarIcon(); else return false;
+        let building={id:Date.now()+Math.random(), lat, lng, type, team:myTeam, hp:(type==='radar'?120:(type==='pvo'?180:(type==='powerPlant'?100:(type==='refinery'?150:200)))), radarAngle:0, marker:null, radarCircle:null};
+        let icon; if(type==='radar') icon=getRadarIcon(); else if(type==='pvo') icon=getPvoIcon(); else if(type==='powerPlant') icon=getPowerPlantIcon(); else if(type==='refinery') icon=getRefineryIcon(); else if(type==='rocketFactory') icon=getRocketFactoryIcon(); else return false;
         let marker=L.marker([lat,lng],{icon}).addTo(map); building.marker=marker; buildings.push(building);
         if(type==='radar'){ radars.push(building); let circle=L.circle([lat,lng],{radius:150000,color:'#00ffff',weight:1,fillOpacity:0.05}).addTo(map); building.radarCircle=circle; showHint("🛡️ Теперь постройте ПВО"); addXP(5); }
         if(type==='pvo'){ pvoSystems.push(building); showHint("⚡ Постройте Электростанцию"); addXP(10); }
         if(type==='powerPlant'){ powerPlants.push(building); showHint("⛽ Постройте НПЗ"); }
         if(type==='refinery') refineries.push(building);
-        if(type==='hangar'){ 
-            hangars.push(building); 
-            marker.bindPopup('<b>АНГАР</b>');
-            marker.on('click', () => showAirModal(marker));
-            showHint("✈️ Ангар построен! Кликните на него, чтобы запустить авиацию.");
-        }
+        if(type==='rocketFactory') rocketFactories.push(building);
         updateUI();
         if(!isAI && conn && conn.open) conn.send({ type:'build', buildType:type, lat, lng, team:myTeam, id:building.id });
         return true;
@@ -420,10 +390,10 @@
         let targets = [];
         buildings.forEach(b => {
             if(b.team !== myTeam && b.hp > 0){
-                let maxHp = (b.type==='radar'?120:(b.type==='pvo'?180:(b.type==='powerPlant'?100:(b.type==='refinery'?150:(b.type==='hangar'?250:200)))));
+                let maxHp = (b.type==='radar'?120:(b.type==='pvo'?180:(b.type==='powerPlant'?100:(b.type==='refinery'?150:200))));
                 let priority = 0;
                 if(b.type === 'refinery') priority = 100;
-                else if(b.type === 'hangar') priority = 85;
+                else if(b.type === 'rocketFactory') priority = 80;
                 else if(b.type === 'pvo') priority = 60;
                 else if(b.type === 'radar') priority = 40;
                 targets.push({
@@ -482,7 +452,6 @@
                 targetType: targetObj.type,
                 targetId: targetObj.id,
                 type: type,
-                category: 'missile',
                 active: true,
                 marker: null,
                 lastInterceptCheck: 0,
@@ -502,186 +471,14 @@
         return true;
     }
 
-    // ========== АВИАЦИЯ ==========
-    function showAirModal(hangar){
-        currentHangar = hangar;
-        selectedAircraftType = 'fighter';
-        aircraftCount = 1;
-        document.getElementById('airCount').innerText = aircraftCount;
-        updateAirCostDisplay();
-        buildAircraftGrid();
-        document.getElementById('airModal').style.display = 'block';
-    }
-    
-    function buildAircraftGrid(){
-        let container = document.getElementById('aircraftGrid');
-        if(!container) return;
-        container.innerHTML = '';
-        let types = ['fighter', 'awacs', 'bomber'];
-        types.forEach(type => {
-            let a = aircraftTypes[type];
-            let card = document.createElement('div');
-            card.className = 'aircraft-card';
-            if(selectedAircraftType === type) card.classList.add('selected');
-            let stats = '';
-            if(type === 'fighter') stats = '🎯 Перехват дронов и ракет';
-            else if(type === 'awacs') stats = '🔭 Увеличивает радиус радаров на 60 сек';
-            else if(type === 'bomber') stats = '💥 Урон: 120';
-            card.innerHTML = `
-                <img src="images/${a.img}" alt="${a.name}">
-                <div class="aircraft-name">${a.name}</div>
-                <div class="aircraft-stats">⚡ Цена: ${a.cost}<br>${stats}</div>
-            `;
-            card.onclick = () => {
-                selectedAircraftType = type;
-                updateAirCostDisplay();
-                document.querySelectorAll('.aircraft-card').forEach(c => c.classList.remove('selected'));
-                card.classList.add('selected');
-            };
-            container.appendChild(card);
-        });
-    }
-    
-    function updateAirCostDisplay(){
-        let cost = aircraftTypes[selectedAircraftType].cost;
-        document.getElementById('airCostDisplay').innerHTML = `СТОИМОСТЬ: ${cost * aircraftCount} ⚡`;
-    }
-    
-    function launchAircraft(targetObj){
-        let aircraft = aircraftTypes[selectedAircraftType];
-        let costPerUnit = aircraft.cost;
-        if(resources < costPerUnit * aircraftCount){ alert("Не хватает энергии"); return false; }
-        let fromLatLng = currentHangar.getLatLng();
-        if (!fromLatLng) return false;
-        
-        for(let i=0;i<aircraftCount;i++){
-            resources -= costPerUnit;
-            let offset = (i - (aircraftCount-1)/2) * 0.03;
-            let targetLat = targetObj.lat + offset;
-            let targetLng = targetObj.lng + offset * 0.5;
-            let p1 = map.latLngToLayerPoint([fromLatLng.lat, fromLatLng.lng]);
-            let p2 = map.latLngToLayerPoint([targetLat, targetLng]);
-            let dx = p2.x - p1.x;
-            let dy = p2.y - p1.y;
-            let angle = Math.atan2(dx, -dy) * 180 / Math.PI;
-            if(selectedAircraftType === 'bomber') angle += (aircraft.spriteOffset || 0);
-            
-            let proj = {
-                id: Date.now() + Math.random(),
-                from: fromLatLng,
-                to: {lat: targetLat, lng: targetLng},
-                progress: 0,
-                speed: aircraft.speed,
-                damage: aircraft.damage || 0,
-                team: myTeam,
-                targetType: targetObj.type,
-                targetId: targetObj.id,
-                type: selectedAircraftType,
-                category: 'aircraft',
-                active: true,
-                marker: null,
-                lastInterceptCheck: 0,
-                interceptedFlag: false,
-                angle: angle,
-                isAwacs: (selectedAircraftType === 'awacs'),
-                isFighter: (selectedAircraftType === 'fighter')
-            };
-            let marker = L.marker([proj.from.lat, proj.from.lng], {
-                icon: getAircraftIcon(selectedAircraftType),
-                rotationOrigin: 'center center',
-                rotationAngle: angle
-            }).addTo(map);
-            proj.marker = marker;
-            
-            // Для истребителя - патрулирование
-            if(selectedAircraftType === 'fighter'){
-                proj.isPatrolling = true;
-                proj.patrolCenter = targetObj;
-                proj.patrolRadius = 50000;
-                proj.fighterInterceptTimer = 0;
-            }
-            // Для AWACS - увеличиваем радиус радаров
-            if(selectedAircraftType === 'awacs'){
-                radars.forEach(r => {
-                    if(r.team === myTeam && r.radarCircle){
-                        r.originalRadius = 150000;
-                        r.radarCircle.setRadius(300000);
-                        setTimeout(() => {
-                            if(r.radarCircle) r.radarCircle.setRadius(r.originalRadius || 150000);
-                        }, aircraft.duration * 1000);
-                    }
-                });
-                showHint("🔭 AWACS активирован! Радиус радаров удвоен на 60 секунд.");
-                map.removeLayer(marker);
-                proj.active = false;
-                continue;
-            }
-            projectiles.push(proj);
-        }
-        updateUI(); playBeep(800,0.2);
-        return true;
-    }
-    
-    // Логика истребителя (перехват)
-    function updateFighterInterceptors(dt){
-        for(let i=0;i<projectiles.length;i++){
-            let p = projectiles[i];
-            if(!p.active) continue;
-            if(p.isFighter && p.isPatrolling){
-                // Движение к точке патрулирования
-                if(p.progress < 1){
-                    let lat = p.from.lat + (p.to.lat - p.from.lat) * p.progress;
-                    let lng = p.from.lng + (p.to.lng - p.from.lng) * p.progress;
-                    p.marker.setLatLng([lat, lng]);
-                    p.progress += p.speed * dt;
-                } else {
-                    // Круговой патруль
-                    p.progress = 0;
-                    let center = p.patrolCenter;
-                    let angle = (p.circleAngle || 0) + 5;
-                    p.circleAngle = angle;
-                    let rad = p.patrolRadius;
-                    let lat = center.lat + Math.cos(angle * Math.PI/180) * rad / 111000;
-                    let lng = center.lng + Math.sin(angle * Math.PI/180) * rad / (111000 * Math.cos(center.lat * Math.PI/180));
-                    p.marker.setLatLng([lat, lng]);
-                    p.from = {lat, lng};
-                    p.to = {lat, lng};
-                }
-                // Перехват вражеских снарядов
-                p.fighterInterceptTimer = (p.fighterInterceptTimer || 0) + dt;
-                if(p.fighterInterceptTimer > 0.5){
-                    p.fighterInterceptTimer = 0;
-                    let fighterPos = p.marker.getLatLng();
-                    for(let j=0;j<projectiles.length;j++){
-                        let enemy = projectiles[j];
-                        if(enemy.active && enemy.team !== myTeam && (enemy.category === 'missile' || enemy.type === 'drone' || enemy.type === 'cruise')){
-                            let dist = map.distance([fighterPos.lat, fighterPos.lng], [enemy.marker.getLatLng().lat, enemy.marker.getLatLng().lng]);
-                            if(dist < 30000){
-                                enemy.active = false;
-                                map.removeLayer(enemy.marker);
-                                createExplosion(enemy.marker.getLatLng().lat, enemy.marker.getLatLng().lng);
-                                projectiles.splice(j,1);
-                                j--;
-                                playBeep(600,0.1);
-                                addXP(15);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // Перехват ПВО
     function tryIntercept(proj){
-        if(proj.category === 'aircraft') return false; // самолёты не сбиваются ПВО
         const now=Date.now(); if(now-proj.lastInterceptCheck<2000) return false; proj.lastInterceptCheck=now;
         const pos = proj.marker.getLatLng();
         for(let pvo of pvoSystems){
             if(pvo.team !== proj.team){
                 let dist = map.distance([pvo.lat,pvo.lng], [pos.lat,pos.lng]);
                 if(dist < 100000){
-                    let chance = weaponTypes[proj.type]?.pvoChance || 0.10;
+                    let chance = weaponTypes[proj.type].pvoChance;
                     if(Math.random() < chance){
                         playBeep(600,0.15);
                         launchInterceptor({lat:pvo.lat,lng:pvo.lng}, pos);
@@ -693,7 +490,7 @@
         if(isAI && aiPvo && aiPvo.team !== proj.team){
             let dist = map.distance([aiPvo.lat,aiPvo.lng], [pos.lat,pos.lng]);
             if(dist < 100000){
-                let chance = weaponTypes[proj.type]?.pvoChance || 0.10;
+                let chance = weaponTypes[proj.type].pvoChance;
                 if(Math.random() < chance){
                     playBeep(600,0.15);
                     launchInterceptor({lat:aiPvo.lat,lng:aiPvo.lng}, pos);
@@ -705,7 +502,6 @@
     }
 
     function updateProjectiles(dt){
-        updateFighterInterceptors(dt);
         for(let i=0;i<projectiles.length;i++){
             let p=projectiles[i];
             if(!p.active) continue;
@@ -723,8 +519,7 @@
                 if(p.targetType === 'zone'){
                     let targetZone = zones.find(z => z.id === p.targetId);
                     if(targetZone && targetZone.hp > 0){
-                        let damage = p.damage || (p.category === 'aircraft' ? 120 : 50);
-                        targetZone.hp = Math.max(0, targetZone.hp - damage);
+                        targetZone.hp = Math.max(0, targetZone.hp - p.damage);
                         updateZoneMarkers();
                         playBeep(200,0.4);
                         addXP(20);
@@ -733,19 +528,17 @@
                 } else if(p.targetType === 'building'){
                     let targetBuilding = buildings.find(b => b.id == p.targetId);
                     if(targetBuilding && targetBuilding.hp > 0){
-                        let damage = p.damage || (p.category === 'aircraft' ? 120 : 50);
-                        targetBuilding.hp -= damage;
+                        targetBuilding.hp -= p.damage;
                         playBeep(200,0.4);
                         addXP(20);
                         if(targetBuilding.hp <= 0) destroyBuilding(targetBuilding);
                     }
                 }
-                updateStatsAfterHit(p.damage || 50, p.targetType, true);
+                updateStatsAfterHit(p.damage, p.targetType, true);
                 projectiles.splice(i,1);
                 i--;
                 continue;
             }
-            if(p.isFighter && p.isPatrolling) continue;
             let lat = p.from.lat + (p.to.lat - p.from.lat) * p.progress;
             let lng = p.from.lng + (p.to.lng - p.from.lng) * p.progress;
             p.marker.setLatLng([lat, lng]);
@@ -810,14 +603,14 @@
         },20);
     }
 
-    // ---------- УМНЫЙ ИИ (без авиации, только ракеты) ----------
+    // ---------- УМНЫЙ ИИ ----------
     const priorityWeights = {
         refinery: 100,
         city: 90,
         pvo: 80,
         radar: 70,
         powerPlant: 60,
-        hangar: 85
+        rocketFactory: 85
     };
     function chooseAITargets(maxTargets = 3){
         let candidates = [];
@@ -851,11 +644,11 @@
         let aiRadars = aiBuildings.filter(b=>b.type==='radar');
         let aiPvos = aiBuildings.filter(b=>b.type==='pvo');
         let aiRefineries = aiBuildings.filter(b=>b.type==='refinery');
-        let aiHangars = aiBuildings.filter(b=>b.type==='hangar');
+        let aiFactories = aiBuildings.filter(b=>b.type==='rocketFactory');
         if(aiRadars.length < 2) aiBuild('radar');
         else if(aiPvos.length < aiRadars.length) aiBuild('pvo');
         else if(aiRefineries.length < 2) aiBuild('refinery');
-        else if(aiHangars.length < 1) aiBuild('hangar');
+        else if(aiFactories.length < 1) aiBuild('rocketFactory');
     }
     function aiBuild(type){
         let enemyZones = zones.filter(z=>z.team===enemyTeam);
@@ -864,8 +657,8 @@
         let lat = zone.center[0] + (Math.random()-0.5)*0.2;
         let lng = zone.center[1] + (Math.random()-0.5)*0.2;
         if(!canBuildForTeam(lat,lng,enemyTeam)) return;
-        let building = {id:Date.now()+Math.random(), lat, lng, type, team:enemyTeam, hp:(type==='radar'?120:(type==='pvo'?180:(type==='powerPlant'?100:(type==='refinery'?150:(type==='hangar'?250:200)))), radarAngle:0, marker:null, radarCircle:null};
-        let icon; if(type==='radar') icon=getRadarIcon(); else if(type==='pvo') icon=getPvoIcon(); else if(type==='powerPlant') icon=getPowerPlantIcon(); else if(type==='refinery') icon=getRefineryIcon(); else if(type==='hangar') icon=getHangarIcon(); else return;
+        let building = {id:Date.now()+Math.random(), lat, lng, type, team:enemyTeam, hp:(type==='radar'?120:(type==='pvo'?180:(type==='powerPlant'?100:(type==='refinery'?150:200)))), radarAngle:0, marker:null, radarCircle:null};
+        let icon; if(type==='radar') icon=getRadarIcon(); else if(type==='pvo') icon=getPvoIcon(); else if(type==='powerPlant') icon=getPowerPlantIcon(); else if(type==='refinery') icon=getRefineryIcon(); else if(type==='rocketFactory') icon=getRocketFactoryIcon();
         if(icon){
             let marker=L.marker([lat,lng],{icon}).addTo(map);
             building.marker=marker;
@@ -874,7 +667,7 @@
             else if(type==='pvo') pvoSystems.push(building);
             else if(type==='powerPlant') powerPlants.push(building);
             else if(type==='refinery') refineries.push(building);
-            else if(type==='hangar') hangars.push(building);
+            else if(type==='rocketFactory') rocketFactories.push(building);
         }
     }
 
@@ -914,7 +707,6 @@
                 targetType: (target.center ? 'zone' : 'building'),
                 targetId: target.id,
                 type: type,
-                category: 'missile',
                 active: true,
                 marker: null,
                 lastInterceptCheck: 0,
@@ -1005,7 +797,7 @@
         loadRealBorders(()=>{
             if(ld) ld.remove();
             initZones();
-            buildings = []; radars = []; pvoSystems = []; powerPlants = []; refineries = []; hangars = []; projectiles = [];
+            buildings = []; radars = []; pvoSystems = []; powerPlants = []; refineries = []; rocketFactories = []; projectiles = [];
             if(difficulty==="EASY") resources = 400;
             else if(difficulty==="NORMAL") resources = 300;
             else if(difficulty==="HARD") resources = 220;
@@ -1054,15 +846,14 @@
     }
 
     function closeAttackModal(){ document.getElementById('attackModal').style.display='none'; }
-    function closeAirModal(){ document.getElementById('airModal').style.display='none'; }
 
-    // Обработчики кнопок
+    // Обработчики кнопок (стандартные)
     document.getElementById('diffEasy').onclick=()=>{ document.querySelectorAll('.difficulty-btn').forEach(btn=>btn.classList.remove('selected')); document.getElementById('diffEasy').classList.add('selected'); difficulty="EASY"; };
     document.getElementById('diffNormal').onclick=()=>{ document.querySelectorAll('.difficulty-btn').forEach(btn=>btn.classList.remove('selected')); document.getElementById('diffNormal').classList.add('selected'); difficulty="NORMAL"; };
     document.getElementById('diffHard').onclick=()=>{ document.querySelectorAll('.difficulty-btn').forEach(btn=>btn.classList.remove('selected')); document.getElementById('diffHard').classList.add('selected'); difficulty="HARD"; };
     document.getElementById('diffExtreme').onclick=()=>{ document.querySelectorAll('.difficulty-btn').forEach(btn=>btn.classList.remove('selected')); document.getElementById('diffExtreme').classList.add('selected'); difficulty="EXTREME"; };
     document.getElementById('singleBtn').onclick=()=>{ playBeep(400,0.1); setTimeout(()=>{ playBeep(600,0.1); setTimeout(()=>{ playBeep(800,0.1); myTeam='russia'; enemyTeam='ukraine'; isAI=true; initGameMapAndLogic(); },100); },100); };
-    document.getElementById('tutorialBtn').onclick=()=>{ alert("Обучение: постройте аэродром → радар → ПВО → атакуйте врага. Ангары дают авиацию."); };
+    document.getElementById('tutorialBtn').onclick=()=>{ alert("Обучение: постройте аэродром → радар → ПВО → атакуйте врага. Карточки оружия, ИИ умнее."); };
     document.getElementById('createGameBtn').onclick=()=>{ alert("Мультиплеер в разработке"); };
     document.getElementById('joinGameBtn').onclick=()=>{ document.getElementById('roomCodeInput').style.display='block'; document.getElementById('confirmJoinBtn').style.display='block'; };
     document.getElementById('confirmJoinBtn').onclick=()=>{ let code=document.getElementById('roomCodeInput').value.trim().toUpperCase(); if(code) alert("Мультиплеер в разработке"); else alert("Введите код"); };
@@ -1073,30 +864,10 @@
     document.getElementById('buildPvoBtn').onclick=()=>{ buildMode='pvo'; };
     document.getElementById('buildPowerPlantBtn').onclick=()=>{ buildMode='powerPlant'; };
     document.getElementById('buildRefineryBtn').onclick=()=>{ buildMode='refinery'; };
-    document.getElementById('buildHangarBtn').onclick=()=>{ buildMode='hangar'; };
+    document.getElementById('buildRocketFactoryBtn').onclick=()=>{ buildMode='rocketFactory'; };
     document.getElementById('cancelBuild').onclick=()=>{ buildMode=null; };
     document.getElementById('countMinus').onclick=()=>{ if(attackCount>1) attackCount--; document.getElementById('countValue').innerText=attackCount; updateCostDisplay(); };
     document.getElementById('countPlus').onclick=()=>{ if(attackCount<5) attackCount++; document.getElementById('countValue').innerText=attackCount; updateCostDisplay(); };
-    document.getElementById('airMinus').onclick=()=>{ if(aircraftCount>1) aircraftCount--; document.getElementById('airCount').innerText=aircraftCount; updateAirCostDisplay(); };
-    document.getElementById('airPlus').onclick=()=>{ if(aircraftCount<5) aircraftCount++; document.getElementById('airCount').innerText=aircraftCount; updateAirCostDisplay(); };
-    document.getElementById('launchAircraftBtn').onclick = () => {
-        let select = document.getElementById('targetSelect');
-        let targetId = select.value;
-        let targetType = select.options[select.selectedIndex].getAttribute('data-type');
-        let target;
-        if (targetType === 'zone') {
-            let z = zones.find(z => z.id === targetId);
-            if (!z) { alert("Цель не найдена"); return; }
-            target = { id: z.id, type: 'zone', lat: z.center[0], lng: z.center[1] };
-        } else {
-            let b = buildings.find(b => b.id == targetId);
-            if (!b) { alert("Цель не найдена"); return; }
-            target = { id: b.id, type: 'building', lat: b.lat, lng: b.lng };
-        }
-        if (currentHangar) launchAircraft(target);
-        closeAirModal();
-    };
-    document.getElementById('closeAirModalBtn').onclick=()=>closeAirModal();
     document.getElementById('attackConfirmBtn').onclick = () => {
         let select = document.getElementById('targetSelect');
         let targetId = select.value;
