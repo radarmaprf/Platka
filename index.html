@@ -154,72 +154,69 @@
     </div>
 </div>
 
-<!-- КОНТЕЙНЕР ИГРЫ (изначально скрыт) -->
-<div id="gameContainerFull" style="display:none;">
-    <!-- МЕНЮ -->
-    <div id="menuScreen" class="screen">
-        <div class="missile-bg"></div>
-        <div class="scan-line"></div>
-        <div class="card">
-            <div class="logo">☢️ SKY IN FIRE</div>
-            <div class="difficulty-select">
-                <div id="diffEasy" class="difficulty-btn">EASY</div>
-                <div id="diffNormal" class="difficulty-btn selected">NORMAL</div>
-                <div id="diffHard" class="difficulty-btn">HARD</div>
-                <div id="diffExtreme" class="difficulty-btn">EXTREME</div>
-            </div>
-            <button id="singleBtn">⚔️ ОДИНОЧНАЯ ИГРА</button>
-            <button id="tutorialBtn">📖 ОБУЧЕНИЕ</button>
-            <button id="createGameBtn">🌐 СОЗДАТЬ КОМНАТУ</button>
-            <button id="joinGameBtn">🔌 ПОДКЛЮЧИТЬСЯ</button>
-            <input type="text" id="roomCodeInput" placeholder="КОД КОМНАТЫ" style="display:none;">
-            <button id="confirmJoinBtn" style="display:none;">ПОДКЛЮЧИТЬСЯ</button>
-            <div id="roomDisplay" style="margin-top:10px; font-size:12px; opacity:0.8;"></div>
-            <button id="logoutBtn" style="margin-top:15px; background:#aa3333;">🚪 ВЫЙТИ ИЗ АККАУНТА</button>
+<!-- ОРИГИНАЛЬНЫЙ КОНТЕНТ ИГРЫ (без изменений) -->
+<div id="menuScreen" class="screen">
+    <div class="missile-bg"></div>
+    <div class="scan-line"></div>
+    <div class="card">
+        <div class="logo">☢️ SKY IN FIRE</div>
+        <div class="difficulty-select">
+            <div id="diffEasy" class="difficulty-btn">EASY</div>
+            <div id="diffNormal" class="difficulty-btn selected">NORMAL</div>
+            <div id="diffHard" class="difficulty-btn">HARD</div>
+            <div id="diffExtreme" class="difficulty-btn">EXTREME</div>
+        </div>
+        <button id="singleBtn">⚔️ ОДИНОЧНАЯ ИГРА</button>
+        <button id="tutorialBtn">📖 ОБУЧЕНИЕ</button>
+        <button id="createGameBtn">🌐 СОЗДАТЬ КОМНАТУ</button>
+        <button id="joinGameBtn">🔌 ПОДКЛЮЧИТЬСЯ</button>
+        <input type="text" id="roomCodeInput" placeholder="КОД КОМНАТЫ" style="display:none;">
+        <button id="confirmJoinBtn" style="display:none;">ПОДКЛЮЧИТЬСЯ</button>
+        <div id="roomDisplay" style="margin-top:10px; font-size:12px; opacity:0.8;"></div>
+        <button id="logoutBtn" style="margin-top:15px; background:#aa3333;">🚪 ВЫЙТИ ИЗ АККАУНТА</button>
+    </div>
+</div>
+<div id="lobbyScreen" class="screen" style="display:none;">
+    <div class="card" style="width:400px;">
+        <h1>ЛОББИ</h1>
+        <div class="lobby-info">Код комнаты: <span id="lobbyRoomCode"></span></div>
+        <div class="lobby-info">Игрок 1: <span id="player1Name">—</span> <span id="player1Ready">⚪</span></div>
+        <div class="lobby-info">Игрок 2: <span id="player2Name">—</span> <span id="player2Ready">⚪</span></div>
+        <div class="country-select">
+            <div id="chooseRussia" class="country-btn">РОССИЯ</div>
+            <div id="chooseUkraine" class="country-btn">УКРАИНА</div>
+        </div>
+        <button id="readyBtn" class="ready-btn">ГОТОВ</button>
+        <div id="lobbyMessage"></div>
+    </div>
+</div>
+<div id="attackModal" class="modal" style="display:none;">
+    <h3>🎯 ВЫБОР ЦЕЛИ</h3>
+    <select id="targetSelect" size="6" style="width:100%; margin-bottom:10px;"></select>
+    <div>💥 ВООРУЖЕНИЕ (прокрутите вниз)</div>
+    <div id="weaponGrid" class="weapon-grid"></div>
+    <div>⚡ КОЛИЧЕСТВО: <button id="countMinus">-</button> <span id="countValue">1</span> <button id="countPlus">+</button></div>
+    <div id="costDisplay" style="margin:10px 0; font-weight:bold;">СТОИМОСТЬ: 0 ⚡</div>
+    <button id="attackConfirmBtn">АТАКОВАТЬ</button>
+    <button id="attackCancelBtn">ОТМЕНА</button>
+</div>
+<div id="gameContainer" style="display:none; width:100%; height:100%; position:relative;">
+    <div id="map" style="width:100%; height:100%;"></div>
+    <div id="gameHUD">
+        <div class="hud-resource">⚡ <span id="energy">300</span></div>
+        <div class="hud-rank" id="rankDisplay">⭐ <span id="rankTitle">Рядовой</span> <span id="rankXp">0 XP</span></div>
+        <div class="health-bars">
+            <div class="health-bar"><span>🇷🇺</span><div class="bar-bg"><div class="bar-fill ru-fill" id="ruFill"></div></div><span id="ruPercent">0%</span></div>
+            <div class="health-bar"><span>🇺🇦</span><div class="bar-bg"><div class="bar-fill ua-fill" id="uaFill"></div></div><span id="uaPercent">0%</span></div>
         </div>
     </div>
-    <div id="lobbyScreen" class="screen" style="display:none;">
-        <div class="card" style="width:400px;">
-            <h1>ЛОББИ</h1>
-            <div class="lobby-info">Код комнаты: <span id="lobbyRoomCode"></span></div>
-            <div class="lobby-info">Игрок 1: <span id="player1Name">—</span> <span id="player1Ready">⚪</span></div>
-            <div class="lobby-info">Игрок 2: <span id="player2Name">—</span> <span id="player2Ready">⚪</span></div>
-            <div class="country-select">
-                <div id="chooseRussia" class="country-btn">РОССИЯ</div>
-                <div id="chooseUkraine" class="country-btn">УКРАИНА</div>
-            </div>
-            <button id="readyBtn" class="ready-btn">ГОТОВ</button>
-            <div id="lobbyMessage"></div>
-        </div>
-    </div>
-    <div id="attackModal" class="modal" style="display:none;">
-        <h3>🎯 ВЫБОР ЦЕЛИ</h3>
-        <select id="targetSelect" size="6" style="width:100%; margin-bottom:10px;"></select>
-        <div>💥 ВООРУЖЕНИЕ (прокрутите вниз)</div>
-        <div id="weaponGrid" class="weapon-grid"></div>
-        <div>⚡ КОЛИЧЕСТВО: <button id="countMinus">-</button> <span id="countValue">1</span> <button id="countPlus">+</button></div>
-        <div id="costDisplay" style="margin:10px 0; font-weight:bold;">СТОИМОСТЬ: 0 ⚡</div>
-        <button id="attackConfirmBtn">АТАКОВАТЬ</button>
-        <button id="attackCancelBtn">ОТМЕНА</button>
-    </div>
-    <div id="gameContainer" style="display:none; width:100%; height:100%; position:relative;">
-        <div id="map" style="width:100%; height:100%;"></div>
-        <div id="gameHUD">
-            <div class="hud-resource">⚡ <span id="energy">300</span></div>
-            <div class="hud-rank" id="rankDisplay">⭐ <span id="rankTitle">Рядовой</span> <span id="rankXp">0 XP</span></div>
-            <div class="health-bars">
-                <div class="health-bar"><span>🇷🇺</span><div class="bar-bg"><div class="bar-fill ru-fill" id="ruFill"></div></div><span id="ruPercent">0%</span></div>
-                <div class="health-bar"><span>🇺🇦</span><div class="bar-bg"><div class="bar-fill ua-fill" id="uaFill"></div></div><span id="uaPercent">0%</span></div>
-            </div>
-        </div>
-        <div id="buildPanel">
-            <button class="build-btn" id="buildRadarBtn">📡 РАДАР (180)</button>
-            <button class="build-btn" id="buildPvoBtn">🛡️ ПВО (220)</button>
-            <button class="build-btn" id="buildPowerPlantBtn">⚡ ЭЛЕКТРОСТАНЦИЯ (250)</button>
-            <button class="build-btn" id="buildRefineryBtn">⛽ НПЗ (400)</button>
-            <button class="build-btn" id="buildRocketFactoryBtn">🚀 ЗАВОД РАКЕТ (500)</button>
-            <button class="build-btn" id="cancelBuild">❌ ОТМЕНА</button>
-        </div>
+    <div id="buildPanel">
+        <button class="build-btn" id="buildRadarBtn">📡 РАДАР (180)</button>
+        <button class="build-btn" id="buildPvoBtn">🛡️ ПВО (220)</button>
+        <button class="build-btn" id="buildPowerPlantBtn">⚡ ЭЛЕКТРОСТАНЦИЯ (250)</button>
+        <button class="build-btn" id="buildRefineryBtn">⛽ НПЗ (400)</button>
+        <button class="build-btn" id="buildRocketFactoryBtn">🚀 ЗАВОД РАКЕТ (500)</button>
+        <button class="build-btn" id="cancelBuild">❌ ОТМЕНА</button>
     </div>
 </div>
 
@@ -242,7 +239,7 @@
     const VALID_KEYS = [
         "theoqjzn6heuwn478-yeneis528y", "kf92jdn30qpeor83-xmz73kdl", "h8d73jf92kdn392u-jd83mz",
         "vgs392kf92jdn30qpe-xy81m4n", "pq83jf92kdn30qpeor-74hs8w2", "mz73kdl92jdn30qpe-93jsk2l",
-        "d83mzf92kdn30qpeor-2n83ks0", "81m4nf92jdn30qpeor-6h2j9sl", "74hs8w2kf92jdn30qpe-8k3jsl",
+        "d83mzf92kdn30qpeor-2n83ks0", "81m4nf92kdn30qpeor-6h2j9sl", "74hs8w2kf92jdn30qpe-8k3jsl",
         "93jsk2lkd92jdn30qpe-1j4hs8", "2n83ks0f92jdn30qpeor-3m9sl2", "6h2j9slkf92jdn30qpe-7j3ks9",
         "8k3jsljf92kdn30qpeor-0n2hs4", "1j4hs8f92kdn30qpeor-2m8kdl", "3m9sl2kd92jdn30qpe-5j7hs1",
         "7j3ks9f92kdn30qpeor-8n2ks5", "0n2hs4jf92kdn30qpeor-3k9slm", "2m8kdlkf92jdn30qpe-6j1hs7",
@@ -357,7 +354,7 @@
             } catch(e) {}
         }
         authOverlay.style.display = 'none';
-        document.getElementById('gameContainerFull').style.display = 'block';
+        // Показываем меню (оно уже видимо, но оверлей скрыт)
         if(window.saveInterval) clearInterval(window.saveInterval);
         window.saveInterval = setInterval(() => {
             if(currentUser && accounts[currentUser]) {
@@ -400,7 +397,7 @@
     }
     restoreSession();
 
-    // ========== ИГРОВАЯ ЛОГИКА (ПОЛНАЯ, БЕЗ ИЗМЕНЕНИЙ) ==========
+    // ========== ДАЛЕЕ ИДЁТ ВАШ ПОЛНЫЙ ОРИГИНАЛЬНЫЙ СКРИПТ (БЕЗ ИЗМЕНЕНИЙ) ==========
     let map, gameActive = false;
     let resources = 300;
     let buildings = [];
@@ -1108,7 +1105,7 @@
 
     function closeAttackModal(){ document.getElementById('attackModal').style.display='none'; }
 
-    // Обработчики кнопок
+    // Обработчики кнопок (оригинальные, но logoutBtn уже добавлен в HTML)
     document.getElementById('diffEasy').onclick=()=>{ document.querySelectorAll('.difficulty-btn').forEach(btn=>btn.classList.remove('selected')); document.getElementById('diffEasy').classList.add('selected'); difficulty="EASY"; };
     document.getElementById('diffNormal').onclick=()=>{ document.querySelectorAll('.difficulty-btn').forEach(btn=>btn.classList.remove('selected')); document.getElementById('diffNormal').classList.add('selected'); difficulty="NORMAL"; };
     document.getElementById('diffHard').onclick=()=>{ document.querySelectorAll('.difficulty-btn').forEach(btn=>btn.classList.remove('selected')); document.getElementById('diffHard').classList.add('selected'); difficulty="HARD"; };
@@ -1147,7 +1144,7 @@
         closeAttackModal();
     };
     document.getElementById('attackCancelBtn').onclick=()=>closeAttackModal();
-    document.getElementById('logoutBtn').onclick=logout;
+    document.getElementById('logoutBtn').onclick = logout;
 
     function updateLobbyUI(){}
     function sendLobbyUpdate(){}
