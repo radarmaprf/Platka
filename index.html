@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Sky in Fire — каталог вооружений, умный ИИ</title>
+    <title>Sky in Fire — новые ракеты (X-101, Калибр, Кинжал, Искандер)</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-rotatedmarker/leaflet.rotatedMarker.js"></script>
@@ -48,7 +48,16 @@
         .build-btn { background:linear-gradient(180deg,#24353d,#17242b); border:1px solid #00ffaa44; box-shadow:0 0 10px rgba(0,255,170,0.15); transition:0.2s; border:none; color:#fff; padding:8px 16px; border-radius:40px; cursor:pointer; font-weight:bold; text-align:left; }
         .build-btn:hover { transform:translateX(5px); border-color:#00ffaa; background:linear-gradient(180deg,#2a4a5a,#1a2a3a); }
         .modal { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:linear-gradient(180deg,#091116,#020508); border-radius:40px; padding:24px; z-index:3000; color:#fff; width:450px; text-align:center; border:2px solid #00ffaa; box-shadow:0 0 40px rgba(0,255,170,0.3); }
-        .weapon-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:15px 0; }
+        /* Сетка оружия с прокруткой */
+        .weapon-grid {
+            display:grid;
+            grid-template-columns:1fr 1fr;
+            gap:12px;
+            margin:15px 0;
+            max-height:320px;
+            overflow-y:auto;
+            padding-right:6px;
+        }
         .weapon-card { background:#101820; border:2px solid #333; border-radius:20px; padding:12px; cursor:pointer; transition:0.2s; text-align:center; }
         .weapon-card:hover { transform:scale(1.02); background:#1a2830; }
         .weapon-card.selected { border-color:#00ffaa; box-shadow:0 0 15px rgba(0,255,170,0.4); background:#1e3038; }
@@ -112,7 +121,7 @@
 <div id="attackModal" class="modal" style="display:none;">
     <h3>🎯 ВЫБОР ЦЕЛИ</h3>
     <select id="targetSelect" size="6" style="width:100%; margin-bottom:10px;"></select>
-    <div>💥 ВООРУЖЕНИЕ</div>
+    <div>💥 ВООРУЖЕНИЕ (прокрутите вниз)</div>
     <div id="weaponGrid" class="weapon-grid"></div>
     <div>⚡ КОЛИЧЕСТВО: <button id="countMinus">-</button> <span id="countValue">1</span> <button id="countPlus">+</button></div>
     <div id="costDisplay" style="margin:10px 0; font-weight:bold;">СТОИМОСТЬ: 0 ⚡</div>
@@ -161,18 +170,24 @@
     let lobbyState = { player1: { ready: false, team: null }, player2: { ready: false, team: null } };
     let roomId = null;
 
-    // ТИПЫ ВООРУЖЕНИЙ
+    // ========== ВСЕ ТИПЫ РАКЕТ (8 шт.) ==========
     const weaponTypes = {
+        // Базовые
         drone:      { name: 'SHAHED', speed: 0.006, damage: 25, cost: 60, pvoChance: 0.08, spriteOffset: 0, img: 'drone.png' },
         cruise:     { name: 'CRUISE', speed: 0.02, damage: 35, cost: 90, pvoChance: 0.10, spriteOffset: 90, img: 'cruise.png' },
         ballistic:  { name: 'BALLISTIC', speed: 0.05, damage: 50, cost: 130, pvoChance: 0.10, spriteOffset: -45, img: 'ballistic.png' },
-        hypersonic: { name: 'HYPERSONIC', speed: 0.09, damage: 70, cost: 200, pvoChance: 0.10, spriteOffset: 0, img: 'hypersonic.png' }
+        hypersonic: { name: 'HYPERSONIC', speed: 0.09, damage: 70, cost: 200, pvoChance: 0.10, spriteOffset: 0, img: 'hypersonic.png' },
+        // Новые
+        x101:       { name: 'X-101',    speed: 0.03, damage: 65, cost: 160, pvoChance: 0.12, spriteOffset: 0, img: 'x101.png' },
+        kalibr:     { name: 'KALIBR',   speed: 0.025, damage: 200, cost: 750, pvoChance: 0.08, spriteOffset: 0, img: 'kalibr.png' },
+        kinzhal:    { name: 'KINZHAL',  speed: 0.11, damage: 250, cost: 850, pvoChance: 0.05, spriteOffset: 0, img: 'kinzhal.png' },
+        iskander:   { name: 'ISKANDER', speed: 0.07, damage: 300, cost: 1000, pvoChance: 0.04, spriteOffset: 0, img: 'iskander.png' }
     };
     let attackType = 'drone', attackCount = 1, currentAirport = null;
     const costs = { radar: 180, pvo: 220, powerPlant: 250, refinery: 400, rocketFactory: 500 };
     const maxRadars = 8, maxPvo = 12, maxPowerPlants = 5, maxRefineries = 3;
 
-    // Прогрессия (локальная)
+    // Прогрессия
     let playerXP = 0;
     let playerStats = { wins:0, losses:0, citiesDestroyed:0, buildingsDestroyed:0, missilesLaunched:0, hits:0, totalShots:0 };
     const ranks = [
@@ -216,25 +231,33 @@
     ];
     const teamColors = { russia: '#ff5555', ukraine: '#55aaff' };
 
-    // ИКОНКИ (PNG)
-    function getAirportIcon() { return L.icon({ iconUrl: 'images/airport.png', iconSize: [48,48], iconAnchor: [24,24] }); }
-    function getRadarIcon() { return L.icon({ iconUrl: 'images/radar.png', iconSize: [40,40], iconAnchor: [20,20] }); }
-    function getPvoIcon() { return L.icon({ iconUrl: 'images/pvo.png', iconSize: [40,40], iconAnchor: [20,20] }); }
-    function getPowerPlantIcon() { return L.icon({ iconUrl: 'images/powerplant.png', iconSize: [40,40], iconAnchor: [20,20] }); }
-    function getRefineryIcon() { return L.icon({ iconUrl: 'images/refinery.png', iconSize: [40,40], iconAnchor: [20,20] }); }
-    function getRocketFactoryIcon() { return L.icon({ iconUrl: 'images/rocket_factory.png', iconSize: [40,40], iconAnchor: [20,20] }); }
-    function getInterceptorIcon() { return L.icon({ iconUrl: 'images/pvo_rocket.png', iconSize: [24,24], iconAnchor: [12,12] }); }
+    // ИКОНКИ (с fallback на эмодзи, если PNG нет)
+    function getAirportIcon() { try { return L.icon({ iconUrl: 'images/airport.png', iconSize: [48,48], iconAnchor: [24,24] }); } catch(e){ return L.divIcon({ html:'🏠', iconSize:[48,48] }); } }
+    function getRadarIcon() { try { return L.icon({ iconUrl: 'images/radar.png', iconSize: [40,40], iconAnchor: [20,20] }); } catch(e){ return L.divIcon({ html:'📡', iconSize:[40,40] }); } }
+    function getPvoIcon() { try { return L.icon({ iconUrl: 'images/pvo.png', iconSize: [40,40], iconAnchor: [20,20] }); } catch(e){ return L.divIcon({ html:'🛡️', iconSize:[40,40] }); } }
+    function getPowerPlantIcon() { try { return L.icon({ iconUrl: 'images/powerplant.png', iconSize: [40,40], iconAnchor: [20,20] }); } catch(e){ return L.divIcon({ html:'⚡', iconSize:[40,40] }); } }
+    function getRefineryIcon() { try { return L.icon({ iconUrl: 'images/refinery.png', iconSize: [40,40], iconAnchor: [20,20] }); } catch(e){ return L.divIcon({ html:'⛽', iconSize:[40,40] }); } }
+    function getRocketFactoryIcon() { try { return L.icon({ iconUrl: 'images/rocket_factory.png', iconSize: [40,40], iconAnchor: [20,20] }); } catch(e){ return L.divIcon({ html:'🏭', iconSize:[40,40] }); } }
+    function getInterceptorIcon() { try { return L.icon({ iconUrl: 'images/pvo_rocket.png', iconSize: [24,24], iconAnchor: [12,12] }); } catch(e){ return L.divIcon({ html:'🚀', iconSize:[24,24] }); } }
     function getMissileIcon(type, team) {
         if(type === 'drone') {
             const img = (team === 'ukraine') ? 'images/drone_ua.png' : 'images/drone.png';
-            return L.icon({ iconUrl: img, iconSize: [28,28], iconAnchor: [14,14] });
+            try { return L.icon({ iconUrl: img, iconSize: [28,28], iconAnchor: [14,14] }); } catch(e){ return L.divIcon({ html: '🛸', iconSize:[28,28] }); }
         }
-        const map = { cruise:'images/cruise.png', ballistic:'images/ballistic.png', hypersonic:'images/hypersonic.png' };
+        const map = {
+            cruise:'images/cruise.png',
+            ballistic:'images/ballistic.png',
+            hypersonic:'images/hypersonic.png',
+            x101:'images/x101.png',
+            kalibr:'images/kalibr.png',
+            kinzhal:'images/kinzhal.png',
+            iskander:'images/iskander.png'
+        };
         const url = map[type] || 'images/missile.png';
-        return L.icon({ iconUrl: url, iconSize: [28,28], iconAnchor: [14,14] });
+        try { return L.icon({ iconUrl: url, iconSize: [28,28], iconAnchor: [14,14] }); } catch(e){ return L.divIcon({ html: '💥', iconSize:[28,28] }); }
     }
 
-    // ========== ГЕОГРАФИЯ И ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
+    // ========== ГЕОГРАФИЯ И ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ (без изменений) ==========
     function loadRealBorders(cb) {
         Promise.all([
             fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries/RUS.geo.json').then(r=>r.json()),
@@ -334,7 +357,6 @@
     }
     function updateUI(){ document.getElementById('energy').innerText=Math.floor(resources); }
 
-    // Прогрессия
     function addXP(amount){
         playerXP += amount;
         updateRankUI();
@@ -426,6 +448,7 @@
 
     function launchAttack(airport, targetObj, type, count){
         let weapon = weaponTypes[type];
+        if(!weapon) return false;
         let costPerUnit = weapon.cost;
         if(resources < costPerUnit * count){ alert("Не хватает энергии"); return false; }
         let fromLatLng = airport.getLatLng();
@@ -478,7 +501,7 @@
             if(pvo.team !== proj.team){
                 let dist = map.distance([pvo.lat,pvo.lng], [pos.lat,pos.lng]);
                 if(dist < 100000){
-                    let chance = weaponTypes[proj.type].pvoChance;
+                    let chance = weaponTypes[proj.type]?.pvoChance || 0.10;
                     if(Math.random() < chance){
                         playBeep(600,0.15);
                         launchInterceptor({lat:pvo.lat,lng:pvo.lng}, pos);
@@ -490,7 +513,7 @@
         if(isAI && aiPvo && aiPvo.team !== proj.team){
             let dist = map.distance([aiPvo.lat,aiPvo.lng], [pos.lat,pos.lng]);
             if(dist < 100000){
-                let chance = weaponTypes[proj.type].pvoChance;
+                let chance = weaponTypes[proj.type]?.pvoChance || 0.10;
                 if(Math.random() < chance){
                     playBeep(600,0.15);
                     launchInterceptor({lat:aiPvo.lat,lng:aiPvo.lng}, pos);
@@ -603,7 +626,7 @@
         },20);
     }
 
-    // ---------- УМНЫЙ ИИ ----------
+    // ---------- УМНЫЙ ИИ (новые ракеты только на HARD/EXTREME) ----------
     const priorityWeights = {
         refinery: 100,
         city: 90,
@@ -628,9 +651,7 @@
         });
         candidates.sort((a,b)=>b.score - a.score);
         let result = [];
-        for(let i=0; i<Math.min(maxTargets, candidates.length); i++){
-            result.push(candidates[i].target);
-        }
+        for(let i=0; i<Math.min(maxTargets, candidates.length); i++) result.push(candidates[i].target);
         if(difficulty === "EXTREME" && result.length > 1){
             if(Math.random() < 0.4 && candidates.length > 3) result.push(candidates[3].target);
         }
@@ -672,12 +693,12 @@
     }
 
     function launchAIAttack(target){
-        let weaponTypesList = ['drone','cruise','ballistic','hypersonic'];
-        let type;
-        if(difficulty === "EASY") type = 'drone';
-        else if(difficulty === "NORMAL") type = weaponTypesList[Math.floor(Math.random()*2)];
-        else if(difficulty === "HARD") type = weaponTypesList[Math.floor(Math.random()*3)];
-        else type = weaponTypesList[Math.floor(Math.random()*4)];
+        // Определяем список доступного оружия в зависимости от сложности
+        let availableWeapons = ['drone','cruise','ballistic','hypersonic'];
+        if(difficulty === "HARD" || difficulty === "EXTREME") {
+            availableWeapons.push('x101','kalibr','kinzhal','iskander');
+        }
+        let type = availableWeapons[Math.floor(Math.random() * availableWeapons.length)];
         let count = 1;
         if(difficulty === "NORMAL") count = Math.floor(Math.random()*2)+1;
         if(difficulty === "HARD") count = Math.floor(Math.random()*3)+1;
@@ -754,19 +775,19 @@
         requestAnimationFrame(gameLoop);
     }
 
-    // Генерация карточек вооружения
+    // Генерация карточек вооружения (все 8 типов)
     function buildWeaponGrid(){
         let container = document.getElementById('weaponGrid');
         if(!container) return;
         container.innerHTML = '';
-        let types = ['drone','cruise','ballistic','hypersonic'];
+        let types = ['drone','cruise','ballistic','hypersonic','x101','kalibr','kinzhal','iskander'];
         types.forEach(type => {
             let w = weaponTypes[type];
             let card = document.createElement('div');
             card.className = 'weapon-card';
             if(attackType === type) card.classList.add('selected');
             card.innerHTML = `
-                <img src="images/${w.img}" alt="${w.name}">
+                <img src="images/${w.img}" alt="${w.name}" onerror="this.style.display='none'">
                 <div class="weapon-name">${w.name}</div>
                 <div class="weapon-stats">💥 Урон: ${w.damage}<br>⚡ Цена: ${w.cost}</div>
             `;
@@ -847,13 +868,13 @@
 
     function closeAttackModal(){ document.getElementById('attackModal').style.display='none'; }
 
-    // Обработчики кнопок (стандартные)
+    // Обработчики кнопок
     document.getElementById('diffEasy').onclick=()=>{ document.querySelectorAll('.difficulty-btn').forEach(btn=>btn.classList.remove('selected')); document.getElementById('diffEasy').classList.add('selected'); difficulty="EASY"; };
     document.getElementById('diffNormal').onclick=()=>{ document.querySelectorAll('.difficulty-btn').forEach(btn=>btn.classList.remove('selected')); document.getElementById('diffNormal').classList.add('selected'); difficulty="NORMAL"; };
     document.getElementById('diffHard').onclick=()=>{ document.querySelectorAll('.difficulty-btn').forEach(btn=>btn.classList.remove('selected')); document.getElementById('diffHard').classList.add('selected'); difficulty="HARD"; };
     document.getElementById('diffExtreme').onclick=()=>{ document.querySelectorAll('.difficulty-btn').forEach(btn=>btn.classList.remove('selected')); document.getElementById('diffExtreme').classList.add('selected'); difficulty="EXTREME"; };
     document.getElementById('singleBtn').onclick=()=>{ playBeep(400,0.1); setTimeout(()=>{ playBeep(600,0.1); setTimeout(()=>{ playBeep(800,0.1); myTeam='russia'; enemyTeam='ukraine'; isAI=true; initGameMapAndLogic(); },100); },100); };
-    document.getElementById('tutorialBtn').onclick=()=>{ alert("Обучение: постройте аэродром → радар → ПВО → атакуйте врага. Карточки оружия, ИИ умнее."); };
+    document.getElementById('tutorialBtn').onclick=()=>{ alert("Обучение: постройте аэродром → радар → ПВО → атакуйте врага. Новые ракеты (X-101, Калибр, Кинжал, Искандер) доступны на HARD и EXTREME."); };
     document.getElementById('createGameBtn').onclick=()=>{ alert("Мультиплеер в разработке"); };
     document.getElementById('joinGameBtn').onclick=()=>{ document.getElementById('roomCodeInput').style.display='block'; document.getElementById('confirmJoinBtn').style.display='block'; };
     document.getElementById('confirmJoinBtn').onclick=()=>{ let code=document.getElementById('roomCodeInput').value.trim().toUpperCase(); if(code) alert("Мультиплеер в разработке"); else alert("Введите код"); };
