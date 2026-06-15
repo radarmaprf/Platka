@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Sky in Fire — авиация (рабочая версия)</title>
+    <title>Sky in Fire — авиация + новые типы в аэродроме</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-rotatedmarker/leaflet.rotatedMarker.js"></script>
@@ -48,13 +48,20 @@
         .build-btn { background:linear-gradient(180deg,#24353d,#17242b); border:1px solid #00ffaa44; box-shadow:0 0 10px rgba(0,255,170,0.15); transition:0.2s; border:none; color:#fff; padding:8px 16px; border-radius:40px; cursor:pointer; font-weight:bold; text-align:left; }
         .build-btn:hover { transform:translateX(5px); border-color:#00ffaa; background:linear-gradient(180deg,#2a4a5a,#1a2a3a); }
         .modal { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:linear-gradient(180deg,#091116,#020508); border-radius:40px; padding:24px; z-index:3000; color:#fff; width:450px; text-align:center; border:2px solid #00ffaa; box-shadow:0 0 40px rgba(0,255,170,0.3); }
-        .weapon-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:15px 0; }
-        .weapon-card, .aircraft-card { background:#101820; border:2px solid #333; border-radius:20px; padding:12px; cursor:pointer; transition:0.2s; text-align:center; }
-        .weapon-card:hover, .aircraft-card:hover { transform:scale(1.02); background:#1a2830; }
-        .weapon-card.selected, .aircraft-card.selected { border-color:#00ffaa; box-shadow:0 0 15px rgba(0,255,170,0.4); background:#1e3038; }
-        .weapon-card img, .aircraft-card img { width:100%; height:80px; object-fit:contain; margin-bottom:6px; }
-        .weapon-name, .aircraft-name { font-weight:bold; font-size:14px; margin:4px 0; }
-        .weapon-stats, .aircraft-stats { font-size:11px; opacity:0.8; }
+        .weapon-grid { display:flex; overflow-x:auto; gap:12px; padding-bottom:10px; margin:15px 0; }
+        .weapon-card { min-width:150px; flex-shrink:0; background:#101820; border:2px solid #333; border-radius:20px; padding:12px; cursor:pointer; transition:0.2s; text-align:center; }
+        .weapon-card:hover { transform:scale(1.02); background:#1a2830; }
+        .weapon-card.selected { border-color:#00ffaa; box-shadow:0 0 15px rgba(0,255,170,0.4); background:#1e3038; }
+        .weapon-card img { width:100%; height:80px; object-fit:contain; margin-bottom:6px; }
+        .weapon-name { font-weight:bold; font-size:14px; margin:4px 0; }
+        .weapon-stats { font-size:11px; opacity:0.8; }
+        .weapon-desc { font-size:10px; margin-top:6px; opacity:0.7; line-height:1.2; }
+        .aircraft-card { background:#101820; border:2px solid #333; border-radius:20px; padding:12px; cursor:pointer; transition:0.2s; text-align:center; }
+        .aircraft-card:hover { transform:scale(1.02); background:#1a2830; }
+        .aircraft-card.selected { border-color:#00ffaa; box-shadow:0 0 15px rgba(0,255,170,0.4); background:#1e3038; }
+        .aircraft-card img { width:100%; height:80px; object-fit:contain; margin-bottom:6px; }
+        .aircraft-name { font-weight:bold; font-size:14px; margin:4px 0; }
+        .aircraft-stats { font-size:11px; opacity:0.8; }
         .aircraft-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:15px 0; }
         .zone-marker { background:rgba(0,0,0,0.8); border-radius:16px; padding:6px 10px; text-align:center; font-weight:bold; color:#fff; font-size:12px; box-shadow:0 0 10px rgba(0,0,0,0.5); white-space:nowrap; }
         @keyframes radarSpin { from{transform:translateX(-50%) rotate(0deg);} to{transform:translateX(-50%) rotate(360deg);} }
@@ -172,12 +179,15 @@
     let lobbyState = { player1: { ready: false, team: null }, player2: { ready: false, team: null } };
     let roomId = null;
 
-    // ТИПЫ ВООРУЖЕНИЙ (ракеты)
+    // ТИПЫ ВООРУЖЕНИЙ (ракеты + новые типы)
     const weaponTypes = {
-        drone:      { name: 'SHAHED', speed: 0.006, damage: 25, cost: 60, pvoChance: 0.08, spriteOffset: 0, img: 'drone.png' },
-        cruise:     { name: 'CRUISE', speed: 0.02, damage: 35, cost: 90, pvoChance: 0.10, spriteOffset: 90, img: 'cruise.png' },
-        ballistic:  { name: 'BALLISTIC', speed: 0.05, damage: 50, cost: 130, pvoChance: 0.10, spriteOffset: -45, img: 'ballistic.png' },
-        hypersonic: { name: 'HYPERSONIC', speed: 0.09, damage: 70, cost: 200, pvoChance: 0.10, spriteOffset: 0, img: 'hypersonic.png' }
+        drone:      { name: 'SHAHED', speed: 0.006, damage: 25, cost: 60, pvoChance: 0.08, spriteOffset: 0, img: 'drone.png', description: 'Ударный дрон-камикадзе' },
+        cruise:     { name: 'CRUISE', speed: 0.02, damage: 35, cost: 90, pvoChance: 0.10, spriteOffset: 90, img: 'cruise.png', description: 'Крылатая ракета' },
+        ballistic:  { name: 'BALLISTIC', speed: 0.05, damage: 50, cost: 130, pvoChance: 0.10, spriteOffset: -45, img: 'ballistic.png', description: 'Баллистическая ракета' },
+        hypersonic: { name: 'HYPERSONIC', speed: 0.09, damage: 70, cost: 200, pvoChance: 0.10, spriteOffset: 0, img: 'hypersonic.png', description: 'Гиперзвуковая ракета' },
+        awacs:      { name: 'AWACS', speed: 0.015, damage: 0, cost: 350, pvoChance: 0.15, spriteOffset: 180, img: 'awacs.png', description: 'Самолёт ДРЛО, увеличивает радиус радаров на 60 сек' },
+        bomber:     { name: 'BOMBER', speed: 0.008, damage: 120, cost: 300, pvoChance: 0.35, spriteOffset: 180, img: 'bomber.png', description: 'Стратегический бомбардировщик' },
+        airCruise:  { name: 'AIR CRUISE', speed: 0.012, damage: 45, cost: 250, pvoChance: 0.25, spriteOffset: 180, img: 'aircruise.png', description: 'Самолёт – носитель крылатых ракет' }
     };
     let attackType = 'drone', attackCount = 1, currentAirport = null;
     let selectedAircraftType = 'fighter', aircraftCount = 1, currentHangar = null;
@@ -242,7 +252,14 @@
             const img = (team === 'ukraine') ? 'images/drone_ua.png' : 'images/drone.png';
             try { return L.icon({ iconUrl: img, iconSize: [28,28], iconAnchor: [14,14] }); } catch(e){ return L.divIcon({ html: '🛸', iconSize:[28,28] }); }
         }
-        const map = { cruise:'images/cruise.png', ballistic:'images/ballistic.png', hypersonic:'images/hypersonic.png' };
+        const map = {
+            cruise:'images/cruise.png',
+            ballistic:'images/ballistic.png',
+            hypersonic:'images/hypersonic.png',
+            awacs:'images/awacs.png',
+            bomber:'images/bomber.png',
+            airCruise:'images/aircruise.png'
+        };
         const url = map[type] || 'images/missile.png';
         try { return L.icon({ iconUrl: url, iconSize: [28,28], iconAnchor: [14,14] }); } catch(e){ return L.divIcon({ html: '💥', iconSize:[28,28] }); }
     }
@@ -451,8 +468,10 @@
         return targets;
     }
 
+    // Универсальная атака для всех типов (включая новые)
     function launchAttack(airport, targetObj, type, count){
         let weapon = weaponTypes[type];
+        if(!weapon) return false;
         let costPerUnit = weapon.cost;
         if(resources < costPerUnit * count){ alert("Не хватает энергии"); return false; }
         let fromLatLng = airport.getLatLng();
@@ -479,7 +498,7 @@
                 targetType: targetObj.type,
                 targetId: targetObj.id,
                 type: type,
-                category: 'missile',
+                category: type === 'awacs' ? 'awacs' : (type === 'bomber' ? 'bomber' : 'missile'),
                 active: true,
                 marker: null,
                 lastInterceptCheck: 0,
@@ -499,7 +518,7 @@
         return true;
     }
 
-    // ========== АВИАЦИЯ ==========
+    // ========== АВИАЦИЯ (ангар) ==========
     function showAirModal(hangar){
         if(!hangar) return;
         currentHangar = hangar;
@@ -595,12 +614,10 @@
             proj.marker = marker;
             
             if(proj.isFighter){
-                // Добавляем таймер через tooltip
                 marker.bindTooltip('60', {permanent: true, direction: 'top', offset: [0, -15], className: 'timer-tooltip'}).openTooltip();
             }
             
             if(proj.isAwacs){
-                // Усиление радаров на 60 секунд
                 radars.forEach(r => {
                     if(r.team === myTeam && r.radarCircle){
                         r.originalRadius = 150000;
@@ -627,7 +644,6 @@
             let p = projectiles[i];
             if(!p.active) continue;
             if(p.isFighter){
-                // Обновление таймера в tooltip
                 p.timeLeft -= dt;
                 if(p.marker) p.marker.setTooltipContent(Math.ceil(p.timeLeft).toString());
                 if(p.timeLeft <= 0){
@@ -637,7 +653,6 @@
                     i--;
                     continue;
                 }
-                // Движение: если ещё не долетел до цели, летим; иначе кружим вокруг цели
                 if(p.progress < 1){
                     let lat = p.from.lat + (p.to.lat - p.from.lat) * p.progress;
                     let lng = p.from.lng + (p.to.lng - p.from.lng) * p.progress;
@@ -650,7 +665,6 @@
                         if(p.marker.setRotationAngle) p.marker.setRotationAngle(angle);
                     }
                 } else {
-                    // Круговой патруль вокруг цели
                     p.circleAngle = (p.circleAngle || 0) + 1.5 * dt;
                     let rad = p.patrolRadius;
                     let center = p.patrolCenter;
@@ -660,7 +674,6 @@
                     let angle = (p.circleAngle + 90) % 360;
                     if(p.marker.setRotationAngle) p.marker.setRotationAngle(angle);
                 }
-                // Перехват вражеских снарядов (раз в 0.5 сек)
                 if((p.interceptTimer || 0) <= 0){
                     p.interceptTimer = 0.5;
                     let fighterPos = p.marker.getLatLng();
@@ -732,28 +745,73 @@
                 continue;
             }
             if(p.isFighter) continue;
+            // Особое поведение для AWACS: при достижении цели активировать улучшение радаров
+            if(p.category === 'awacs') {
+                p.progress += p.speed * dt;
+                let lat = p.from.lat + (p.to.lat - p.from.lat) * p.progress;
+                let lng = p.from.lng + (p.to.lng - p.from.lng) * p.progress;
+                p.marker.setLatLng([lat, lng]);
+                if(p.progress >= 1){
+                    // Активация AWACS (усиление радаров)
+                    radars.forEach(r => {
+                        if(r.team === myTeam && r.radarCircle){
+                            r.originalRadius = 150000;
+                            r.radarCircle.setRadius(300000);
+                            setTimeout(() => {
+                                if(r.radarCircle) r.radarCircle.setRadius(r.originalRadius || 150000);
+                            }, 60000);
+                        }
+                    });
+                    showHint("🔭 AWACS активирован! Радиус радаров удвоен на 60 секунд.");
+                    p.active = false;
+                    map.removeLayer(p.marker);
+                    projectiles.splice(i,1);
+                    i--;
+                }
+                continue;
+            }
             p.progress += p.speed * dt;
             if(p.progress >= 1){
                 p.active=false;
                 if(p.marker) map.removeLayer(p.marker);
-                if(p.targetType === 'zone'){
-                    let targetZone = zones.find(z => z.id === p.targetId);
-                    if(targetZone && targetZone.hp > 0){
-                        let damage = p.damage || 50;
-                        targetZone.hp = Math.max(0, targetZone.hp - damage);
-                        updateZoneMarkers();
-                        playBeep(200,0.4);
-                        addXP(20);
-                        if (targetZone.hp <= 0) { removeZoneIfDestroyed(targetZone); addXP(100); }
-                    }
-                } else if(p.targetType === 'building'){
-                    let targetBuilding = buildings.find(b => b.id == p.targetId);
-                    if(targetBuilding && targetBuilding.hp > 0){
-                        let damage = p.damage || 50;
-                        targetBuilding.hp -= damage;
-                        playBeep(200,0.4);
-                        addXP(20);
-                        if(targetBuilding.hp <= 0) destroyBuilding(targetBuilding);
+                // Для бомбардировщика – наносим урон по площади (радиус 150 м)
+                if(p.category === 'bomber'){
+                    let center = {lat: p.to.lat, lng: p.to.lng};
+                    let allTargets = [...buildings, ...zones];
+                    let hitCount = 0;
+                    allTargets.forEach(target => {
+                        let dist = map.distance([center.lat, center.lng], [target.lat || target.center[0], target.lng || target.center[1]]);
+                        if(dist < 150){
+                            let hpBefore = target.hp;
+                            target.hp = Math.max(0, target.hp - p.damage);
+                            if(target.hp <= 0 && hpBefore > 0){
+                                if(target.type === 'zone') removeZoneIfDestroyed(target);
+                                else destroyBuilding(target);
+                            }
+                            hitCount++;
+                        }
+                    });
+                    if(hitCount > 0) playBeep(200,0.4);
+                    addXP(20 * hitCount);
+                } else {
+                    // Обычные ракеты
+                    if(p.targetType === 'zone'){
+                        let targetZone = zones.find(z => z.id === p.targetId);
+                        if(targetZone && targetZone.hp > 0){
+                            targetZone.hp = Math.max(0, targetZone.hp - p.damage);
+                            updateZoneMarkers();
+                            playBeep(200,0.4);
+                            addXP(20);
+                            if (targetZone.hp <= 0) { removeZoneIfDestroyed(targetZone); addXP(100); }
+                        }
+                    } else if(p.targetType === 'building'){
+                        let targetBuilding = buildings.find(b => b.id == p.targetId);
+                        if(targetBuilding && targetBuilding.hp > 0){
+                            targetBuilding.hp -= p.damage;
+                            playBeep(200,0.4);
+                            addXP(20);
+                            if(targetBuilding.hp <= 0) destroyBuilding(targetBuilding);
+                        }
                     }
                 }
                 updateStatsAfterHit(p.damage || 50, p.targetType, true);
@@ -898,12 +956,12 @@
     }
 
     function launchAIAttack(target){
-        let weaponTypesList = ['drone','cruise','ballistic','hypersonic'];
+        let weaponTypesList = ['drone','cruise','ballistic','hypersonic','awacs','bomber','airCruise'];
         let type;
         if(difficulty === "EASY") type = 'drone';
-        else if(difficulty === "NORMAL") type = weaponTypesList[Math.floor(Math.random()*2)];
-        else if(difficulty === "HARD") type = weaponTypesList[Math.floor(Math.random()*3)];
-        else type = weaponTypesList[Math.floor(Math.random()*4)];
+        else if(difficulty === "NORMAL") type = weaponTypesList[Math.floor(Math.random()*3)];
+        else if(difficulty === "HARD") type = weaponTypesList[Math.floor(Math.random()*5)];
+        else type = weaponTypesList[Math.floor(Math.random()*weaponTypesList.length)];
         let count = 1;
         if(difficulty === "NORMAL") count = Math.floor(Math.random()*2)+1;
         if(difficulty === "HARD") count = Math.floor(Math.random()*3)+1;
@@ -933,7 +991,7 @@
                 targetType: (target.center ? 'zone' : 'building'),
                 targetId: target.id,
                 type: type,
-                category: 'missile',
+                category: (type === 'awacs' ? 'awacs' : (type === 'bomber' ? 'bomber' : 'missile')),
                 active: true,
                 marker: null,
                 lastInterceptCheck: 0,
@@ -982,12 +1040,12 @@
         requestAnimationFrame(gameLoop);
     }
 
-    // Генерация карточек вооружения
+    // Генерация карточек вооружения (все 7 типов)
     function buildWeaponGrid(){
         let container = document.getElementById('weaponGrid');
         if(!container) return;
         container.innerHTML = '';
-        let types = ['drone','cruise','ballistic','hypersonic'];
+        let types = ['drone','cruise','ballistic','hypersonic','awacs','bomber','airCruise'];
         types.forEach(type => {
             let w = weaponTypes[type];
             let card = document.createElement('div');
@@ -997,6 +1055,7 @@
                 <img src="images/${w.img}" alt="${w.name}" onerror="this.style.display='none'">
                 <div class="weapon-name">${w.name}</div>
                 <div class="weapon-stats">💥 Урон: ${w.damage}<br>⚡ Цена: ${w.cost}</div>
+                <div class="weapon-desc">${w.description || ''}</div>
             `;
             card.onclick = () => {
                 attackType = type;
