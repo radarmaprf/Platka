@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Sky in Fire — мультиплеер 1v1</title>
+    <title>Sky in Fire — мультиплеер 1v1 (исправлен)</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-rotatedmarker/leaflet.rotatedMarker.js"></script>
@@ -12,7 +12,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
     <style>
-        /* ========== СТИЛИ (адаптивные) ========== */
         *{margin:0;padding:0;box-sizing:border-box;user-select:none;-webkit-tap-highlight-color:transparent}
         body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#0a0f12;overflow:hidden;height:100vh;color:#eef;touch-action:manipulation}
         .screen{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;justify-content:center;align-items:center;z-index:2000;background:radial-gradient(circle at 20% 30%,#0a1f1a,#030a08)}
@@ -210,8 +209,8 @@
         "d83mzf92kdn30qpeor-2n83ks0","81m4nf92jdn30qpeor-6h2j9sl","74hs8w2kf92jdn30qpe-8k3jsl",
         "93jsk2lkd92jdn30qpe-1j4hs8","2n83ks0f92jdn30qpeor-3m9sl2","6h2j9slkf92jdn30qpe-7j3ks9",
         "8k3jsljf92kdn30qpeor-0n2hs4","1j4hs8f92jdn30qpeor-2m8kdl","3m9sl2kd92jdn30qpe-5j7hs1",
-        "7j3ks9f92jdn30qpeor-8n2ks5","0n2hs4jf92kdn30qpeor-3k9slm","2m8kdlkf92jdn30qpe-6j1hs7",
-        "5j7hs1f92jdn30qpeor-9n3ks2","8n2ks5jf92kdn30qpeor-1k4slp","3k9slmkf92jdn30qpe-4j6hs9",
+        "7j3ks9f92jdn30qpeor-8n2ks5","0n2hs4jf92jdn30qpeor-3k9slm","2m8kdlkf92jdn30qpe-6j1hs7",
+        "5j7hs1f92jdn30qpeor-9n3ks2","8n2ks5jf92jdn30qpeor-1k4slp","3k9slmkf92jdn30qpe-4j6hs9",
         "6j1hs7f92jdn30qpeor-7n0ks3","9n3ks2jf92jdn30qpeor-2k5slr","1k4slpkf92jdn30qpe-5j8hs4",
         "4j6hs9f92jdn30qpeor-8n1ks6","7n0ks3jf92jdn30qpeor-0k2slt","2k5slrkf92jdn30qpe-3j7hs5",
         "5j8hs4f92jdn30qpeor-6n4ks8","8n1ks6jf92jdn30qpeor-9k0slv","0k2sltkf92jdn30qpe-2j5hs9",
@@ -393,6 +392,7 @@
     let isHost = false;
     let mpGameRef = null;
     let isMultiplayer = false;
+    let mpInitDone = false; // Флаг, чтобы не инициализировать дважды
 
     document.getElementById('multiplayerBtn').onclick = function() {
         const controls = document.getElementById('multiplayerControls');
@@ -467,7 +467,8 @@
                 return;
             }
             updateLobbyUI(data);
-            if (data.status === 'playing' && !gameActive) {
+            if (data.status === 'playing' && !mpInitDone) {
+                mpInitDone = true;
                 startMultiplayerGame(roomId, data);
             }
         });
@@ -526,6 +527,7 @@
     };
 
     function leaveLobby() {
+        mpInitDone = false;
         if (gameListenerRef) { gameListenerRef.off(); gameListenerRef = null; }
         if (currentRoomId) {
             if (isHost) {
@@ -1058,7 +1060,7 @@
         document.getElementById('attackModal').style.display = 'block';
     }
 
-    // ---- Инициализация игры (общая) ----
+    // ---- Инициализация одиночной игры ----
     function initGameMapAndLogic(){
         document.getElementById('menuScreen').style.display='none';
         document.getElementById('lobbyScreen').style.display='none';
@@ -1106,8 +1108,17 @@
         });
     }
 
-    // ---- Мультиплеерная инициализация ----
+    // ---- Мультиплеерная инициализация (исправлена) ----
     function startMultiplayerGame(roomId, data) {
+        // Сброс глобального состояния
+        gameActive = false;
+        if (map) { map.remove(); map = null; }
+        buildings = []; radars = []; pvoSystems = []; powerPlants = []; refineries = []; rocketFactories = [];
+        projectiles = []; zones = [];
+        airportPlaced = false; airportMarker = null;
+        if (economyInterval) clearInterval(economyInterval);
+        if (radarAnimationInterval) clearInterval(radarAnimationInterval);
+
         const players = data.players;
         const myTeamFromData = players[currentUser].team;
         myTeam = myTeamFromData;
@@ -1116,12 +1127,12 @@
         isMultiplayer = true;
         isSandbox = false;
         document.getElementById('lobbyScreen').style.display = 'none';
-        // Получаем состояние игры из Firebase
+        document.getElementById('gameContainer').style.display = 'block';
+
         mpGameRef = gamesRef.child(roomId).child('gameState');
         mpGameRef.once('value').then(snapshot => {
             let state = snapshot.val();
             if (!state) {
-                // Если состояния нет, создаём начальное (только хост)
                 if (isHost) {
                     state = {
                         resources: { russia: 300, ukraine: 300 },
@@ -1129,21 +1140,25 @@
                         buildings: [],
                         projectiles: []
                     };
-                    mpGameRef.set(state);
+                    mpGameRef.set(state).then(() => {
+                        initMPGame(state);
+                    });
                 } else {
                     setTimeout(() => startMultiplayerGame(roomId, data), 500);
-                    return;
                 }
+            } else {
+                initMPGame(state);
             }
-            initMPGame(state);
         }).catch(err => console.error("Ошибка загрузки состояния:", err));
     }
 
     function initMPGame(initialState) {
-        // Инициализация карты и зон
-        if(map) map.remove();
+        if(map) { map.remove(); map = null; }
         map = L.map('map', { zoomControl: false }).setView([55.0,40.0],5);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© CartoDB'}).addTo(map);
+        // Принудительно обновляем размер карты
+        setTimeout(() => { map.invalidateSize(); }, 100);
+
         if (!bordersLoaded) {
             loadRealBorders(() => { initMPZones(initialState); });
         } else {
@@ -1218,6 +1233,7 @@
 
         // Слушаем изменения состояния из Firebase
         if (mpGameRef) {
+            mpGameRef.off();
             mpGameRef.on('value', (snapshot) => {
                 const state = snapshot.val();
                 if (state) {
@@ -1227,6 +1243,7 @@
         }
 
         // Обработка кликов на карте
+        map.off('click');
         map.on('click', (e) => {
             if (!airportPlaced) {
                 let lat = e.latlng.lat, lng = e.latlng.lng;
@@ -1245,6 +1262,9 @@
                 buildMode = null;
             }
         });
+
+        // Принудительно обновляем карту ещё раз
+        setTimeout(() => { if(map) map.invalidateSize(); }, 300);
     }
 
     // ---- Синхронизация мультиплеера ----
@@ -1267,7 +1287,7 @@
 
     function getTeamResources(team) {
         if (team === myTeam) return resources;
-        else return 300; // заглушка, в реальности нужно получить от противника
+        else return 300;
     }
 
     function applyGameState(state) {
@@ -1413,7 +1433,7 @@
         closeAttackModal();
     };
 
-    console.log("✅ Игра полностью загружена. Доступны: одиночная, песочница, мультиплеер 1v1 через Firebase.");
+    console.log("✅ Игра полностью загружена. Доступны: одиночная, песочница, мультиплеер 1v1.");
 </script>
 </body>
 </html>
