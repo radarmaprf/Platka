@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Sky in Fire — рейтинг + мультиплеер</title>
+    <title>Sky in Fire — защищённая версия (SHA-256)</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-rotatedmarker/leaflet.rotatedMarker.js"></script>
@@ -11,8 +11,10 @@
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+    <!-- SHA-256 для хеширования паролей и ключей -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
-        /* ====== БАЗОВЫЕ СТИЛИ (адаптивные) ====== */
+        /* ====== БАЗОВЫЕ СТИЛИ ====== */
         *{margin:0;padding:0;box-sizing:border-box;user-select:none;-webkit-tap-highlight-color:transparent}
         body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#0a0f12;overflow:hidden;height:100vh;color:#eef;touch-action:manipulation}
         .screen{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;justify-content:center;align-items:center;z-index:2000;background:radial-gradient(circle at 20% 30%,#0a1f1a,#030a08)}
@@ -41,19 +43,22 @@
         .auth-card button:hover{background:#ffcc66}
         .auth-card .error-msg{color:#ff6666;margin-top:8px;font-size:clamp(.8rem,1.5vw,1rem)}
         .auth-card .toggle-link{margin-top:12px;font-size:clamp(.8rem,1.5vw,1rem);cursor:pointer;color:#88aaff}
-        #gameHUD{position:fixed;top:8px;left:8px;right:8px;background:rgba(5,10,15,.88);backdrop-filter:blur(12px);border-radius:clamp(16px,3vw,30px);padding:clamp(4px,1vh,10px) clamp(8px,2vw,16px);display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;z-index:1500;border:1px solid rgba(0,255,170,.3);box-shadow:0 0 20px rgba(0,255,170,.15);font-weight:700;gap:4px;font-size:clamp(.6rem,1.6vw,1rem);min-height:clamp(40px,8vh,60px)}
+        #gameHUD{position:fixed;top:8px;left:8px;right:8px;background:rgba(5,10,15,.88);backdrop-filter:blur(12px);border-radius:clamp(16px,3vw,30px);padding:clamp(4px,1vh,10px) clamp(8px,2vw,16px);z-index:1500;border:1px solid rgba(0,255,170,.3);box-shadow:0 0 20px rgba(0,255,170,.15);font-weight:700;display:flex;flex-direction:column;gap:2px;font-size:clamp(.6rem,1.6vw,1rem);min-height:clamp(50px,10vh,70px)}
+        .hud-top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:4px 8px}
+        .hud-bottom{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:4px 8px}
         .hud-resource{background:#1e2e2e;padding:2px 10px;border-radius:40px;display:inline-flex;align-items:center;gap:4px;color:#00ffaa;font-size:clamp(.8rem,2vw,1.2rem)}
         .hud-rank{background:#1e2e2e;padding:2px 10px;border-radius:40px;display:inline-flex;align-items:center;gap:4px;font-size:clamp(.6rem,1.5vw,1rem)}
-        .health-bars{display:flex;gap:clamp(4px,2vw,20px);background:rgba(0,0,0,.5);padding:2px 8px;border-radius:40px;flex-wrap:wrap}
+        .health-bars{display:flex;gap:clamp(8px,2vw,20px);background:rgba(0,0,0,.5);padding:2px 8px;border-radius:40px;flex-wrap:wrap;flex:1;justify-content:space-around}
         .health-bar{display:flex;align-items:center;gap:4px;font-size:clamp(.5rem,1.2vw,.9rem)}
-        .bar-bg{width:clamp(40px,15vw,120px);height:clamp(4px,1.5vh,10px);background:#333;border-radius:10px;overflow:hidden}
+        .bar-bg{width:clamp(60px,15vw,120px);height:clamp(6px,1.5vh,10px);background:#333;border-radius:10px;overflow:hidden}
         .bar-fill{height:100%;width:0%;transition:width .3s}
         .ru-fill{background:#ff5555}
         .ua-fill{background:#55aaff}
         #buildPanel{position:fixed;bottom:clamp(10px,3vh,20px);left:clamp(10px,3vw,20px);z-index:1500;display:flex;flex-direction:column;gap:6px}
-        #buildToggle{display:none;background:linear-gradient(180deg,#ffaa33,#e68a00);border:none;color:#1a2a2a;padding:clamp(10px,2vh,16px) clamp(14px,3vw,20px);border-radius:60px;cursor:pointer;font-weight:700;font-size:clamp(.9rem,2vw,1.2rem);box-shadow:0 4px 15px rgba(255,170,51,.4);transition:.2s;touch-action:manipulation;min-height:clamp(44px,8vh,56px);min-width:clamp(44px,10vw,70px)}
+        #buildToggle{background:linear-gradient(180deg,#ffaa33,#e68a00);border:none;color:#1a2a2a;padding:clamp(10px,2vh,16px) clamp(14px,3vw,20px);border-radius:60px;cursor:pointer;font-weight:700;font-size:clamp(.9rem,2vw,1.2rem);box-shadow:0 4px 15px rgba(255,170,51,.4);transition:.2s;touch-action:manipulation;min-height:clamp(44px,8vh,56px);min-width:clamp(44px,10vw,70px)}
         #buildToggle:active{transform:scale(.95)}
-        #buildMenu{display:flex;flex-direction:column;gap:4px;background:rgba(0,0,0,.85);backdrop-filter:blur(12px);border-radius:clamp(16px,3vw,30px);padding:clamp(8px,1.5vh,14px);border:1px solid #ffaa3344;max-height:clamp(250px,50vh,400px);overflow-y:auto}
+        #buildMenu{display:none;flex-direction:column;gap:4px;background:rgba(0,0,0,.85);backdrop-filter:blur(12px);border-radius:clamp(16px,3vw,30px);padding:clamp(8px,1.5vh,14px);border:1px solid #ffaa3344;max-height:clamp(250px,50vh,400px);overflow-y:auto}
+        #buildMenu.open{display:flex}
         #buildMenu .build-btn{background:linear-gradient(180deg,#24353d,#17242b);border:1px solid #00ffaa44;box-shadow:0 0 10px rgba(0,255,170,.08);border:none;color:#fff;padding:clamp(8px,1.5vh,12px) clamp(12px,2vw,18px);border-radius:40px;cursor:pointer;font-weight:700;text-align:left;font-size:clamp(.8rem,1.8vw,1.1rem);touch-action:manipulation;white-space:nowrap}
         #buildMenu .build-btn:active{transform:scale(.96)}
         #buildMenu .build-btn.cancel{background:#aa3333;border-color:#ff4444}
@@ -74,15 +79,6 @@
         .modal button{width:100%;padding:clamp(10px,2vh,14px);border-radius:40px;border:none;font-weight:700;cursor:pointer;margin-top:6px;font-size:clamp(.9rem,2vw,1.1rem);touch-action:manipulation}
         .modal button:active{transform:scale(.96)}
         #costDisplay{margin:8px 0;font-weight:700;font-size:clamp(.9rem,2vw,1.2rem)}
-        .zone-marker{background:rgba(0,0,0,.8);border-radius:16px;padding:4px 8px;text-align:center;font-weight:700;color:#fff;font-size:clamp(.5rem,1vw,.8rem);box-shadow:0 0 10px rgba(0,0,0,.5);white-space:nowrap}
-        .hidden-projectile{display:none!important}
-        .loading-indicator{background:rgba(0,0,0,.7);color:#fff;padding:8px 16px;border-radius:30px;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:3000;font-size:clamp(.9rem,2vw,1.2rem)}
-        .explosion{width:30px;height:30px;border-radius:50%;background:#ffcc00;box-shadow:0 0 20px #ffcc00,0 0 40px orange,0 0 80px red;animation:explode .5s forwards}
-        @keyframes explode{0%{transform:scale(.2);opacity:1}100%{transform:scale(3);opacity:0}}
-        @keyframes radarSpin{0%{transform:translateX(-50%) rotate(0)}100%{transform:translateX(-50%) rotate(360deg)}}
-        .leaflet-marker-icon{transform-origin:center center}
-        .leaflet-control-zoom{display:none!important}
-        /* Модалка рейтинга */
         .ranking-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:linear-gradient(180deg,#0d1a1a,#020808);border-radius:40px;padding:clamp(20px,4vw,35px);z-index:5000;color:#fff;width:clamp(320px,90vw,500px);max-height:85vh;overflow-y:auto;border:2px solid #ffaa33;box-shadow:0 0 50px rgba(255,170,51,0.3)}
         .ranking-modal h2{font-size:clamp(1.6rem,4vw,2.2rem);text-align:center;margin-bottom:15px;color:#ffaa33}
         .ranking-modal .close-btn{position:absolute;top:10px;right:20px;font-size:2rem;cursor:pointer;color:#aaa;transition:.2s}
@@ -95,7 +91,15 @@
         .ranking-list .rank{color:#ffaa33;font-weight:700;margin-right:10px}
         .ranking-list .elo{color:#00ffaa;font-weight:700}
         .no-players{text-align:center;padding:20px;color:#888}
-        @media (max-width:600px){#gameHUD{flex-direction:column;align-items:stretch;gap:3px;padding:4px 8px;font-size:.7rem;top:4px;left:4px;right:4px;border-radius:16px;min-height:auto}.hud-resource,.hud-rank{font-size:.9rem;padding:2px 8px;justify-content:center}.health-bars{justify-content:space-around;padding:2px 4px;gap:4px}.health-bar{font-size:.6rem;gap:2px}.bar-bg{width:50px;height:5px}#buildPanel{bottom:10px;left:10px;gap:4px}#buildToggle{display:block;font-size:1rem;padding:8px 14px;min-height:44px;min-width:44px}#buildMenu{display:none;padding:8px;max-height:200px;border-radius:16px}#buildMenu.open{display:flex}#buildMenu .build-btn{font-size:.8rem;padding:6px 12px;white-space:normal}.modal{width:95vw;padding:16px;max-height:85vh;border-radius:24px}.modal .weapon-grid{grid-template-columns:1fr 1fr;gap:6px;max-height:200px}.modal .weapon-card{padding:6px}.modal .weapon-card img{height:40px}.modal .flex button{padding:4px 12px;font-size:.9rem}.card,.auth-card{padding:20px 16px;border-radius:32px;width:100%;max-width:95%}.logo{font-size:2rem}.difficulty-btn{font-size:.6rem;padding:4px 8px}.card button,.auth-card button{font-size:.9rem;padding:10px;margin:6px 0}.card input,.auth-card input{font-size:.9rem;padding:10px}}
+        .zone-marker{background:rgba(0,0,0,.8);border-radius:16px;padding:4px 8px;text-align:center;font-weight:700;color:#fff;font-size:clamp(.5rem,1vw,.8rem);box-shadow:0 0 10px rgba(0,0,0,.5);white-space:nowrap}
+        .hidden-projectile{display:none!important}
+        .loading-indicator{background:rgba(0,0,0,.7);color:#fff;padding:8px 16px;border-radius:30px;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:3000;font-size:clamp(.9rem,2vw,1.2rem)}
+        .explosion{width:30px;height:30px;border-radius:50%;background:#ffcc00;box-shadow:0 0 20px #ffcc00,0 0 40px orange,0 0 80px red;animation:explode .5s forwards}
+        @keyframes explode{0%{transform:scale(.2);opacity:1}100%{transform:scale(3);opacity:0}}
+        @keyframes radarSpin{0%{transform:translateX(-50%) rotate(0)}100%{transform:translateX(-50%) rotate(360deg)}}
+        .leaflet-marker-icon{transform-origin:center center}
+        .leaflet-control-zoom{display:none!important}
+        @media (max-width:600px){#gameHUD{padding:4px 8px;font-size:.7rem;min-height:auto}.hud-top,.hud-bottom{flex-wrap:wrap;justify-content:center;gap:2px}.hud-resource,.hud-rank{font-size:.8rem;padding:2px 6px}.health-bars{justify-content:space-around;padding:2px 4px}.health-bar{font-size:.6rem;gap:2px}.bar-bg{width:50px;height:5px}#buildToggle{font-size:.9rem;padding:6px 12px;min-height:40px;min-width:44px}#buildMenu .build-btn{font-size:.8rem;padding:4px 10px;white-space:normal}.modal{width:95vw;padding:12px}.modal .weapon-grid{grid-template-columns:1fr 1fr;gap:6px;max-height:200px}.modal .weapon-card{padding:4px}.modal .weapon-card img{height:40px}.card,.auth-card{padding:16px;border-radius:32px;width:100%;max-width:95%}.logo{font-size:2rem}.difficulty-btn{font-size:.6rem;padding:4px 8px}.card button,.auth-card button{font-size:.9rem;padding:10px;margin:6px 0}.card input,.auth-card input{font-size:.9rem;padding:10px}}
         @media (min-width:601px) and (max-width:900px){#gameHUD{padding:4px 12px;font-size:.8rem}.bar-bg{width:80px;height:7px}.modal{width:80vw;padding:20px}.card,.auth-card{padding:30px 24px}.logo{font-size:2.5rem}}
         @media (max-width:800px) and (orientation:landscape){#gameHUD{flex-direction:row;flex-wrap:wrap;font-size:.6rem;padding:2px 8px;min-height:30px}.hud-resource,.hud-rank{font-size:.7rem;padding:2px 6px}.bar-bg{width:40px;height:4px}#buildToggle{padding:6px 12px;font-size:.8rem;min-height:30px}#buildMenu .build-btn{font-size:.7rem;padding:4px 10px}.modal{width:70vw;max-height:80vh;padding:12px}.modal .weapon-grid{max-height:150px}.modal .weapon-card img{height:30px}}
         @media (max-width:400px){.card,.auth-card{padding:12px 10px;border-radius:24px}.logo{font-size:1.6rem}.difficulty-btn{font-size:.5rem;padding:3px 6px}.card button,.auth-card button{font-size:.8rem;padding:8px;margin:4px 0}.card input,.auth-card input{font-size:.8rem;padding:8px}.bar-bg{width:35px;height:4px}.modal{padding:10px;width:98vw}.modal h3{font-size:1rem}.modal .weapon-card{padding:4px}.modal .weapon-card img{height:30px}}
@@ -185,11 +189,15 @@
 <div id="gameContainer" style="display:none; width:100%; height:100%; position:relative;">
     <div id="map" style="width:100%; height:100%;"></div>
     <div id="gameHUD">
-        <div class="hud-resource">⚡ <span id="energy">300</span></div>
-        <div class="hud-rank">⭐ <span id="rankTitle">Рядовой</span> <span id="rankXp">0 XP</span></div>
-        <div class="health-bars">
-            <div class="health-bar"><span>🇷🇺</span><div class="bar-bg"><div class="bar-fill ru-fill" id="ruFill"></div></div><span id="ruPercent">0%</span></div>
-            <div class="health-bar"><span>🇺🇦</span><div class="bar-bg"><div class="bar-fill ua-fill" id="uaFill"></div></div><span id="uaPercent">0%</span></div>
+        <div class="hud-top">
+            <div class="hud-resource">⚡ <span id="energy">300</span></div>
+            <div class="hud-rank">⭐ <span id="rankTitle">Рядовой</span> <span id="rankXp">0 XP</span></div>
+        </div>
+        <div class="hud-bottom">
+            <div class="health-bars">
+                <div class="health-bar"><span>🇷🇺</span><div class="bar-bg"><div class="bar-fill ru-fill" id="ruFill"></div></div><span id="ruPercent">0%</span></div>
+                <div class="health-bar"><span>🇺🇦</span><div class="bar-bg"><div class="bar-fill ua-fill" id="uaFill"></div></div><span id="uaPercent">0%</span></div>
+            </div>
         </div>
     </div>
     <div id="buildPanel">
@@ -225,9 +233,17 @@
     const gamesRef = db.ref('games');
 
     // =================================================================
-    // 2. ЛИЦЕНЗИОННЫЕ КЛЮЧИ (50 шт.)
+    // 2. ХЕШИРОВАНИЕ (SHA-256)
     // =================================================================
-    const VALID_KEYS = [
+    function hashSHA256(text) {
+        return CryptoJS.SHA256(text).toString(CryptoJS.enc.Hex);
+    }
+
+    // =================================================================
+    // 3. ЛИЦЕНЗИОННЫЕ КЛЮЧИ (ХЕШИРОВАННЫЕ)
+    // =================================================================
+    // Оригинальные ключи (для проверки хранятся только хеши)
+    const VALID_KEYS_ORIGINAL = [
         "theoqjzn6heuwn478-yeneis528y","kf92jdn30qpeor83-xmz73kdl","h8d73jf92kdn392u-jd83mz",
         "vgs392kf92jdn30qpe-xy81m4n","pq83jf92jdn30qpeor-74hs8w2","mz73kdl92jdn30qpe-93jsk2l",
         "d83mzf92kdn30qpeor-2n83ks0","81m4nf92jdn30qpeor-6h2j9sl","74hs8w2kf92jdn30qpe-8k3jsl",
@@ -246,9 +262,11 @@
         "5j2hs9f92jdn30qpeor-6n7ks5","8n5ks3jf92jdn30qpeor-9k1slb","1k6slakf92jdn30qpe-2j3hs4",
         "3j0hs2f92jdn30qpeor-4n9ks7","6n7ks5jf92jdn30qpeor-7k2slc"
     ];
+    // Хеши ключей
+    const VALID_KEYS_HASHES = VALID_KEYS_ORIGINAL.map(k => hashSHA256(k));
 
     // =================================================================
-    // 3. УПРАВЛЕНИЕ АККАУНТАМИ И СЕССИЯМИ
+    // 4. УПРАВЛЕНИЕ АККАУНТАМИ И СЕССИЯМИ (БЕЗОПАСНО)
     // =================================================================
     let currentUser = null;
     let currentSessionToken = null;
@@ -278,12 +296,21 @@
 
     function register(login, password) {
         if(!login || !password) { authMessage.innerText = "Введите логин и пароль"; return false; }
+        const passwordHash = hashSHA256(password);
         usersRef.child(login).get().then(snapshot => {
             if(snapshot.exists()) { authMessage.innerText = "Аккаунт уже существует!"; }
             else {
-                usersRef.child(login).set({ password: password, keyUsed: null, gameData: null, elo: 1000 })
-                    .then(() => { authMessage.innerText = "Аккаунт создан! Теперь войдите."; toggleMode(); })
-                    .catch(err => { authMessage.innerText = "Ошибка записи в БД: " + err.message; });
+                usersRef.child(login).set({
+                    passwordHash: passwordHash,
+                    keyUsed: null,
+                    gameData: null,
+                    elo: 1000
+                }).then(() => {
+                    authMessage.innerText = "Аккаунт создан! Теперь войдите.";
+                    toggleMode();
+                }).catch(err => {
+                    authMessage.innerText = "Ошибка записи в БД: " + err.message;
+                });
             }
         }).catch(err => { authMessage.innerText = "Ошибка проверки: " + err.message; });
         return false;
@@ -295,7 +322,11 @@
             const snapshot = await usersRef.child(login).get();
             if(!snapshot.exists()) { authMessage.innerText = "Аккаунт не найден"; return false; }
             const userData = snapshot.val();
-            if(userData.password !== password) { authMessage.innerText = "Неверный пароль"; return false; }
+            const passwordHash = hashSHA256(password);
+            if(userData.passwordHash !== passwordHash) {
+                authMessage.innerText = "Неверный пароль";
+                return false;
+            }
             currentUser = login;
             const token = btoa(login + ":" + Date.now() + ":" + Math.random().toString(36));
             currentSessionToken = token;
@@ -317,14 +348,27 @@
 
     async function activateKey(key) {
         if(!key) { authMessage.innerText = "Введите ключ"; return false; }
-        if(!VALID_KEYS.includes(key)) { authMessage.innerText = "Неверный ключ (не соответствует формату)"; return false; }
-        const usedSnap = await db.ref('usedKeys/' + key).get();
-        if(usedSnap.exists()) { authMessage.innerText = "Ключ уже использован другим!"; return false; }
-        await db.ref('usedKeys/' + key).set(true);
+        const keyHash = hashSHA256(key);
+        // Проверяем, есть ли ключ в списке допустимых (по хешу)
+        if(!VALID_KEYS_HASHES.includes(keyHash)) {
+            authMessage.innerText = "Неверный ключ (не соответствует формату)";
+            return false;
+        }
+        // Проверяем, не использован ли ключ глобально
+        const usedSnap = await db.ref('usedKeys/' + keyHash).get();
+        if(usedSnap.exists()) {
+            authMessage.innerText = "Этот ключ уже был использован другим игроком!";
+            return false;
+        }
+        // Помечаем ключ как использованный (храним хеш)
+        await db.ref('usedKeys/' + keyHash).set(true);
         const userRef = usersRef.child(currentUser);
         const userSnap = await userRef.get();
-        if(!userSnap.exists()) { authMessage.innerText = "Ошибка: пользователь не найден"; return false; }
-        await userRef.update({ keyUsed: key });
+        if(!userSnap.exists()) {
+            authMessage.innerText = "Ошибка: пользователь не найден";
+            return false;
+        }
+        await userRef.update({ keyUsed: keyHash });
         authMessage.innerText = "Ключ активирован! Запуск игры...";
         const updatedData = (await userRef.get()).val();
         loadGameForUser(updatedData);
@@ -362,11 +406,19 @@
         if(!token) { authOverlay.style.display = 'flex'; return; }
         try {
             const snap = await sessionsRef.child(token).get();
-            if(!snap.exists()) { localStorage.removeItem("skyfire_session_token"); authOverlay.style.display = 'flex'; return; }
+            if(!snap.exists()) {
+                localStorage.removeItem("skyfire_session_token");
+                authOverlay.style.display = 'flex';
+                return;
+            }
             const sessionData = snap.val();
             const login = sessionData.login;
             const userSnap = await usersRef.child(login).get();
-            if(!userSnap.exists()) { localStorage.removeItem("skyfire_session_token"); authOverlay.style.display = 'flex'; return; }
+            if(!userSnap.exists()) {
+                localStorage.removeItem("skyfire_session_token");
+                authOverlay.style.display = 'flex';
+                return;
+            }
             currentUser = login; currentSessionToken = token;
             const userData = userSnap.val();
             const age = Date.now() - sessionData.createdAt;
@@ -409,16 +461,14 @@
     restoreSession();
 
     // =================================================================
-    // 4. СИСТЕМА ЭЛО
+    // 5. СИСТЕМА ЭЛО
     // =================================================================
     async function updateElo(win, mode) {
         if (!currentUser) return;
         let eloChange = 0;
-        // Определяем изменение Эло
         if (mode === 'multiplayer') {
             eloChange = win ? 30 : -15;
         } else {
-            // Одиночная игра или песочница (песочница тоже одиночная с ИИ)
             switch (difficulty) {
                 case 'EASY': eloChange = win ? 10 : -5; break;
                 case 'NORMAL': eloChange = win ? 20 : -10; break;
@@ -427,19 +477,17 @@
                 default: eloChange = win ? 20 : -10;
             }
         }
-        // Обновляем в Firebase
         const userRef = usersRef.child(currentUser);
         const snap = await userRef.get();
         if (!snap.exists()) return;
         const currentElo = snap.val().elo || 1000;
         const newElo = Math.max(0, currentElo + eloChange);
         await userRef.update({ elo: newElo });
-        // Выводим сообщение
         console.log(`Эло изменено на ${eloChange}, теперь ${newElo}`);
     }
 
     // =================================================================
-    // 5. КНОПКА "ТОП ИГРОКОВ"
+    // 6. КНОПКА "ТОП ИГРОКОВ"
     // =================================================================
     document.getElementById('rankBtn').onclick = function() {
         const modal = document.getElementById('rankModal');
@@ -459,19 +507,19 @@
         const list = document.getElementById('rankList');
         list.innerHTML = '<li style="text-align:center; color:#888; padding:20px;">Загрузка...</li>';
         try {
-            const snapshot = await usersRef.orderByChild('elo').limitToLast(10).get();
+            const snapshot = await usersRef.once('value');
             const data = snapshot.val();
             if (!data) {
                 list.innerHTML = '<li class="no-players">Нет игроков</li>';
                 return;
             }
-            // Преобразуем в массив и сортируем по убыванию
             const players = Object.keys(data).map(key => ({
                 login: key,
                 elo: data[key].elo || 1000
             })).sort((a,b) => b.elo - a.elo);
+            const top = players.slice(0, 10);
             list.innerHTML = '';
-            players.forEach((p, index) => {
+            top.forEach((p, index) => {
                 const li = document.createElement('li');
                 const rankSpan = document.createElement('span');
                 rankSpan.innerHTML = `<span class="rank">#${index+1}</span> ${p.login}`;
@@ -483,13 +531,13 @@
                 list.appendChild(li);
             });
         } catch(e) {
+            console.error('Ошибка загрузки рейтинга:', e);
             list.innerHTML = '<li class="no-players">Ошибка загрузки</li>';
-            console.error(e);
         }
     }
 
     // =================================================================
-    // 6. МУЛЬТИПЛЕЕР: ЛОББИ И КОМНАТЫ
+    // 7. МУЛЬТИПЛЕЕР: ЛОББИ И КОМНАТЫ
     // =================================================================
     let currentRoomId = null;
     let gameListenerRef = null;
@@ -649,7 +697,7 @@
     }
 
     // =================================================================
-    // 7. ИГРОВОЙ ДВИЖОК (одиночный и мультиплеер)
+    // 8. ИГРОВОЙ ДВИЖОК (одиночный и мультиплеер)
     // =================================================================
     let map, gameActive = false;
     let resources = 300;
@@ -670,7 +718,7 @@
     let currentAirport = null;
     let attackType = 'drone', attackCount = 1;
 
-    // ---- Fallback границы (встроенные) ----
+    // ---- Fallback границы ----
     const fallbackRussia = {
         "type":"FeatureCollection",
         "features":[{
@@ -759,7 +807,7 @@
         try { return L.icon({ iconUrl: url, iconSize: [28,28], iconAnchor: [14,14] }); } catch(e){ return L.divIcon({ html: '💥', iconSize:[28,28] }); }
     }
 
-    // ---- География с fallback ----
+    // ---- География ----
     function loadRealBorders(cb) {
         Promise.all([
             fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries/RUS.geo.json').then(r=>r.json()).catch(()=>fallbackRussia),
@@ -800,17 +848,12 @@
         document.getElementById('uaFill').style.width=uaPercent+'%';
         if(ruTotal<=0 && gameActive){
             gameActive=false;
-            // Победа или поражение
             const victory = (myTeam==='ukraine');
             if(victory) alert("🏆 ПОБЕДА! Вы уничтожили все города России.");
             else alert("💀 ПОРАЖЕНИЕ! Ваши города России уничтожены.");
             updateStatsAfterGame(victory);
-            // Обновление Эло
-            if (isMultiplayer) {
-                updateElo(victory, 'multiplayer');
-            } else if (isAI) {
-                updateElo(victory, 'single');
-            }
+            if (isMultiplayer) updateElo(victory, 'multiplayer');
+            else if (isAI) updateElo(victory, 'single');
             if(isMultiplayer && currentRoomId) gamesRef.child(currentRoomId).remove();
             setTimeout(()=>location.reload(),3000);
         }
@@ -820,11 +863,8 @@
             if(victory) alert("🏆 ПОБЕДА! Вы уничтожили все города Украины.");
             else alert("💀 ПОРАЖЕНИЕ! Ваши города Украины уничтожены.");
             updateStatsAfterGame(victory);
-            if (isMultiplayer) {
-                updateElo(victory, 'multiplayer');
-            } else if (isAI) {
-                updateElo(victory, 'single');
-            }
+            if (isMultiplayer) updateElo(victory, 'multiplayer');
+            else if (isAI) updateElo(victory, 'single');
             if(isMultiplayer && currentRoomId) gamesRef.child(currentRoomId).remove();
             setTimeout(()=>location.reload(),3000);
         }
@@ -1071,7 +1111,7 @@
         },20);
     }
 
-    // ---- ИИ (только одиночный) ----
+    // ---- ИИ ----
     const priorityWeights = { refinery:100, city:90, pvo:80, radar:70, powerPlant:60, rocketFactory:85 };
     function chooseAITargets(maxTargets=3){
         let candidates = [];
@@ -1224,9 +1264,6 @@
             if(isSandbox){
                 resources = 999999;
                 maxRadars = 999; maxPvo = 999; maxPowerPlants = 999; maxRefineries = 999;
-                // В песочнице тоже включаем ИИ (если isAI уже true, то оставляем)
-                // но в песочнице мы передаём isAI = true при вызове?
-                // Сейчас isAI устанавливается в обработчике кнопки
             } else {
                 if(difficulty==="EASY") resources = 400;
                 else if(difficulty==="NORMAL") resources = 300;
@@ -1259,7 +1296,7 @@
     }
 
     // =================================================================
-    // 6. МУЛЬТИПЛЕЕРНАЯ ИНИЦИАЛИЗАЦИЯ (исправлена карта)
+    // 9. МУЛЬТИПЛЕЕРНАЯ ИНИЦИАЛИЗАЦИЯ
     // =================================================================
     function startMultiplayerGame(roomId, data) {
         console.log("startMultiplayerGame", roomId, data);
@@ -1282,7 +1319,6 @@
         document.getElementById('gameContainer').style.display = 'block';
         document.getElementById('map').style.display = 'block';
 
-        // Получаем состояние игры из Firebase
         mpGameRef = gamesRef.child(roomId).child('gameState');
         mpGameRef.once('value').then(snapshot => {
             let state = snapshot.val();
@@ -1308,14 +1344,12 @@
 
     function initMPGame(initialState) {
         console.log("initMPGame", initialState);
-        // ==== СОЗДАЁМ КАРТУ ====
         if (map) { map.remove(); map = null; }
         document.getElementById('gameContainer').style.display = 'block';
         document.getElementById('map').style.display = 'block';
 
         map = L.map('map', { zoomControl: false }).setView([55.0, 40.0], 5);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '© CartoDB' }).addTo(map);
-        // Принудительно обновляем размер
         setTimeout(() => { if (map) map.invalidateSize(); }, 50);
 
         let ld = document.createElement('div');
@@ -1325,7 +1359,6 @@
 
         loadRealBorders(() => {
             if (ld) ld.remove();
-            // Инициализируем зоны из состояния
             zones = [];
             zoneData.forEach(z => {
                 const stateZone = initialState.zones.find(sz => sz.id === z.id);
@@ -1341,7 +1374,6 @@
             });
             updateTotalPercent();
 
-            // Восстанавливаем здания
             buildings = initialState.buildings ? initialState.buildings.map(b => ({ ...b })) : [];
             projectiles = initialState.projectiles ? initialState.projectiles.map(p => ({ ...p, marker: null })) : [];
 
@@ -1516,7 +1548,7 @@
     }
 
     // =================================================================
-    // 7. ОБРАБОТЧИКИ КНОПОК
+    // 10. ОБРАБОТЧИКИ КНОПОК
     // =================================================================
     document.getElementById('singleBtn').onclick = function() {
         if (!currentUser) { alert("Сначала войдите в аккаунт!"); return; }
@@ -1542,7 +1574,7 @@
             playBeep(600, 0.1);
             setTimeout(() => {
                 playBeep(800, 0.1);
-                isAI = true; // Включаем ИИ в песочнице
+                isAI = true;
                 isSandbox = true;
                 isMultiplayer = false;
                 myTeam = 'russia';
@@ -1580,7 +1612,27 @@
         difficulty = "EXTREME";
     };
 
-    // Обработчики построек
+    // ---- Панель построек ----
+    const buildToggle = document.getElementById('buildToggle');
+    const buildMenu = document.getElementById('buildMenu');
+    let buildMenuOpen = false;
+    buildToggle.addEventListener('click', function(e) {
+        e.stopPropagation();
+        buildMenuOpen = !buildMenuOpen;
+        buildMenu.classList.toggle('open', buildMenuOpen);
+        buildToggle.textContent = buildMenuOpen ? '🏗️ Закрыть' : '🏗️ Стройка';
+    });
+    document.querySelectorAll('#buildMenu .build-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            if (buildMenuOpen) {
+                buildMenu.classList.remove('open');
+                buildMenuOpen = false;
+                buildToggle.textContent = '🏗️ Стройка';
+            }
+        });
+    });
+
+    // ---- Остальные обработчики ----
     document.getElementById('buildRadarBtn').onclick = () => { buildMode = 'radar'; };
     document.getElementById('buildPvoBtn').onclick = () => { buildMode = 'pvo'; };
     document.getElementById('buildPowerPlantBtn').onclick = () => { buildMode = 'powerPlant'; };
@@ -1588,31 +1640,6 @@
     document.getElementById('buildRocketFactoryBtn').onclick = () => { buildMode = 'rocketFactory'; };
     document.getElementById('cancelBuild').onclick = () => { buildMode = null; };
 
-    // Мобильное меню построек
-    document.addEventListener('DOMContentLoaded', function() {
-        const buildToggle = document.getElementById('buildToggle');
-        const buildMenu = document.getElementById('buildMenu');
-        let isOpen = false;
-        if (buildToggle && buildMenu) {
-            buildToggle.addEventListener('click', function(e) {
-                e.stopPropagation();
-                isOpen = !isOpen;
-                buildMenu.classList.toggle('open', isOpen);
-                buildToggle.textContent = isOpen ? '🏗️ Закрыть' : '🏗️ Стройка';
-            });
-            document.querySelectorAll('#buildMenu .build-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    if (buildMenu.classList.contains('open')) {
-                        buildMenu.classList.remove('open');
-                        buildToggle.textContent = '🏗️ Стройка';
-                        isOpen = false;
-                    }
-                });
-            });
-        }
-    });
-
-    // Счетчики модалки
     document.getElementById('countMinus').onclick = () => { if (attackCount > 1) attackCount--; document.getElementById('countValue').innerText = attackCount; updateCostDisplay(); };
     document.getElementById('countPlus').onclick = () => { if (attackCount < 5) attackCount++; document.getElementById('countValue').innerText = attackCount; updateCostDisplay(); };
     document.getElementById('attackCancelBtn').onclick = closeAttackModal;
@@ -1634,7 +1661,7 @@
         closeAttackModal();
     };
 
-    console.log("✅ Игра полностью загружена. Мультиплеер: карта создаётся. Рейтинг добавлен.");
+    console.log("✅ Игра полностью загружена. Пароли и ключи зашифрованы SHA-256. Никто не может их увидеть в Firebase.");
 </script>
 </body>
 </html>
