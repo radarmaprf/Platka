@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Sky in Fire — мультиплеер (исправлен)</title>
+    <title>Sky in Fire — мультиплеер 1v1 (карта исправлена)</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-rotatedmarker/leaflet.rotatedMarker.js"></script>
@@ -1138,9 +1138,11 @@
         });
     }
 
-    // ---- Мультиплеерная инициализация (использует ту же логику, но с синхронизацией) ----
+    // =================================================================
+    // 6. МУЛЬТИПЛЕЕРНАЯ ИНИЦИАЛИЗАЦИЯ (ИСПРАВЛЕНА — карта появляется)
+    // =================================================================
     function startMultiplayerGame(roomId, data) {
-        console.log("startMultiplayerGame", roomId, data);
+        console.log("🔵 startMultiplayerGame", roomId, data);
         // Сброс
         gameActive = false;
         if (map) { map.remove(); map = null; }
@@ -1185,115 +1187,134 @@
     }
 
     function initMPGame(initialState) {
-        console.log("initMPGame", initialState);
-        if(map) { map.remove(); map = null; }
-        map = L.map('map', { zoomControl: false }).setView([55.0,40.0],5);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© CartoDB'}).addTo(map);
-        setTimeout(() => { if(map) map.invalidateSize(); }, 100);
+        console.log("🟢 initMPGame", initialState);
+        // 1. Сначала создаём карту с задержкой, чтобы DOM успел отрисоваться
+        setTimeout(() => {
+            if (map) { map.remove(); map = null; }
+            // Убеждаемся, что контейнер виден
+            document.getElementById('gameContainer').style.display = 'block';
+            document.getElementById('map').style.display = 'block';
 
-        // Используем loadRealBorders как в одиночной
-        let ld = document.createElement('div'); ld.className='loading-indicator'; ld.innerText='Загрузка границ...'; document.body.appendChild(ld);
-        loadRealBorders(()=>{
-            if(ld) ld.remove();
-            // Инициализируем зоны из состояния
-            zones = [];
-            zoneData.forEach(z => {
-                const stateZone = initialState.zones.find(sz => sz.id === z.id);
-                const hp = stateZone ? stateZone.hp : z.hp;
-                let circle = L.circle(z.center, {radius:15000, color:z.team==='russia'?teamColors.russia:teamColors.ukraine, weight:2, fillOpacity:0.25}).addTo(map);
-                let marker = L.marker(z.center, {icon: L.divIcon({html:`<div class="zone-marker" style="border-color: ${z.team==='russia'?'#ff8888':'#88aaff'};">${z.name}<br>${Math.floor((hp/z.baseHp)*100)}%</div>`, iconSize:[80,40]})}).addTo(map);
-                zones.push({id:z.id, name:z.name, center:z.center, team:z.team, hp:hp, baseHp:z.baseHp, circle:circle, marker:marker});
-            });
-            updateTotalPercent();
+            map = L.map('map', { zoomControl: false }).setView([55.0, 40.0], 5);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '© CartoDB' }).addTo(map);
+            // Принудительно обновляем размер
+            setTimeout(() => { if (map) map.invalidateSize(); }, 50);
 
-            // Восстанавливаем здания
-            buildings = initialState.buildings ? initialState.buildings.map(b => ({...b})) : [];
-            projectiles = initialState.projectiles ? initialState.projectiles.map(p => ({...p, marker: null})) : [];
+            // 2. Загружаем границы
+            let ld = document.createElement('div');
+            ld.className = 'loading-indicator';
+            ld.innerText = 'Загрузка границ...';
+            document.body.appendChild(ld);
 
-            buildings.forEach(b => {
-                let icon;
-                if(b.type==='radar') icon=getRadarIcon();
-                else if(b.type==='pvo') icon=getPvoIcon();
-                else if(b.type==='powerPlant') icon=getPowerPlantIcon();
-                else if(b.type==='refinery') icon=getRefineryIcon();
-                else if(b.type==='rocketFactory') icon=getRocketFactoryIcon();
-                else return;
-                let marker = L.marker([b.lat, b.lng], {icon}).addTo(map);
-                b.marker = marker;
-                if(b.type==='radar') {
-                    let circle = L.circle([b.lat, b.lng], {radius:150000, color:'#00ffff', weight:1, fillOpacity:0.05}).addTo(map);
-                    b.radarCircle = circle;
-                    radars.push(b);
-                } else if(b.type==='pvo') {
-                    pvoSystems.push(b);
-                } else if(b.type==='powerPlant') {
-                    powerPlants.push(b);
-                } else if(b.type==='refinery') {
-                    refineries.push(b);
-                } else if(b.type==='rocketFactory') {
-                    rocketFactories.push(b);
-                }
-            });
+            loadRealBorders(() => {
+                if (ld) ld.remove();
+                // 3. Инициализируем зоны из состояния
+                zones = [];
+                zoneData.forEach(z => {
+                    const stateZone = initialState.zones.find(sz => sz.id === z.id);
+                    const hp = stateZone ? stateZone.hp : z.hp;
+                    let circle = L.circle(z.center, { radius: 15000, color: z.team === 'russia' ? teamColors.russia : teamColors.ukraine, weight: 2, fillOpacity: 0.25 }).addTo(map);
+                    let marker = L.marker(z.center, {
+                        icon: L.divIcon({
+                            html: `<div class="zone-marker" style="border-color: ${z.team === 'russia' ? '#ff8888' : '#88aaff'};">${z.name}<br>${Math.floor((hp / z.baseHp) * 100)}%</div>`,
+                            iconSize: [80, 40]
+                        })
+                    }).addTo(map);
+                    zones.push({ id: z.id, name: z.name, center: z.center, team: z.team, hp: hp, baseHp: z.baseHp, circle: circle, marker: marker });
+                });
+                updateTotalPercent();
 
-            projectiles.forEach(p => {
-                let marker = L.marker([p.from.lat, p.from.lng], {icon: getMissileIcon(p.type, p.team)}).addTo(map);
-                p.marker = marker;
-            });
+                // Восстанавливаем здания
+                buildings = initialState.buildings ? initialState.buildings.map(b => ({ ...b })) : [];
+                projectiles = initialState.projectiles ? initialState.projectiles.map(p => ({ ...p, marker: null })) : [];
 
-            const res = initialState.resources || { russia: 300, ukraine: 300 };
-            resources = res[myTeam] || 300;
-            airportPlaced = false;
-            updateUI();
-
-            gameActive = true;
-            lastUpdate = performance.now();
-            requestAnimationFrame(gameLoop);
-            startRadarAnimation();
-
-            if(economyInterval) clearInterval(economyInterval);
-            economyInterval = setInterval(() => {
-                if (gameActive && isMultiplayer) {
-                    let income = 5 + powerPlants.filter(p=>p.team===myTeam).length*3 + refineries.filter(r=>r.team===myTeam).length*15;
-                    resources += income;
-                    updateUI();
-                    sendGameStateUpdate();
-                }
-            }, 1000);
-
-            // Слушаем изменения состояния из Firebase
-            if (mpGameRef) {
-                mpGameRef.off();
-                mpGameRef.on('value', (snapshot) => {
-                    const state = snapshot.val();
-                    if (state) {
-                        applyGameState(state);
+                buildings.forEach(b => {
+                    let icon;
+                    if (b.type === 'radar') icon = getRadarIcon();
+                    else if (b.type === 'pvo') icon = getPvoIcon();
+                    else if (b.type === 'powerPlant') icon = getPowerPlantIcon();
+                    else if (b.type === 'refinery') icon = getRefineryIcon();
+                    else if (b.type === 'rocketFactory') icon = getRocketFactoryIcon();
+                    else return;
+                    let marker = L.marker([b.lat, b.lng], { icon }).addTo(map);
+                    b.marker = marker;
+                    if (b.type === 'radar') {
+                        let circle = L.circle([b.lat, b.lng], { radius: 150000, color: '#00ffff', weight: 1, fillOpacity: 0.05 }).addTo(map);
+                        b.radarCircle = circle;
+                        radars.push(b);
+                    } else if (b.type === 'pvo') {
+                        pvoSystems.push(b);
+                    } else if (b.type === 'powerPlant') {
+                        powerPlants.push(b);
+                    } else if (b.type === 'refinery') {
+                        refineries.push(b);
+                    } else if (b.type === 'rocketFactory') {
+                        rocketFactories.push(b);
                     }
                 });
-            }
 
-            // Обработка кликов на карте
-            map.off('click');
-            map.on('click', (e) => {
-                if (!airportPlaced) {
-                    let lat = e.latlng.lat, lng = e.latlng.lng;
-                    if (!isOwnTerritory(lat,lng)) { alert("Аэродром можно поставить только на своей территории!"); return; }
-                    let icon = getAirportIcon();
-                    airportMarker = L.marker([lat,lng], {icon}).addTo(map);
-                    airportMarker.bindPopup('<b>АЭРОДРОМ</b>');
-                    airportMarker.on('click', () => showAttackModal(airportMarker));
-                    airportPlaced = true;
-                    showHint("📡 Теперь постройте Радар");
-                    sendMpAction({ type: 'airportPlaced', lat, lng });
-                    return;
+                projectiles.forEach(p => {
+                    let marker = L.marker([p.from.lat, p.from.lng], { icon: getMissileIcon(p.type, p.team) }).addTo(map);
+                    p.marker = marker;
+                });
+
+                const res = initialState.resources || { russia: 300, ukraine: 300 };
+                resources = res[myTeam] || 300;
+                airportPlaced = false;
+                updateUI();
+
+                gameActive = true;
+                lastUpdate = performance.now();
+                requestAnimationFrame(gameLoop);
+                startRadarAnimation();
+
+                if (economyInterval) clearInterval(economyInterval);
+                economyInterval = setInterval(() => {
+                    if (gameActive && isMultiplayer) {
+                        let income = 5 + powerPlants.filter(p => p.team === myTeam).length * 3 + refineries.filter(r => r.team === myTeam).length * 15;
+                        resources += income;
+                        updateUI();
+                        sendGameStateUpdate();
+                    }
+                }, 1000);
+
+                // Слушаем изменения состояния из Firebase
+                if (mpGameRef) {
+                    mpGameRef.off();
+                    mpGameRef.on('value', (snapshot) => {
+                        const state = snapshot.val();
+                        if (state) {
+                            applyGameState(state);
+                        }
+                    });
                 }
-                if (buildMode) {
-                    tryBuild(e.latlng.lat, e.latlng.lng, buildMode);
-                    buildMode = null;
-                }
+
+                // Обработка кликов на карте
+                map.off('click');
+                map.on('click', (e) => {
+                    if (!airportPlaced) {
+                        let lat = e.latlng.lat,
+                            lng = e.latlng.lng;
+                        if (!isOwnTerritory(lat, lng)) { alert("Аэродром можно поставить только на своей территории!"); return; }
+                        let icon = getAirportIcon();
+                        airportMarker = L.marker([lat, lng], { icon }).addTo(map);
+                        airportMarker.bindPopup('<b>АЭРОДРОМ</b>');
+                        airportMarker.on('click', () => showAttackModal(airportMarker));
+                        airportPlaced = true;
+                        showHint("📡 Теперь постройте Радар");
+                        sendMpAction({ type: 'airportPlaced', lat, lng });
+                        return;
+                    }
+                    if (buildMode) {
+                        tryBuild(e.latlng.lat, e.latlng.lng, buildMode);
+                        buildMode = null;
+                    }
+                });
+
+                // Ещё раз обновляем размер карты через 300 мс
+                setTimeout(() => { if (map) map.invalidateSize(); }, 300);
             });
-
-            setTimeout(() => { if(map) map.invalidateSize(); }, 300);
-        });
+        }, 100); // Задержка 100 мс перед созданием карты
     }
 
     // ---- Синхронизация мультиплеера ----
@@ -1336,26 +1357,26 @@
             const newBuildings = state.buildings.filter(b => !buildings.some(lb => lb.id === b.id));
             newBuildings.forEach(b => {
                 let icon;
-                if(b.type==='radar') icon=getRadarIcon();
-                else if(b.type==='pvo') icon=getPvoIcon();
-                else if(b.type==='powerPlant') icon=getPowerPlantIcon();
-                else if(b.type==='refinery') icon=getRefineryIcon();
-                else if(b.type==='rocketFactory') icon=getRocketFactoryIcon();
+                if (b.type === 'radar') icon = getRadarIcon();
+                else if (b.type === 'pvo') icon = getPvoIcon();
+                else if (b.type === 'powerPlant') icon = getPowerPlantIcon();
+                else if (b.type === 'refinery') icon = getRefineryIcon();
+                else if (b.type === 'rocketFactory') icon = getRocketFactoryIcon();
                 else return;
-                let marker = L.marker([b.lat, b.lng], {icon}).addTo(map);
+                let marker = L.marker([b.lat, b.lng], { icon }).addTo(map);
                 b.marker = marker;
                 buildings.push(b);
-                if(b.type==='radar') radars.push(b);
-                else if(b.type==='pvo') pvoSystems.push(b);
-                else if(b.type==='powerPlant') powerPlants.push(b);
-                else if(b.type==='refinery') refineries.push(b);
-                else if(b.type==='rocketFactory') rocketFactories.push(b);
+                if (b.type === 'radar') radars.push(b);
+                else if (b.type === 'pvo') pvoSystems.push(b);
+                else if (b.type === 'powerPlant') powerPlants.push(b);
+                else if (b.type === 'refinery') refineries.push(b);
+                else if (b.type === 'rocketFactory') rocketFactories.push(b);
             });
             const remoteIds = state.buildings.map(b => b.id);
             const toRemove = buildings.filter(b => !remoteIds.includes(b.id));
             toRemove.forEach(b => {
-                if(b.marker) map.removeLayer(b.marker);
-                if(b.radarCircle) map.removeLayer(b.radarCircle);
+                if (b.marker) map.removeLayer(b.marker);
+                if (b.radarCircle) map.removeLayer(b.radarCircle);
                 buildings = buildings.filter(lb => lb.id !== b.id);
                 radars = radars.filter(r => r.id !== b.id);
                 pvoSystems = pvoSystems.filter(p => p.id !== b.id);
@@ -1368,12 +1389,12 @@
             const remoteIds = state.projectiles.map(p => p.id);
             const toRemoveP = projectiles.filter(p => !remoteIds.includes(p.id));
             toRemoveP.forEach(p => {
-                if(p.marker) map.removeLayer(p.marker);
+                if (p.marker) map.removeLayer(p.marker);
                 projectiles = projectiles.filter(lp => lp.id !== p.id);
             });
             state.projectiles.forEach(p => {
                 if (!projectiles.some(lp => lp.id === p.id)) {
-                    let marker = L.marker([p.from.lat, p.from.lng], {icon: getMissileIcon(p.type, p.team)}).addTo(map);
+                    let marker = L.marker([p.from.lat, p.from.lng], { icon: getMissileIcon(p.type, p.team) }).addTo(map);
                     p.marker = marker;
                     projectiles.push(p);
                 }
@@ -1386,20 +1407,36 @@
     // =================================================================
     document.getElementById('singleBtn').onclick = function() {
         if (!currentUser) { alert("Сначала войдите в аккаунт!"); return; }
-        playBeep(400,0.1); setTimeout(()=>{ playBeep(600,0.1); setTimeout(()=>{ playBeep(800,0.1);
-            isAI = true; isSandbox = false; isMultiplayer = false;
-            myTeam = 'russia'; enemyTeam = 'ukraine';
-            initGameMapAndLogic();
-        },100); },100);
+        playBeep(400, 0.1);
+        setTimeout(() => {
+            playBeep(600, 0.1);
+            setTimeout(() => {
+                playBeep(800, 0.1);
+                isAI = true;
+                isSandbox = false;
+                isMultiplayer = false;
+                myTeam = 'russia';
+                enemyTeam = 'ukraine';
+                initGameMapAndLogic();
+            }, 100);
+        }, 100);
     };
 
     document.getElementById('sandboxBtn').onclick = function() {
         if (!currentUser) { alert("Сначала войдите в аккаунт!"); return; }
-        playBeep(400,0.1); setTimeout(()=>{ playBeep(600,0.1); setTimeout(()=>{ playBeep(800,0.1);
-            isAI = false; isSandbox = true; isMultiplayer = false;
-            myTeam = 'russia'; enemyTeam = 'ukraine';
-            initGameMapAndLogic();
-        },100); },100);
+        playBeep(400, 0.1);
+        setTimeout(() => {
+            playBeep(600, 0.1);
+            setTimeout(() => {
+                playBeep(800, 0.1);
+                isAI = false;
+                isSandbox = true;
+                isMultiplayer = false;
+                myTeam = 'russia';
+                enemyTeam = 'ukraine';
+                initGameMapAndLogic();
+            }, 100);
+        }, 100);
     };
 
     document.getElementById('tutorialBtn').onclick = function() {
@@ -1409,12 +1446,12 @@
     document.getElementById('logoutBtn').onclick = logout;
 
     // Обработчики кнопок построек
-    document.getElementById('buildRadarBtn').onclick = () => { buildMode='radar'; };
-    document.getElementById('buildPvoBtn').onclick = () => { buildMode='pvo'; };
-    document.getElementById('buildPowerPlantBtn').onclick = () => { buildMode='powerPlant'; };
-    document.getElementById('buildRefineryBtn').onclick = () => { buildMode='refinery'; };
-    document.getElementById('buildRocketFactoryBtn').onclick = () => { buildMode='rocketFactory'; };
-    document.getElementById('cancelBuild').onclick = () => { buildMode=null; };
+    document.getElementById('buildRadarBtn').onclick = () => { buildMode = 'radar'; };
+    document.getElementById('buildPvoBtn').onclick = () => { buildMode = 'pvo'; };
+    document.getElementById('buildPowerPlantBtn').onclick = () => { buildMode = 'powerPlant'; };
+    document.getElementById('buildRefineryBtn').onclick = () => { buildMode = 'refinery'; };
+    document.getElementById('buildRocketFactoryBtn').onclick = () => { buildMode = 'rocketFactory'; };
+    document.getElementById('cancelBuild').onclick = () => { buildMode = null; };
 
     // Мобильное меню построек
     document.addEventListener('DOMContentLoaded', function() {
@@ -1441,8 +1478,8 @@
     });
 
     // Счетчики модалки
-    document.getElementById('countMinus').onclick = () => { if(attackCount>1) attackCount--; document.getElementById('countValue').innerText=attackCount; updateCostDisplay(); };
-    document.getElementById('countPlus').onclick = () => { if(attackCount<5) attackCount++; document.getElementById('countValue').innerText=attackCount; updateCostDisplay(); };
+    document.getElementById('countMinus').onclick = () => { if (attackCount > 1) attackCount--; document.getElementById('countValue').innerText = attackCount; updateCostDisplay(); };
+    document.getElementById('countPlus').onclick = () => { if (attackCount < 5) attackCount++; document.getElementById('countValue').innerText = attackCount; updateCostDisplay(); };
     document.getElementById('attackCancelBtn').onclick = closeAttackModal;
     document.getElementById('attackConfirmBtn').onclick = function() {
         let select = document.getElementById('targetSelect');
