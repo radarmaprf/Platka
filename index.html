@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Sky in Fire — аккаунты на всех устройствах</title>
+    <title>Sky in Fire — полная версия</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-rotatedmarker/leaflet.rotatedMarker.js"></script>
@@ -12,242 +12,84 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
     <style>
-        /* ====== БАЗОВЫЕ СТИЛИ ====== */
-        * { margin:0; padding:0; box-sizing:border-box; user-select:none; -webkit-tap-highlight-color:transparent; }
-        body { font-family:'Segoe UI',system-ui,-apple-system,sans-serif; background:#0a0f12; overflow:hidden; height:100vh; color:#eef; touch-action:manipulation; }
-        .screen { position:absolute; top:0; left:0; width:100%; height:100%; display:flex; justify-content:center; align-items:center; z-index:2000; background:radial-gradient(circle at 20% 30%,#0a1f1a,#030a08); }
-        .missile-bg { position:absolute; inset:0; background:radial-gradient(circle at 20% 20%,rgba(255,102,0,0.15),transparent 50%), radial-gradient(circle at 80% 60%,rgba(0,170,255,0.15),transparent 50%), repeating-linear-gradient(45deg,rgba(255,255,255,0.02) 0px,rgba(255,255,255,0.02) 2px,transparent 2px,transparent 8px); pointer-events:none; }
-        .scan-line { position:absolute; top:0; left:0; width:100%; height:2px; background:linear-gradient(90deg,transparent,#00ffaa,transparent); animation:scan 8s linear infinite; opacity:0.3; pointer-events:none; }
-        @keyframes scan { 0%{top:0;} 100%{top:100%;} }
-        .card { background:rgba(20,30,35,0.85); backdrop-filter:blur(14px); border-radius:48px; padding:clamp(20px, 4vw, 40px) clamp(16px, 3vw, 32px); text-align:center; max-width:92%; width:480px; color:#fff; box-shadow:0 25px 45px rgba(0,0,0,0.5),0 0 0 1px rgba(255,215,0,0.2); border:1px solid rgba(255,215,0,0.3); position:relative; z-index:10; max-height:90vh; overflow-y:auto; }
-        .logo { font-size:clamp(2.2rem, 6vw, 3.5rem); font-weight:900; letter-spacing:4px; text-transform:uppercase; background:linear-gradient(135deg,#ffb347,#ff8c00); -webkit-background-clip:text; background-clip:text; color:transparent; text-shadow:0 0 15px rgba(255,140,0,0.5); margin-bottom:0.5rem; }
-        .difficulty-select { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin:10px 0 15px; }
-        .difficulty-btn { background:#3a5e5e; border:2px solid #fff; border-radius:40px; padding:6px 12px; cursor:pointer; font-weight:bold; transition:0.1s; font-size:clamp(0.7rem, 1.5vw, 1rem); touch-action:manipulation; }
-        .difficulty-btn.selected { background:#ffaa33; border-color:gold; color:#1a2a2a; }
-        .card button { display:block; width:100%; background:rgba(255,255,255,0.08); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,0.15); color:white; padding:clamp(12px, 2.5vh, 16px); margin:10px 0; font-size:clamp(1rem, 2.5vw, 1.2rem); font-weight:bold; border-radius:60px; cursor:pointer; transition:0.2s; box-shadow:0 2px 5px rgba(0,0,0,0.2); touch-action:manipulation; }
-        .card button:hover { transform:translateY(-2px); background:rgba(255,255,255,0.15); border-color:rgba(255,215,0,0.5); }
-        .card button:active { transform:scale(0.96); }
-        .card input { width:100%; padding:clamp(12px, 2.5vh, 16px); border-radius:60px; border:none; margin:10px 0; text-align:center; background:rgba(42,58,58,0.8); color:#fff; font-size:clamp(1rem, 2vw, 1.2rem); }
-        .lobby-info { margin:8px 0; background:rgba(0,0,0,0.5); border-radius:40px; padding:8px; font-size:clamp(0.8rem, 1.5vw, 1rem); }
-        .country-select { display:flex; gap:12px; flex-wrap:wrap; justify-content:center; margin:15px 0; }
-        .country-btn { flex:1; min-width:80px; background:#3a5e5e; border:2px solid #fff; border-radius:40px; padding:12px 8px; cursor:pointer; font-weight:bold; transition:0.1s; font-size:clamp(0.8rem, 1.5vw, 1.1rem); text-align:center; touch-action:manipulation; }
-        .country-btn.selected { background:#ffaa33; border-color:gold; color:#1a2a2a; }
-        .ready-btn { background:#ffaa33!important; color:#1a2a2a!important; }
-
-        .auth-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.96); z-index:10000; display:flex; justify-content:center; align-items:center; }
-        .auth-card { background:rgba(20,30,35,0.95); backdrop-filter:blur(14px); border-radius:48px; padding:clamp(20px, 4vw, 40px) clamp(16px, 3vw, 32px); text-align:center; width:400px; max-width:92%; color:#fff; border:1px solid rgba(255,215,0,0.3); box-shadow:0 25px 45px rgba(0,0,0,0.5); max-height:95vh; overflow-y:auto; }
-        .auth-card h2 { font-size:clamp(1.6rem, 4vw, 2.2rem); margin-bottom:15px; }
-        .auth-card input { width:100%; padding:clamp(12px, 2.5vh, 16px); margin:8px 0; border-radius:60px; border:none; background:rgba(42,58,58,0.8); color:#fff; text-align:center; font-size:clamp(1rem, 2vw, 1.2rem); }
-        .auth-card button { width:100%; background:#ffaa33; border:none; padding:clamp(12px, 2.5vh, 16px); border-radius:60px; font-weight:bold; cursor:pointer; margin-top:10px; color:#1a2a2a; font-size:clamp(1rem, 2vw, 1.2rem); touch-action:manipulation; }
-        .auth-card button:hover { background:#ffcc66; }
-        .auth-card .error-msg { color:#ff6666; margin-top:8px; font-size:clamp(0.8rem, 1.5vw, 1rem); }
-        .auth-card .toggle-link { margin-top:12px; font-size:clamp(0.8rem, 1.5vw, 1rem); cursor:pointer; color:#88aaff; }
-
-        /* HUD */
-        #gameHUD {
-            position:fixed;
-            top:8px;
-            left:8px;
-            right:8px;
-            background:rgba(5,10,15,0.88);
-            backdrop-filter:blur(12px);
-            border-radius:clamp(16px, 3vw, 30px);
-            padding:clamp(4px, 1vh, 10px) clamp(8px, 2vw, 16px);
-            display:flex;
-            flex-wrap:wrap;
-            justify-content:space-between;
-            align-items:center;
-            z-index:1500;
-            border:1px solid rgba(0,255,170,0.3);
-            box-shadow:0 0 20px rgba(0,255,170,0.15);
-            font-weight:bold;
-            gap:4px;
-            font-size:clamp(0.6rem, 1.6vw, 1rem);
-            min-height:clamp(40px, 8vh, 60px);
-        }
-        .hud-resource { background:#1e2e2e; padding:2px 10px; border-radius:40px; display:inline-flex; align-items:center; gap:4px; color:#00ffaa; font-size:clamp(0.8rem, 2vw, 1.2rem); }
-        .hud-rank { background:#1e2e2e; padding:2px 10px; border-radius:40px; display:inline-flex; align-items:center; gap:4px; font-size:clamp(0.6rem, 1.5vw, 1rem); }
-        .health-bars { display:flex; gap:clamp(4px, 2vw, 20px); background:rgba(0,0,0,0.5); padding:2px 8px; border-radius:40px; flex-wrap:wrap; }
-        .health-bar { display:flex; align-items:center; gap:4px; font-size:clamp(0.5rem, 1.2vw, 0.9rem); }
-        .bar-bg { width:clamp(40px, 15vw, 120px); height:clamp(4px, 1.5vh, 10px); background:#333; border-radius:10px; overflow:hidden; }
-        .bar-fill { height:100%; width:0%; transition:width 0.3s; }
-        .ru-fill { background:#ff5555; }
-        .ua-fill { background:#55aaff; }
-
-        /* Панель построек (адаптивная) */
-        #buildPanel {
-            position:fixed;
-            bottom:clamp(10px, 3vh, 20px);
-            left:clamp(10px, 3vw, 20px);
-            z-index:1500;
-            display:flex;
-            flex-direction:column;
-            gap:6px;
-        }
-        #buildToggle {
-            display:none;
-            background:linear-gradient(180deg,#ffaa33,#e68a00);
-            border:none;
-            color:#1a2a2a;
-            padding:clamp(10px, 2vh, 16px) clamp(14px, 3vw, 20px);
-            border-radius:60px;
-            cursor:pointer;
-            font-weight:bold;
-            font-size:clamp(0.9rem, 2vw, 1.2rem);
-            box-shadow:0 4px 15px rgba(255,170,51,0.4);
-            transition:0.2s;
-            touch-action:manipulation;
-            min-height:clamp(44px, 8vh, 56px);
-            min-width:clamp(44px, 10vw, 70px);
-        }
-        #buildToggle:active { transform:scale(0.95); }
-        #buildMenu {
-            display:flex;
-            flex-direction:column;
-            gap:4px;
-            background:rgba(0,0,0,0.85);
-            backdrop-filter:blur(12px);
-            border-radius:clamp(16px, 3vw, 30px);
-            padding:clamp(8px, 1.5vh, 14px);
-            border:1px solid #ffaa3344;
-            max-height:clamp(250px, 50vh, 400px);
-            overflow-y:auto;
-        }
-        #buildMenu .build-btn {
-            background:linear-gradient(180deg,#24353d,#17242b);
-            border:1px solid #00ffaa44;
-            box-shadow:0 0 10px rgba(0,255,170,0.08);
-            border:none;
-            color:#fff;
-            padding:clamp(8px, 1.5vh, 12px) clamp(12px, 2vw, 18px);
-            border-radius:40px;
-            cursor:pointer;
-            font-weight:bold;
-            text-align:left;
-            font-size:clamp(0.8rem, 1.8vw, 1.1rem);
-            touch-action:manipulation;
-            white-space:nowrap;
-        }
-        #buildMenu .build-btn:active { transform:scale(0.96); }
-        #buildMenu .build-btn.cancel { background:#aa3333; border-color:#ff4444; }
-
-        /* Модальное окно */
-        .modal {
-            position:fixed;
-            top:50%;
-            left:50%;
-            transform:translate(-50%,-50%);
-            background:linear-gradient(180deg,#091116,#020508);
-            border-radius:clamp(24px, 5vw, 40px);
-            padding:clamp(16px, 3vh, 30px);
-            z-index:3000;
-            color:#fff;
-            width:clamp(300px, 90vw, 500px);
-            max-height:90vh;
-            overflow-y:auto;
-            text-align:center;
-            border:2px solid #00ffaa;
-            box-shadow:0 0 40px rgba(0,255,170,0.3);
-        }
-        .modal h3 { font-size:clamp(1.2rem, 3vw, 1.8rem); margin-bottom:12px; }
-        .modal select { width:100%; padding:clamp(10px, 2vh, 14px); border-radius:40px; background:#1a2a2a; color:#fff; border:1px solid #00ffaa44; font-size:clamp(0.9rem, 2vw, 1.1rem); margin-bottom:10px; }
-        .modal .weapon-grid {
-            display:grid;
-            grid-template-columns:1fr 1fr;
-            gap:8px;
-            margin:10px 0;
-            max-height:clamp(200px, 40vh, 350px);
-            overflow-y:auto;
-        }
-        .modal .weapon-card {
-            background:#101820;
-            border:2px solid #333;
-            border-radius:16px;
-            padding:8px;
-            cursor:pointer;
-            transition:0.2s;
-            text-align:center;
-            touch-action:manipulation;
-        }
-        .modal .weapon-card:active { transform:scale(0.95); }
-        .modal .weapon-card.selected { border-color:#00ffaa; box-shadow:0 0 15px rgba(0,255,170,0.4); background:#1e3038; }
-        .modal .weapon-card img { width:100%; height:clamp(40px, 8vh, 80px); object-fit:contain; margin-bottom:4px; }
-        .modal .weapon-name { font-weight:bold; font-size:clamp(0.7rem, 1.5vw, 1rem); }
-        .modal .weapon-stats { font-size:clamp(0.6rem, 1.2vw, 0.8rem); opacity:0.8; }
-        .modal .flex { display:flex; gap:8px; justify-content:center; align-items:center; flex-wrap:wrap; margin:8px 0; }
-        .modal .flex button { background:#3a5e5e; border:none; color:#fff; padding:6px 14px; border-radius:40px; cursor:pointer; font-size:clamp(1rem, 2vw, 1.2rem); touch-action:manipulation; }
-        .modal .flex button:active { transform:scale(0.95); }
-        .modal .flex span { font-size:clamp(1rem, 2vw, 1.2rem); min-width:30px; }
-        .modal button { width:100%; padding:clamp(10px, 2vh, 14px); border-radius:40px; border:none; font-weight:bold; cursor:pointer; margin-top:6px; font-size:clamp(0.9rem, 2vw, 1.1rem); touch-action:manipulation; }
-        .modal button:active { transform:scale(0.96); }
-        #costDisplay { margin:8px 0; font-weight:bold; font-size:clamp(0.9rem, 2vw, 1.2rem); }
-
-        .zone-marker { background:rgba(0,0,0,0.8); border-radius:16px; padding:4px 8px; text-align:center; font-weight:bold; color:#fff; font-size:clamp(0.5rem, 1vw, 0.8rem); box-shadow:0 0 10px rgba(0,0,0,0.5); white-space:nowrap; }
-        .hidden-projectile { display:none !important; }
-        .loading-indicator { background:rgba(0,0,0,0.7); color:white; padding:8px 16px; border-radius:30px; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:3000; font-size:clamp(0.9rem, 2vw, 1.2rem); }
-        .explosion{ width:30px; height:30px; border-radius:50%; background:#ffcc00; box-shadow:0 0 20px #ffcc00,0 0 40px orange,0 0 80px red; animation:explode .5s forwards; }
-        @keyframes explode{ from{ transform:scale(.2); opacity:1; } to{ transform:scale(3); opacity:0; } }
-        @keyframes radarSpin { from{transform:translateX(-50%) rotate(0deg);} to{transform:translateX(-50%) rotate(360deg);} }
-        .leaflet-marker-icon { transform-origin:center center; }
-        .leaflet-control-zoom { display:none !important; }
-
-        /* Адаптив */
-        @media (max-width: 600px) {
-            #gameHUD { flex-direction:column; align-items:stretch; gap:3px; padding:4px 8px; font-size:0.7rem; top:4px; left:4px; right:4px; border-radius:16px; min-height:auto; }
-            .hud-resource, .hud-rank { font-size:0.9rem; padding:2px 8px; justify-content:center; }
-            .health-bars { justify-content:space-around; padding:2px 4px; gap:4px; }
-            .health-bar { font-size:0.6rem; gap:2px; }
-            .bar-bg { width:50px; height:5px; }
-            #buildPanel { bottom:10px; left:10px; gap:4px; }
-            #buildToggle { display:block; font-size:1rem; padding:8px 14px; min-height:44px; min-width:44px; }
-            #buildMenu { display:none; padding:8px; max-height:200px; border-radius:16px; }
-            #buildMenu.open { display:flex; }
-            #buildMenu .build-btn { font-size:0.8rem; padding:6px 12px; white-space:normal; }
-            .modal { width:95vw; padding:16px; max-height:85vh; border-radius:24px; }
-            .modal .weapon-grid { grid-template-columns:1fr 1fr; gap:6px; max-height:200px; }
-            .modal .weapon-card { padding:6px; }
-            .modal .weapon-card img { height:40px; }
-            .modal .flex button { padding:4px 12px; font-size:0.9rem; }
-            .card, .auth-card { padding:20px 16px; border-radius:32px; width:100%; max-width:95%; }
-            .logo { font-size:2rem; }
-            .difficulty-btn { font-size:0.6rem; padding:4px 8px; }
-            .card button, .auth-card button { font-size:0.9rem; padding:10px; margin:6px 0; }
-            .card input, .auth-card input { font-size:0.9rem; padding:10px; }
-        }
-        @media (min-width: 601px) and (max-width: 900px) {
-            #gameHUD { padding:4px 12px; font-size:0.8rem; }
-            .bar-bg { width:80px; height:7px; }
-            .modal { width:80vw; padding:20px; }
-            .card, .auth-card { padding:30px 24px; }
-            .logo { font-size:2.5rem; }
-        }
-        @media (max-width: 800px) and (orientation: landscape) {
-            #gameHUD { flex-direction:row; flex-wrap:wrap; font-size:0.6rem; padding:2px 8px; min-height:30px; }
-            .hud-resource, .hud-rank { font-size:0.7rem; padding:2px 6px; }
-            .bar-bg { width:40px; height:4px; }
-            #buildToggle { padding:6px 12px; font-size:0.8rem; min-height:30px; }
-            #buildMenu .build-btn { font-size:0.7rem; padding:4px 10px; }
-            .modal { width:70vw; max-height:80vh; padding:12px; }
-            .modal .weapon-grid { max-height:150px; }
-            .modal .weapon-card img { height:30px; }
-        }
-        @media (max-width: 400px) {
-            .card, .auth-card { padding:12px 10px; border-radius:24px; }
-            .logo { font-size:1.6rem; }
-            .difficulty-btn { font-size:0.5rem; padding:3px 6px; }
-            .card button, .auth-card button { font-size:0.8rem; padding:8px; margin:4px 0; }
-            .card input, .auth-card input { font-size:0.8rem; padding:8px; }
-            .bar-bg { width:35px; height:4px; }
-            .modal { padding:10px; width:98vw; }
-            .modal h3 { font-size:1rem; }
-            .modal .weapon-card { padding:4px; }
-            .modal .weapon-card img { height:30px; }
-        }
+        /* Базовые стили (сжаты для экономии места) */
+        *{margin:0;padding:0;box-sizing:border-box;user-select:none;-webkit-tap-highlight-color:transparent}
+        body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#0a0f12;overflow:hidden;height:100vh;color:#eef;touch-action:manipulation}
+        .screen{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;justify-content:center;align-items:center;z-index:2000;background:radial-gradient(circle at 20% 30%,#0a1f1a,#030a08)}
+        .missile-bg{position:absolute;inset:0;background:radial-gradient(circle at 20% 20%,rgba(255,102,0,0.15),transparent 50%),radial-gradient(circle at 80% 60%,rgba(0,170,255,0.15),transparent 50%),repeating-linear-gradient(45deg,rgba(255,255,255,0.02) 0px,rgba(255,255,255,0.02) 2px,transparent 2px,transparent 8px);pointer-events:none}
+        .scan-line{position:absolute;top:0;left:0;width:100%;height:2px;background:linear-gradient(90deg,transparent,#00ffaa,transparent);animation:scan 8s linear infinite;opacity:0.3;pointer-events:none}
+        @keyframes scan{0%{top:0}100%{top:100%}}
+        .card{background:rgba(20,30,35,0.85);backdrop-filter:blur(14px);border-radius:48px;padding:clamp(20px,4vw,40px) clamp(16px,3vw,32px);text-align:center;max-width:92%;width:480px;color:#fff;box-shadow:0 25px 45px rgba(0,0,0,0.5),0 0 0 1px rgba(255,215,0,0.2);border:1px solid rgba(255,215,0,0.3);position:relative;z-index:10;max-height:90vh;overflow-y:auto}
+        .logo{font-size:clamp(2.2rem,6vw,3.5rem);font-weight:900;letter-spacing:4px;text-transform:uppercase;background:linear-gradient(135deg,#ffb347,#ff8c00);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 0 15px rgba(255,140,0,0.5);margin-bottom:.5rem}
+        .difficulty-select{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:10px 0 15px}
+        .difficulty-btn{background:#3a5e5e;border:2px solid #fff;border-radius:40px;padding:6px 12px;cursor:pointer;font-weight:700;transition:.1s;font-size:clamp(.7rem,1.5vw,1rem);touch-action:manipulation}
+        .difficulty-btn.selected{background:#ffaa33;border-color:gold;color:#1a2a2a}
+        .card button{display:block;width:100%;background:rgba(255,255,255,0.08);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.15);color:#fff;padding:clamp(12px,2.5vh,16px);margin:10px 0;font-size:clamp(1rem,2.5vw,1.2rem);font-weight:700;border-radius:60px;cursor:pointer;transition:.2s;box-shadow:0 2px 5px rgba(0,0,0,0.2);touch-action:manipulation}
+        .card button:hover{transform:translateY(-2px);background:rgba(255,255,255,0.15);border-color:rgba(255,215,0,0.5)}
+        .card button:active{transform:scale(.96)}
+        .card input{width:100%;padding:clamp(12px,2.5vh,16px);border-radius:60px;border:none;margin:10px 0;text-align:center;background:rgba(42,58,58,0.8);color:#fff;font-size:clamp(1rem,2vw,1.2rem)}
+        .lobby-info{margin:8px 0;background:rgba(0,0,0,0.5);border-radius:40px;padding:8px;font-size:clamp(.8rem,1.5vw,1rem)}
+        .country-select{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin:15px 0}
+        .country-btn{flex:1;min-width:80px;background:#3a5e5e;border:2px solid #fff;border-radius:40px;padding:12px 8px;cursor:pointer;font-weight:700;transition:.1s;font-size:clamp(.8rem,1.5vw,1.1rem);text-align:center;touch-action:manipulation}
+        .country-btn.selected{background:#ffaa33;border-color:gold;color:#1a2a2a}
+        .ready-btn{background:#ffaa33!important;color:#1a2a2a!important}
+        .auth-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.96);z-index:10000;display:flex;justify-content:center;align-items:center}
+        .auth-card{background:rgba(20,30,35,.95);backdrop-filter:blur(14px);border-radius:48px;padding:clamp(20px,4vw,40px) clamp(16px,3vw,32px);text-align:center;width:400px;max-width:92%;color:#fff;border:1px solid rgba(255,215,0,.3);box-shadow:0 25px 45px rgba(0,0,0,.5);max-height:95vh;overflow-y:auto}
+        .auth-card h2{font-size:clamp(1.6rem,4vw,2.2rem);margin-bottom:15px}
+        .auth-card input{width:100%;padding:clamp(12px,2.5vh,16px);margin:8px 0;border-radius:60px;border:none;background:rgba(42,58,58,.8);color:#fff;text-align:center;font-size:clamp(1rem,2vw,1.2rem)}
+        .auth-card button{width:100%;background:#ffaa33;border:none;padding:clamp(12px,2.5vh,16px);border-radius:60px;font-weight:700;cursor:pointer;margin-top:10px;color:#1a2a2a;font-size:clamp(1rem,2vw,1.2rem);touch-action:manipulation}
+        .auth-card button:hover{background:#ffcc66}
+        .auth-card .error-msg{color:#ff6666;margin-top:8px;font-size:clamp(.8rem,1.5vw,1rem)}
+        .auth-card .toggle-link{margin-top:12px;font-size:clamp(.8rem,1.5vw,1rem);cursor:pointer;color:#88aaff}
+        #gameHUD{position:fixed;top:8px;left:8px;right:8px;background:rgba(5,10,15,.88);backdrop-filter:blur(12px);border-radius:clamp(16px,3vw,30px);padding:clamp(4px,1vh,10px) clamp(8px,2vw,16px);display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;z-index:1500;border:1px solid rgba(0,255,170,.3);box-shadow:0 0 20px rgba(0,255,170,.15);font-weight:700;gap:4px;font-size:clamp(.6rem,1.6vw,1rem);min-height:clamp(40px,8vh,60px)}
+        .hud-resource{background:#1e2e2e;padding:2px 10px;border-radius:40px;display:inline-flex;align-items:center;gap:4px;color:#00ffaa;font-size:clamp(.8rem,2vw,1.2rem)}
+        .hud-rank{background:#1e2e2e;padding:2px 10px;border-radius:40px;display:inline-flex;align-items:center;gap:4px;font-size:clamp(.6rem,1.5vw,1rem)}
+        .health-bars{display:flex;gap:clamp(4px,2vw,20px);background:rgba(0,0,0,.5);padding:2px 8px;border-radius:40px;flex-wrap:wrap}
+        .health-bar{display:flex;align-items:center;gap:4px;font-size:clamp(.5rem,1.2vw,.9rem)}
+        .bar-bg{width:clamp(40px,15vw,120px);height:clamp(4px,1.5vh,10px);background:#333;border-radius:10px;overflow:hidden}
+        .bar-fill{height:100%;width:0%;transition:width .3s}
+        .ru-fill{background:#ff5555}
+        .ua-fill{background:#55aaff}
+        #buildPanel{position:fixed;bottom:clamp(10px,3vh,20px);left:clamp(10px,3vw,20px);z-index:1500;display:flex;flex-direction:column;gap:6px}
+        #buildToggle{display:none;background:linear-gradient(180deg,#ffaa33,#e68a00);border:none;color:#1a2a2a;padding:clamp(10px,2vh,16px) clamp(14px,3vw,20px);border-radius:60px;cursor:pointer;font-weight:700;font-size:clamp(.9rem,2vw,1.2rem);box-shadow:0 4px 15px rgba(255,170,51,.4);transition:.2s;touch-action:manipulation;min-height:clamp(44px,8vh,56px);min-width:clamp(44px,10vw,70px)}
+        #buildToggle:active{transform:scale(.95)}
+        #buildMenu{display:flex;flex-direction:column;gap:4px;background:rgba(0,0,0,.85);backdrop-filter:blur(12px);border-radius:clamp(16px,3vw,30px);padding:clamp(8px,1.5vh,14px);border:1px solid #ffaa3344;max-height:clamp(250px,50vh,400px);overflow-y:auto}
+        #buildMenu .build-btn{background:linear-gradient(180deg,#24353d,#17242b);border:1px solid #00ffaa44;box-shadow:0 0 10px rgba(0,255,170,.08);border:none;color:#fff;padding:clamp(8px,1.5vh,12px) clamp(12px,2vw,18px);border-radius:40px;cursor:pointer;font-weight:700;text-align:left;font-size:clamp(.8rem,1.8vw,1.1rem);touch-action:manipulation;white-space:nowrap}
+        #buildMenu .build-btn:active{transform:scale(.96)}
+        #buildMenu .build-btn.cancel{background:#aa3333;border-color:#ff4444}
+        .modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:linear-gradient(180deg,#091116,#020508);border-radius:clamp(24px,5vw,40px);padding:clamp(16px,3vh,30px);z-index:3000;color:#fff;width:clamp(300px,90vw,500px);max-height:90vh;overflow-y:auto;text-align:center;border:2px solid #00ffaa;box-shadow:0 0 40px rgba(0,255,170,.3)}
+        .modal h3{font-size:clamp(1.2rem,3vw,1.8rem);margin-bottom:12px}
+        .modal select{width:100%;padding:clamp(10px,2vh,14px);border-radius:40px;background:#1a2a2a;color:#fff;border:1px solid #00ffaa44;font-size:clamp(.9rem,2vw,1.1rem);margin-bottom:10px}
+        .modal .weapon-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0;max-height:clamp(200px,40vh,350px);overflow-y:auto}
+        .modal .weapon-card{background:#101820;border:2px solid #333;border-radius:16px;padding:8px;cursor:pointer;transition:.2s;text-align:center;touch-action:manipulation}
+        .modal .weapon-card:active{transform:scale(.95)}
+        .modal .weapon-card.selected{border-color:#00ffaa;box-shadow:0 0 15px rgba(0,255,170,.4);background:#1e3038}
+        .modal .weapon-card img{width:100%;height:clamp(40px,8vh,80px);object-fit:contain;margin-bottom:4px}
+        .modal .weapon-name{font-weight:700;font-size:clamp(.7rem,1.5vw,1rem)}
+        .modal .weapon-stats{font-size:clamp(.6rem,1.2vw,.8rem);opacity:.8}
+        .modal .flex{display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;margin:8px 0}
+        .modal .flex button{background:#3a5e5e;border:none;color:#fff;padding:6px 14px;border-radius:40px;cursor:pointer;font-size:clamp(1rem,2vw,1.2rem);touch-action:manipulation}
+        .modal .flex button:active{transform:scale(.95)}
+        .modal .flex span{font-size:clamp(1rem,2vw,1.2rem);min-width:30px}
+        .modal button{width:100%;padding:clamp(10px,2vh,14px);border-radius:40px;border:none;font-weight:700;cursor:pointer;margin-top:6px;font-size:clamp(.9rem,2vw,1.1rem);touch-action:manipulation}
+        .modal button:active{transform:scale(.96)}
+        #costDisplay{margin:8px 0;font-weight:700;font-size:clamp(.9rem,2vw,1.2rem)}
+        .zone-marker{background:rgba(0,0,0,.8);border-radius:16px;padding:4px 8px;text-align:center;font-weight:700;color:#fff;font-size:clamp(.5rem,1vw,.8rem);box-shadow:0 0 10px rgba(0,0,0,.5);white-space:nowrap}
+        .hidden-projectile{display:none!important}
+        .loading-indicator{background:rgba(0,0,0,.7);color:#fff;padding:8px 16px;border-radius:30px;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:3000;font-size:clamp(.9rem,2vw,1.2rem)}
+        .explosion{width:30px;height:30px;border-radius:50%;background:#ffcc00;box-shadow:0 0 20px #ffcc00,0 0 40px orange,0 0 80px red;animation:explode .5s forwards}
+        @keyframes explode{0%{transform:scale(.2);opacity:1}100%{transform:scale(3);opacity:0}}
+        @keyframes radarSpin{0%{transform:translateX(-50%) rotate(0)}100%{transform:translateX(-50%) rotate(360deg)}}
+        .leaflet-marker-icon{transform-origin:center center}
+        .leaflet-control-zoom{display:none!important}
+        @media (max-width:600px){#gameHUD{flex-direction:column;align-items:stretch;gap:3px;padding:4px 8px;font-size:.7rem;top:4px;left:4px;right:4px;border-radius:16px;min-height:auto}.hud-resource,.hud-rank{font-size:.9rem;padding:2px 8px;justify-content:center}.health-bars{justify-content:space-around;padding:2px 4px;gap:4px}.health-bar{font-size:.6rem;gap:2px}.bar-bg{width:50px;height:5px}#buildPanel{bottom:10px;left:10px;gap:4px}#buildToggle{display:block;font-size:1rem;padding:8px 14px;min-height:44px;min-width:44px}#buildMenu{display:none;padding:8px;max-height:200px;border-radius:16px}#buildMenu.open{display:flex}#buildMenu .build-btn{font-size:.8rem;padding:6px 12px;white-space:normal}.modal{width:95vw;padding:16px;max-height:85vh;border-radius:24px}.modal .weapon-grid{grid-template-columns:1fr 1fr;gap:6px;max-height:200px}.modal .weapon-card{padding:6px}.modal .weapon-card img{height:40px}.modal .flex button{padding:4px 12px;font-size:.9rem}.card,.auth-card{padding:20px 16px;border-radius:32px;width:100%;max-width:95%}.logo{font-size:2rem}.difficulty-btn{font-size:.6rem;padding:4px 8px}.card button,.auth-card button{font-size:.9rem;padding:10px;margin:6px 0}.card input,.auth-card input{font-size:.9rem;padding:10px}}
+        @media (min-width:601px) and (max-width:900px){#gameHUD{padding:4px 12px;font-size:.8rem}.bar-bg{width:80px;height:7px}.modal{width:80vw;padding:20px}.card,.auth-card{padding:30px 24px}.logo{font-size:2.5rem}}
+        @media (max-width:800px) and (orientation:landscape){#gameHUD{flex-direction:row;flex-wrap:wrap;font-size:.6rem;padding:2px 8px;min-height:30px}.hud-resource,.hud-rank{font-size:.7rem;padding:2px 6px}.bar-bg{width:40px;height:4px}#buildToggle{padding:6px 12px;font-size:.8rem;min-height:30px}#buildMenu .build-btn{font-size:.7rem;padding:4px 10px}.modal{width:70vw;max-height:80vh;padding:12px}.modal .weapon-grid{max-height:150px}.modal .weapon-card img{height:30px}}
+        @media (max-width:400px){.card,.auth-card{padding:12px 10px;border-radius:24px}.logo{font-size:1.6rem}.difficulty-btn{font-size:.5rem;padding:3px 6px}.card button,.auth-card button{font-size:.8rem;padding:8px;margin:4px 0}.card input,.auth-card input{font-size:.8rem;padding:8px}.bar-bg{width:35px;height:4px}.modal{padding:10px;width:98vw}.modal h3{font-size:1rem}.modal .weapon-card{padding:4px}.modal .weapon-card img{height:30px}}
     </style>
 </head>
 <body>
 
-<!-- Оверлей авторизации -->
 <div id="authOverlay" class="auth-overlay">
     <div class="auth-card">
         <h2 id="authTitle">ВХОД</h2>
@@ -262,7 +104,6 @@
     </div>
 </div>
 
-<!-- Главное меню -->
 <div id="menuScreen" class="screen">
     <div class="missile-bg"></div>
     <div class="scan-line"></div>
@@ -281,7 +122,7 @@
         <button id="joinGameBtn">🔌 ПОДКЛЮЧИТЬСЯ</button>
         <input type="text" id="roomCodeInput" placeholder="КОД КОМНАТЫ" style="display:none;">
         <button id="confirmJoinBtn" style="display:none;">ПОДКЛЮЧИТЬСЯ</button>
-        <div id="roomDisplay" style="margin-top:10px; font-size:clamp(0.6rem, 1.2vw, 0.9rem); opacity:0.8;"></div>
+        <div id="roomDisplay" style="margin-top:10px; font-size:clamp(.6rem,1.2vw,.9rem); opacity:.8;"></div>
         <button id="logoutBtn" style="margin-top:15px; background:#aa3333;">🚪 ВЫЙТИ ИЗ АККАУНТА</button>
     </div>
 </div>
@@ -301,24 +142,17 @@
     </div>
 </div>
 
-<!-- Модальное окно атаки -->
 <div id="attackModal" class="modal" style="display:none;">
     <h3>🎯 ВЫБОР ЦЕЛИ</h3>
     <select id="targetSelect" size="5" style="width:100%; margin-bottom:10px;"></select>
-    <div style="font-size:clamp(0.8rem, 1.5vw, 1rem);">💥 ВООРУЖЕНИЕ (прокрутите вниз)</div>
+    <div style="font-size:clamp(.8rem,1.5vw,1rem);">💥 ВООРУЖЕНИЕ</div>
     <div id="weaponGrid" class="weapon-grid"></div>
-    <div class="flex">
-        <span>⚡ КОЛ-ВО:</span>
-        <button id="countMinus">−</button>
-        <span id="countValue">1</span>
-        <button id="countPlus">+</button>
-    </div>
+    <div class="flex"><span>⚡ КОЛ-ВО:</span><button id="countMinus">−</button><span id="countValue">1</span><button id="countPlus">+</button></div>
     <div id="costDisplay">СТОИМОСТЬ: 0 ⚡</div>
     <button id="attackConfirmBtn" style="background:#ffaa33; color:#1a2a2a;">АТАКОВАТЬ</button>
     <button id="attackCancelBtn" style="background:#555; color:#fff;">ОТМЕНА</button>
 </div>
 
-<!-- Контейнер игры -->
 <div id="gameContainer" style="display:none; width:100%; height:100%; position:relative;">
     <div id="map" style="width:100%; height:100%;"></div>
     <div id="gameHUD">
@@ -329,8 +163,6 @@
             <div class="health-bar"><span>🇺🇦</span><div class="bar-bg"><div class="bar-fill ua-fill" id="uaFill"></div></div><span id="uaPercent">0%</span></div>
         </div>
     </div>
-
-    <!-- Панель построек (адаптивная) -->
     <div id="buildPanel">
         <button id="buildToggle">🏗️ Стройка</button>
         <div id="buildMenu">
@@ -346,7 +178,7 @@
 
 <script>
     // ============================================================
-    // 1.  FIREBASE НАСТРОЙКИ
+    // 1.  НАСТРОЙКИ FIREBASE
     // ============================================================
     const firebaseConfig = {
         apiKey: "AIzaSyCksMAKAI1U2gXRHefO0vAZYbY4Y6ES1Sg",
@@ -359,31 +191,30 @@
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
-
     const usersRef = db.ref('users');
     const sessionsRef = db.ref('sessions');
 
     // ============================================================
-    // 2.  ЛИЦЕНЗИОННЫЕ КЛЮЧИ (50 штук)
+    // 2.  ЛИЦЕНЗИОННЫЕ КЛЮЧИ (50 шт.)
     // ============================================================
     const VALID_KEYS = [
-        "theoqjzn6heuwn478-yeneis528y", "kf92jdn30qpeor83-xmz73kdl", "h8d73jf92kdn392u-jd83mz",
-        "vgs392kf92jdn30qpe-xy81m4n", "pq83jf92jdn30qpeor-74hs8w2", "mz73kdl92jdn30qpe-93jsk2l",
-        "d83mzf92kdn30qpeor-2n83ks0", "81m4nf92jdn30qpeor-6h2j9sl", "74hs8w2kf92jdn30qpe-8k3jsl",
-        "93jsk2lkd92jdn30qpe-1j4hs8", "2n83ks0f92jdn30qpeor-3m9sl2", "6h2j9slkf92jdn30qpe-7j3ks9",
-        "8k3jsljf92kdn30qpeor-0n2hs4", "1j4hs8f92kdn30qpeor-2m8kdl", "3m9sl2kd92jdn30qpe-5j7hs1",
-        "7j3ks9f92kdn30qpeor-8n2ks5", "0n2hs4jf92kdn30qpeor-3k9slm", "2m8kdlkf92jdn30qpe-6j1hs7",
-        "5j7hs1f92kdn30qpeor-9n3ks2", "8n2ks5jf92kdn30qpeor-1k4slp", "3k9slmkf92jdn30qpe-4j6hs9",
-        "6j1hs7f92kdn30qpeor-7n0ks3", "9n3ks2jf92kdn30qpeor-2k5slr", "1k4slpkf92jdn30qpe-5j8hs4",
-        "4j6hs9f92kdn30qpeor-8n1ks6", "7n0ks3jf92kdn30qpeor-0k2slt", "2k5slrkf92jdn30qpe-3j7hs5",
-        "5j8hs4f92kdn30qpeor-6n4ks8", "8n1ks6jf92kdn30qpeor-9k0slv", "0k2sltkf92jdn30qpe-2j5hs9",
-        "3j7hs5f92kdn30qpeor-5n8ks1", "6n4ks8jf92kdn30qpeor-7k3slw", "9k0slvkf92jdn30qpe-0j2hs6",
-        "2j5hs9f92kdn30qpeor-3n6ks4", "5n8ks1jf92kdn30qpeor-6k9slx", "7k3slwkf92jdn30qpe-9j4hs7",
-        "0j2hs6f92kdn30qpeor-1n7ks5", "3n6ks4jf92kdn30qpeor-4k0sly", "6k9slxkf92jdn30qpe-7j1hs8",
-        "9j4hs7f92kdn30qpeor-0n8ks2", "1n7ks5jf92kdn30qpeor-2k4slz", "4k0slykf92jdn30qpe-5j2hs9",
-        "7j1hs8f92kdn30qpeor-8n5ks3", "0n8ks2jf92kdn30qpeor-1k6sla", "2k4slzkf92jdn30qpe-3j0hs2",
-        "5j2hs9f92kdn30qpeor-6n7ks5", "8n5ks3jf92kdn30qpeor-9k1slb", "1k6slakf92jdn30qpe-2j3hs4",
-        "3j0hs2f92kdn30qpeor-4n9ks7", "6n7ks5jf92kdn30qpeor-7k2slc"
+        "theoqjzn6heuwn478-yeneis528y","kf92jdn30qpeor83-xmz73kdl","h8d73jf92kdn392u-jd83mz",
+        "vgs392kf92jdn30qpe-xy81m4n","pq83jf92jdn30qpeor-74hs8w2","mz73kdl92jdn30qpe-93jsk2l",
+        "d83mzf92kdn30qpeor-2n83ks0","81m4nf92jdn30qpeor-6h2j9sl","74hs8w2kf92jdn30qpe-8k3jsl",
+        "93jsk2lkd92jdn30qpe-1j4hs8","2n83ks0f92jdn30qpeor-3m9sl2","6h2j9slkf92jdn30qpe-7j3ks9",
+        "8k3jsljf92kdn30qpeor-0n2hs4","1j4hs8f92kdn30qpeor-2m8kdl","3m9sl2kd92jdn30qpe-5j7hs1",
+        "7j3ks9f92kdn30qpeor-8n2ks5","0n2hs4jf92kdn30qpeor-3k9slm","2m8kdlkf92jdn30qpe-6j1hs7",
+        "5j7hs1f92kdn30qpeor-9n3ks2","8n2ks5jf92kdn30qpeor-1k4slp","3k9slmkf92jdn30qpe-4j6hs9",
+        "6j1hs7f92kdn30qpeor-7n0ks3","9n3ks2jf92kdn30qpeor-2k5slr","1k4slpkf92jdn30qpe-5j8hs4",
+        "4j6hs9f92kdn30qpeor-8n1ks6","7n0ks3jf92kdn30qpeor-0k2slt","2k5slrkf92jdn30qpe-3j7hs5",
+        "5j8hs4f92kdn30qpeor-6n4ks8","8n1ks6jf92kdn30qpeor-9k0slv","0k2sltkf92jdn30qpe-2j5hs9",
+        "3j7hs5f92kdn30qpeor-5n8ks1","6n4ks8jf92kdn30qpeor-7k3slw","9k0slvkf92jdn30qpe-0j2hs6",
+        "2j5hs9f92kdn30qpeor-3n6ks4","5n8ks1jf92kdn30qpeor-6k9slx","7k3slwkf92jdn30qpe-9j4hs7",
+        "0j2hs6f92kdn30qpeor-1n7ks5","3n6ks4jf92kdn30qpeor-4k0sly","6k9slxkf92jdn30qpe-7j1hs8",
+        "9j4hs7f92kdn30qpeor-0n8ks2","1n7ks5jf92kdn30qpeor-2k4slz","4k0slykf92jdn30qpe-5j2hs9",
+        "7j1hs8f92kdn30qpeor-8n5ks3","0n8ks2jf92kdn30qpeor-1k6sla","2k4slzkf92jdn30qpe-3j0hs2",
+        "5j2hs9f92kdn30qpeor-6n7ks5","8n5ks3jf92kdn30qpeor-9k1slb","1k6slakf92jdn30qpe-2j3hs4",
+        "3j0hs2f92kdn30qpeor-4n9ks7","6n7ks5jf92kdn30qpeor-7k2slc"
     ];
 
     // ============================================================
@@ -391,7 +222,6 @@
     // ============================================================
     let currentUser = null;
     let currentSessionToken = null;
-
     const authOverlay = document.getElementById('authOverlay');
     const authLogin = document.getElementById('authLogin');
     const authPassword = document.getElementById('authPassword');
@@ -403,11 +233,7 @@
     const toggleLink = document.getElementById('toggleAuthMode');
     let isLoginMode = true;
 
-    function showKeyInput() {
-        authKeyGroup.style.display = 'block';
-        authSubmitBtn.innerText = "АКТИВИРОВАТЬ КЛЮЧ";
-    }
-
+    function showKeyInput() { authKeyGroup.style.display = 'block'; authSubmitBtn.innerText = "АКТИВИРОВАТЬ КЛЮЧ"; }
     function toggleMode() {
         isLoginMode = !isLoginMode;
         authTitle.innerText = isLoginMode ? "ВХОД" : "РЕГИСТРАЦИЯ";
@@ -420,62 +246,34 @@
         toggleLink.innerText = isLoginMode ? "Нет аккаунта? Зарегистрироваться" : "Уже есть аккаунт? Войти";
     }
 
-    // РЕГИСТРАЦИЯ
     function register(login, password) {
-        if(!login || !password) {
-            authMessage.innerText = "Введите логин и пароль";
-            return false;
-        }
+        if(!login || !password) { authMessage.innerText = "Введите логин и пароль"; return false; }
         usersRef.child(login).get().then(snapshot => {
-            if(snapshot.exists()) {
-                authMessage.innerText = "Аккаунт уже существует!";
-            } else {
-                usersRef.child(login).set({
-                    password: password,
-                    keyUsed: null,
-                    gameData: null
-                }).then(() => {
-                    authMessage.innerText = "Аккаунт создан! Теперь войдите.";
-                    toggleMode();
-                }).catch(err => {
-                    authMessage.innerText = "Ошибка записи в БД: " + err.message;
-                });
+            if(snapshot.exists()) { authMessage.innerText = "Аккаунт уже существует!"; }
+            else {
+                usersRef.child(login).set({ password: password, keyUsed: null, gameData: null })
+                    .then(() => { authMessage.innerText = "Аккаунт создан! Теперь войдите."; toggleMode(); })
+                    .catch(err => { authMessage.innerText = "Ошибка записи в БД: " + err.message; });
             }
-        }).catch(err => {
-            authMessage.innerText = "Ошибка проверки: " + err.message;
-        });
+        }).catch(err => { authMessage.innerText = "Ошибка проверки: " + err.message; });
         return false;
     }
 
-    // ВХОД
     async function login(login, password) {
-        if(!login || !password) {
-            authMessage.innerText = "Введите логин и пароль";
-            return false;
-        }
+        if(!login || !password) { authMessage.innerText = "Введите логин и пароль"; return false; }
         try {
             const snapshot = await usersRef.child(login).get();
-            if(!snapshot.exists()) {
-                authMessage.innerText = "Аккаунт не найден";
-                return false;
-            }
+            if(!snapshot.exists()) { authMessage.innerText = "Аккаунт не найден"; return false; }
             const userData = snapshot.val();
-            if(userData.password !== password) {
-                authMessage.innerText = "Неверный пароль";
-                return false;
-            }
+            if(userData.password !== password) { authMessage.innerText = "Неверный пароль"; return false; }
             currentUser = login;
             const token = btoa(login + ":" + Date.now() + ":" + Math.random().toString(36));
             currentSessionToken = token;
-            await sessionsRef.child(token).set({
-                login: login,
-                createdAt: Date.now()
-            });
+            await sessionsRef.child(token).set({ login: login, createdAt: Date.now() });
             localStorage.setItem("skyfire_session_token", token);
             authMessage.innerText = "Вход выполнен!";
-            if(userData.keyUsed) {
-                loadGameForUser(userData);
-            } else {
+            if(userData.keyUsed) { loadGameForUser(userData); }
+            else {
                 authTitle.innerText = "АКТИВАЦИЯ ЛИЦЕНЗИИ";
                 authLogin.style.display = 'none';
                 authPassword.style.display = 'none';
@@ -484,34 +282,18 @@
                 showKeyInput();
             }
             return true;
-        } catch(err) {
-            authMessage.innerText = "Ошибка: " + err.message;
-            return false;
-        }
+        } catch(err) { authMessage.innerText = "Ошибка: " + err.message; return false; }
     }
 
-    // АКТИВАЦИЯ КЛЮЧА
     async function activateKey(key) {
-        if(!key) {
-            authMessage.innerText = "Введите ключ";
-            return false;
-        }
-        if(!VALID_KEYS.includes(key)) {
-            authMessage.innerText = "Неверный ключ (не соответствует формату)";
-            return false;
-        }
+        if(!key) { authMessage.innerText = "Введите ключ"; return false; }
+        if(!VALID_KEYS.includes(key)) { authMessage.innerText = "Неверный ключ (не соответствует формату)"; return false; }
         const usedSnap = await db.ref('usedKeys/' + key).get();
-        if(usedSnap.exists()) {
-            authMessage.innerText = "Этот ключ уже был использован другим игроком!";
-            return false;
-        }
+        if(usedSnap.exists()) { authMessage.innerText = "Ключ уже использован другим!"; return false; }
         await db.ref('usedKeys/' + key).set(true);
         const userRef = usersRef.child(currentUser);
         const userSnap = await userRef.get();
-        if(!userSnap.exists()) {
-            authMessage.innerText = "Ошибка: пользователь не найден";
-            return false;
-        }
+        if(!userSnap.exists()) { authMessage.innerText = "Ошибка: пользователь не найден"; return false; }
         await userRef.update({ keyUsed: key });
         authMessage.innerText = "Ключ активирован! Запуск игры...";
         const updatedData = (await userRef.get()).val();
@@ -519,7 +301,6 @@
         return true;
     }
 
-    // ЗАГРУЗКА ИГРЫ
     function loadGameForUser(userData) {
         if(userData.gameData) {
             try {
@@ -546,102 +327,77 @@
         }, 30000);
     }
 
-    // ВОССТАНОВЛЕНИЕ СЕССИИ
     async function restoreSession() {
         const token = localStorage.getItem("skyfire_session_token");
-        if(!token) {
-            authOverlay.style.display = 'flex';
-            return;
-        }
+        if(!token) { authOverlay.style.display = 'flex'; return; }
         try {
             const snap = await sessionsRef.child(token).get();
-            if(!snap.exists()) {
-                localStorage.removeItem("skyfire_session_token");
-                authOverlay.style.display = 'flex';
-                return;
-            }
+            if(!snap.exists()) { localStorage.removeItem("skyfire_session_token"); authOverlay.style.display = 'flex'; return; }
             const sessionData = snap.val();
             const login = sessionData.login;
             const userSnap = await usersRef.child(login).get();
-            if(!userSnap.exists()) {
-                localStorage.removeItem("skyfire_session_token");
-                authOverlay.style.display = 'flex';
-                return;
-            }
-            currentUser = login;
-            currentSessionToken = token;
+            if(!userSnap.exists()) { localStorage.removeItem("skyfire_session_token"); authOverlay.style.display = 'flex'; return; }
+            currentUser = login; currentSessionToken = token;
             const userData = userSnap.val();
             const age = Date.now() - sessionData.createdAt;
-            if(age > 30 * 24 * 3600 * 1000) {
+            if(age > 30*24*3600*1000) {
                 await sessionsRef.child(token).remove();
                 localStorage.removeItem("skyfire_session_token");
                 authOverlay.style.display = 'flex';
                 return;
             }
-            if(userData.keyUsed) {
-                loadGameForUser(userData);
-            } else {
+            if(userData.keyUsed) { loadGameForUser(userData); }
+            else {
                 authOverlay.style.display = 'flex';
                 authTitle.innerText = "АКТИВАЦИЯ ЛИЦЕНЗИИ";
-                authLogin.style.display = 'none';
-                authPassword.style.display = 'none';
+                authLogin.style.display = 'none'; authPassword.style.display = 'none';
                 toggleLink.style.display = 'none';
-                authMessage.innerText = "Введите лицензионный ключ для активации игры";
+                authMessage.innerText = "Введите лицензионный ключ";
                 showKeyInput();
             }
-        } catch(err) {
-            console.error("Ошибка восстановления сессии:", err);
-            authOverlay.style.display = 'flex';
-        }
+        } catch(err) { console.error("Ошибка восстановления сессии:", err); authOverlay.style.display = 'flex'; }
     }
 
-    // ВЫХОД
     async function logout() {
         if(window.saveInterval) clearInterval(window.saveInterval);
         if(currentUser) {
             const data = JSON.stringify({ playerXP, playerStats, difficulty });
             await usersRef.child(currentUser).update({ gameData: data });
         }
-        if(currentSessionToken) {
-            await sessionsRef.child(currentSessionToken).remove();
-        }
+        if(currentSessionToken) await sessionsRef.child(currentSessionToken).remove();
         localStorage.removeItem("skyfire_session_token");
-        currentUser = null;
-        currentSessionToken = null;
+        currentUser = null; currentSessionToken = null;
         location.reload();
     }
 
     authSubmitBtn.onclick = async () => {
-        if(authKeyGroup.style.display === 'block') {
-            await activateKey(authKey.value.trim());
-        } else if(isLoginMode) {
-            await login(authLogin.value.trim(), authPassword.value.trim());
-        } else {
-            register(authLogin.value.trim(), authPassword.value.trim());
-        }
+        if(authKeyGroup.style.display === 'block') await activateKey(authKey.value.trim());
+        else if(isLoginMode) await login(authLogin.value.trim(), authPassword.value.trim());
+        else register(authLogin.value.trim(), authPassword.value.trim());
     };
     toggleLink.onclick = toggleMode;
     restoreSession();
 
     // ============================================================
-    // 4.  ПОЛНЫЙ ИГРОВОЙ ДВИЖОК (ваш код без изменений)
+    // 4.  ПОЛНЫЙ ИГРОВОЙ ДВИЖОК (все функции реализованы)
     // ============================================================
-    // (Здесь идёт весь игровой код — map, zones, buildings, weaponTypes, AI, etc.)
-    // Чтобы не раздувать ответ, я приведу его в сокращённом виде,
-    // но в реальном файле он должен быть полностью скопирован из предыдущей версии.
-    // ВАЖНО: Все функции (initZones, tryBuild, launchAttack, etc.) должны быть на месте.
-    // Ниже — заглушка, которую нужно заменить на полный игровой код.
     let map, gameActive = false;
     let resources = 300;
     let buildings = [], zones = [], projectiles = [];
     let radars = [], pvoSystems = [], powerPlants = [], refineries = [], rocketFactories = [];
-    let buildMode = null, airportMarker = null, airportPlaced = false;
-    let lastUpdate = 0, myTeam = null, enemyTeam = null, isAI = false, isSandbox = false;
+    let buildMode = null;
+    let airportMarker = null, enemyAirportMarker = null;
+    let airportPlaced = false;
+    let lastUpdate = 0;
+    let myTeam = null, enemyTeam = null;
+    let isAI = false;
+    let isSandbox = false;
     let difficulty = "NORMAL";
     let russiaGeoJSON = null, ukraineGeoJSON = null, bordersLoaded = false;
     let radarAnimationInterval = null, aiInterval = null, economyInterval = null;
     let peer = null, conn = null, isHost = false, lobbyState = { player1: { ready: false, team: null }, player2: { ready: false, team: null } };
     let roomId = null;
+
     const weaponTypes = {
         drone: { name: 'SHAHED', speed: 0.006, damage: 25, cost: 60, pvoChance: 0.08, spriteOffset: 0, img: 'drone.png' },
         cruise: { name: 'CRUISE', speed: 0.02, damage: 35, cost: 90, pvoChance: 0.10, spriteOffset: 90, img: 'cruise.png' },
@@ -655,6 +411,7 @@
     let attackType = 'drone', attackCount = 1, currentAirport = null;
     const costs = { radar: 180, pvo: 220, powerPlant: 250, refinery: 400, rocketFactory: 500 };
     let maxRadars = 8, maxPvo = 12, maxPowerPlants = 5, maxRefineries = 3;
+
     let playerXP = 0;
     let playerStats = { wins:0, losses:0, citiesDestroyed:0, buildingsDestroyed:0, missilesLaunched:0, hits:0, totalShots:0 };
     const ranks = [
@@ -668,15 +425,13 @@
         const now = audioCtx.currentTime;
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.frequency.value = freq;
-        osc.type = type;
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.frequency.value = freq; osc.type = type;
         gain.gain.setValueAtTime(0.15, now);
         gain.gain.exponentialRampToValueAtTime(0.00001, now + duration);
-        osc.start();
-        osc.stop(now + duration);
+        osc.start(); osc.stop(now + duration);
     }
+
     const zoneData = [
         { name: 'КИЕВ', center: [50.4501,30.5234], team: 'ukraine', hp: 400, baseHp: 400 },
         { name: 'ОДЕССА', center: [46.4825,30.7233], team: 'ukraine', hp: 320, baseHp: 320 },
@@ -691,6 +446,7 @@
         { name: 'КРАСНОДАР', center: [45.0355,38.9753], team: 'russia', hp: 280, baseHp: 280 }
     ];
     const teamColors = { russia: '#ff5555', ukraine: '#55aaff' };
+
     function getAirportIcon() { try { return L.icon({ iconUrl: 'images/airport.png', iconSize: [48,48], iconAnchor: [24,24] }); } catch(e){ return L.divIcon({ html:'🏠', iconSize:[48,48] }); } }
     function getRadarIcon() { try { return L.icon({ iconUrl: 'images/radar.png', iconSize: [40,40], iconAnchor: [20,20] }); } catch(e){ return L.divIcon({ html:'📡', iconSize:[40,40] }); } }
     function getPvoIcon() { try { return L.icon({ iconUrl: 'images/pvo.png', iconSize: [40,40], iconAnchor: [20,20] }); } catch(e){ return L.divIcon({ html:'🛡️', iconSize:[40,40] }); } }
@@ -707,71 +463,527 @@
         const url = map[type] || 'images/missile.png';
         try { return L.icon({ iconUrl: url, iconSize: [28,28], iconAnchor: [14,14] }); } catch(e){ return L.divIcon({ html: '💥', iconSize:[28,28] }); }
     }
-    function loadRealBorders(cb) { /* полная реализация */ }
-    function isInsideCountry(lat,lng,country) { /* полная реализация */ }
-    function isOwnTerritory(lat,lng) { /* полная реализация */ }
-    function canBuildHere(lat,lng) { /* полная реализация */ }
-    function canBuildForTeam(lat,lng,team) { /* полная реализация */ }
-    function updateTotalPercent() { /* полная реализация */ }
-    function initZones() { /* полная реализация */ }
-    function updateZoneMarkers() { /* полная реализация */ }
-    function removeZoneIfDestroyed(zone) { /* полная реализация */ }
-    function showHint(text) { /* полная реализация */ }
-    function destroyBuilding(building) { /* полная реализация */ }
-    function getBuildingName(type) { /* полная реализация */ }
-    function updateUI() { document.getElementById('energy').innerHTML = isSandbox ? '∞' : Math.floor(resources); }
-    function addXP(amount) { playerXP += amount; updateRankUI(); }
-    function updateRankUI() { let idx = ranks.length-1; while(idx>0 && playerXP < ranks[idx].xp) idx--; document.getElementById('rankTitle').innerHTML = ranks[idx].title; document.getElementById('rankXp').innerHTML = playerXP + " XP"; }
-    function updateStatsAfterHit(damage, targetType, isHit) { /* полная реализация */ }
-    function updateStatsAfterGame(victory) { /* полная реализация */ }
-    function tryBuild(lat,lng,type) { /* полная реализация */ }
-    function getEnemyTargets() { /* полная реализация */ }
-    function launchAttack(airport, targetObj, type, count) { /* полная реализация */ }
-    function tryIntercept(proj) { /* полная реализация */ }
-    function updateProjectiles(dt) { /* полная реализация */ }
-    function updateProjectileVisibility() { /* полная реализация */ }
-    function startRadarAnimation() { /* полная реализация */ }
-    function createExplosion(lat,lng) { /* полная реализация */ }
-    function launchInterceptor(start,end) { /* полная реализация */ }
-    const priorityWeights = { refinery:100, city:90, pvo:80, radar:70, powerPlant:60, rocketFactory:85 };
-    function chooseAITargets(maxTargets) { /* полная реализация */ }
-    let aiPvo = null, aiAirportCoords = null, aiBuildInterval = null;
-    function aiBuildLogic() { /* полная реализация */ }
-    function aiBuild(type) { /* полная реализация */ }
-    function launchAIAttack(target) { /* полная реализация */ }
-    function initAI() { /* полная реализация */ }
-    function gameLoop(now) { /* полная реализация */ }
-    function buildWeaponGrid() { /* полная реализация */ }
-    function updateCostDisplay() { /* полная реализация */ }
-    function initGameMapAndLogic() { /* полная реализация */ }
-    function closeAttackModal() { /* полная реализация */ }
 
-    // Обработчики кнопок
-    document.getElementById('singleBtn').onclick = () => { playBeep(400,0.1); setTimeout(()=>{ playBeep(600,0.1); setTimeout(()=>{ playBeep(800,0.1); myTeam='russia'; enemyTeam='ukraine'; isAI=true; isSandbox=false; initGameMapAndLogic(); },100); },100); };
-    document.getElementById('sandboxBtn').onclick = () => { playBeep(400,0.1); setTimeout(()=>{ playBeep(600,0.1); setTimeout(()=>{ playBeep(800,0.1); myTeam='russia'; enemyTeam='ukraine'; isAI=false; isSandbox=true; initGameMapAndLogic(); },100); },100); };
-    document.getElementById('tutorialBtn').onclick = () => { alert("Обучение: постройте аэродром → радар → ПВО → атакуйте врага. В песочнице нет лимитов и бесконечная энергия."); };
-    document.getElementById('createGameBtn').onclick = () => { alert("Мультиплеер в разработке"); };
-    document.getElementById('joinGameBtn').onclick = () => { document.getElementById('roomCodeInput').style.display='block'; document.getElementById('confirmJoinBtn').style.display='block'; };
-    document.getElementById('confirmJoinBtn').onclick = () => { let code=document.getElementById('roomCodeInput').value.trim().toUpperCase(); if(code) alert("Мультиплеер в разработке"); else alert("Введите код"); };
-    document.getElementById('chooseRussia').onclick = () => { if(lobbyState[isHost?'player1':'player2']?.ready) return; lobbyState[isHost?'player1':'player2'].team='russia'; lobbyState[isHost?'player1':'player2'].ready=false; updateLobbyUI(); sendLobbyUpdate(); };
-    document.getElementById('chooseUkraine').onclick = () => { if(lobbyState[isHost?'player1':'player2']?.ready) return; lobbyState[isHost?'player1':'player2'].team='ukraine'; lobbyState[isHost?'player1':'player2'].ready=false; updateLobbyUI(); sendLobbyUpdate(); };
-    document.getElementById('readyBtn').onclick = () => { if(!lobbyState[isHost?'player1':'player2']?.team){ alert("Выберите страну!"); return; } lobbyState[isHost?'player1':'player2'].ready=true; updateLobbyUI(); sendLobbyUpdate(); };
-    document.getElementById('buildRadarBtn').onclick = () => { buildMode='radar'; };
-    document.getElementById('buildPvoBtn').onclick = () => { buildMode='pvo'; };
-    document.getElementById('buildPowerPlantBtn').onclick = () => { buildMode='powerPlant'; };
-    document.getElementById('buildRefineryBtn').onclick = () => { buildMode='refinery'; };
-    document.getElementById('buildRocketFactoryBtn').onclick = () => { buildMode='rocketFactory'; };
-    document.getElementById('cancelBuild').onclick = () => { buildMode=null; };
-    document.getElementById('countMinus').onclick = () => { if(attackCount>1) attackCount--; document.getElementById('countValue').innerText=attackCount; updateCostDisplay(); };
-    document.getElementById('countPlus').onclick = () => { if(attackCount<5) attackCount++; document.getElementById('countValue').innerText=attackCount; updateCostDisplay(); };
-    document.getElementById('attackConfirmBtn').onclick = () => { /* полная реализация */ };
-    document.getElementById('attackCancelBtn').onclick = () => closeAttackModal();
+    // ---- География ----
+    function loadRealBorders(cb) {
+        Promise.all([
+            fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries/RUS.geo.json').then(r=>r.json()),
+            fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries/UKR.geo.json').then(r=>r.json())
+        ]).then(([rus,ukr])=>{
+            russiaGeoJSON=rus; ukraineGeoJSON=ukr; bordersLoaded=true;
+            L.geoJSON(rus,{style:{color:'#ff6666',weight:2,fillOpacity:0.08}}).addTo(map);
+            L.geoJSON(ukr,{style:{color:'#66aaff',weight:2,fillOpacity:0.08}}).addTo(map);
+            if(cb)cb();
+        }).catch(e=>{ console.warn(e); bordersLoaded=false; if(cb)cb(); });
+    }
+    function isInsideCountry(lat,lng,country) {
+        if(!bordersLoaded||!russiaGeoJSON||!ukraineGeoJSON) return false;
+        const point=turf.point([lng,lat]);
+        const geojson=country==='russia'?russiaGeoJSON:ukraineGeoJSON;
+        let feat=geojson.features?geojson.features[0]:geojson;
+        return turf.booleanPointInPolygon(point,feat);
+    }
+    function isOwnTerritory(lat,lng){ if(!myTeam) return false; return isInsideCountry(lat,lng,myTeam); }
+    function canBuildHere(lat,lng){ if(!isOwnTerritory(lat,lng)) return false; for(let b of buildings) if(map.distance([lat,lng],[b.lat,b.lng])<4000) return false; return true; }
+    function canBuildForTeam(lat,lng,team){ if(!isInsideCountry(lat,lng,team)) return false; for(let b of buildings) if(map.distance([lat,lng],[b.lat,b.lng])<4000) return false; return true; }
+
+    // ---- Города и прогресс ----
+    function updateTotalPercent() {
+        let ruTotal=0,ruBase=0,uaTotal=0,uaBase=0;
+        zones.forEach(z=>{ if(z.team==='russia'){ ruTotal+=z.hp; ruBase+=z.baseHp; } else { uaTotal+=z.hp; uaBase+=z.baseHp; } });
+        let ruPercent=ruBase?(ruTotal/ruBase*100):0;
+        let uaPercent=uaBase?(uaTotal/uaBase*100):0;
+        document.getElementById('ruPercent').innerText=Math.floor(ruPercent)+'%';
+        document.getElementById('uaPercent').innerText=Math.floor(uaPercent)+'%';
+        document.getElementById('ruFill').style.width=ruPercent+'%';
+        document.getElementById('uaFill').style.width=uaPercent+'%';
+        if(ruTotal<=0 && gameActive){
+            gameActive=false;
+            if(myTeam==='ukraine') alert("🏆 ПОБЕДА! Вы уничтожили все города России.");
+            else alert("💀 ПОРАЖЕНИЕ! Ваши города России уничтожены.");
+            updateStatsAfterGame(myTeam==='ukraine');
+            setTimeout(()=>location.reload(),3000);
+        }
+        if(uaTotal<=0 && gameActive){
+            gameActive=false;
+            if(myTeam==='russia') alert("🏆 ПОБЕДА! Вы уничтожили все города Украины.");
+            else alert("💀 ПОРАЖЕНИЕ! Ваши города Украины уничтожены.");
+            updateStatsAfterGame(myTeam==='russia');
+            setTimeout(()=>location.reload(),3000);
+        }
+    }
+
+    function initZones(){
+        zones=[];
+        zoneData.forEach(z=>{
+            let circle=L.circle(z.center,{radius:15000,color:z.team==='russia'?teamColors.russia:teamColors.ukraine,weight:2,fillOpacity:0.25}).addTo(map);
+            let marker=L.marker(z.center,{icon:L.divIcon({html:`<div class="zone-marker" style="border-color: ${z.team==='russia'?'#ff8888':'#88aaff'};">${z.name}<br>${Math.floor((z.hp/z.baseHp)*100)}%</div>`,iconSize:[80,40]})}).addTo(map);
+            zones.push({id:z.name,name:z.name,center:z.center,team:z.team,hp:z.hp,baseHp:z.baseHp,circle:circle,marker:marker});
+        });
+        updateZoneMarkers();
+        updateTotalPercent();
+    }
+    function updateZoneMarkers(){
+        zones.forEach(z=>{
+            let percent=Math.floor((z.hp/z.baseHp)*100);
+            let html=`<div class="zone-marker" style="border-color: ${z.team==='russia'?'#ff8888':'#88aaff'};">${z.name}<br>${percent}%</div>`;
+            z.marker.setIcon(L.divIcon({html,iconSize:[80,40]}));
+        });
+        updateTotalPercent();
+    }
+    function removeZoneIfDestroyed(zone){
+        if(zone.hp<=0){
+            if(zone.circle) map.removeLayer(zone.circle);
+            if(zone.marker) map.removeLayer(zone.marker);
+            const index=zones.findIndex(z=>z.id===zone.id);
+            if(index!==-1) zones.splice(index,1);
+            showHint(`🏙️ Город ${zone.name} уничтожен!`);
+        }
+    }
+    function showHint(text){ let h=document.createElement('div'); h.innerHTML=text; h.style.cssText='position:fixed; top:clamp(60px,15vh,120px); left:50%; transform:translateX(-50%); background:#000; color:#fff; padding:clamp(10px,2vh,20px) clamp(16px,4vw,30px); border-radius:15px; border:2px solid gold; z-index:9999; font-size:clamp(.9rem,2.5vw,1.4rem); text-align:center; max-width:90%; pointer-events:none;'; document.body.appendChild(h); setTimeout(()=>h.remove(),5000); }
+    function destroyBuilding(building){
+        if(building.marker) map.removeLayer(building.marker);
+        if(building.radarCircle && map.hasLayer(building.radarCircle)) map.removeLayer(building.radarCircle);
+        buildings = buildings.filter(b=>b.id!==building.id);
+        radars = radars.filter(r=>r.id!==building.id);
+        pvoSystems = pvoSystems.filter(p=>p.id!==building.id);
+        powerPlants = powerPlants.filter(p=>p.id!==building.id);
+        refineries = refineries.filter(r=>r.id!==building.id);
+        rocketFactories = rocketFactories.filter(r=>r.id!==building.id);
+        showHint(`⚠️ Здание ${getBuildingName(building.type)} уничтожено!`);
+        addXP(50);
+    }
+    function getBuildingName(type){
+        switch(type){
+            case 'radar': return 'РАДАР';
+            case 'pvo': return 'ПВО';
+            case 'powerPlant': return 'ЭЛЕКТРОСТАНЦИЯ';
+            case 'refinery': return 'НПЗ';
+            case 'rocketFactory': return 'ЗАВОД РАКЕТ';
+            default: return 'ЗДАНИЕ';
+        }
+    }
+    function updateUI(){ document.getElementById('energy').innerHTML = isSandbox ? '∞' : Math.floor(resources); }
+
+    function addXP(amount){ playerXP += amount; updateRankUI(); }
+    function updateRankUI(){
+        let idx = ranks.length-1; while(idx>0 && playerXP < ranks[idx].xp) idx--;
+        document.getElementById('rankTitle').innerHTML = ranks[idx].title;
+        document.getElementById('rankXp').innerHTML = playerXP + " XP";
+    }
+    function updateStatsAfterHit(damage, targetType, isHit){ playerStats.totalShots++; if(isHit){ playerStats.hits++; if(targetType === 'zone') playerStats.citiesDestroyed++; else playerStats.buildingsDestroyed++; } }
+    function updateStatsAfterGame(victory){ if(victory) playerStats.wins++; else playerStats.losses++; if(victory) addXP(300); }
+
+    // ---- Постройка ----
+    function tryBuild(lat,lng,type){
+        if(!airportPlaced){ alert("Сначала постройте аэродром!"); return false; }
+        if(!canBuildHere(lat,lng)){ alert("Можно строить только на своей территории и не ближе 4 км к другим зданиям!"); return false; }
+        if(!isSandbox){
+            if(type==='radar' && radars.filter(r=>r.team===myTeam).length >= maxRadars){ alert(`Максимум ${maxRadars} радаров`); return false; }
+            if(type==='pvo' && pvoSystems.filter(p=>p.team===myTeam).length >= maxPvo){ alert(`Максимум ${maxPvo} ПВО`); return false; }
+            if(type==='powerPlant' && powerPlants.filter(p=>p.team===myTeam).length >= maxPowerPlants){ alert(`Максимум ${maxPowerPlants} электростанций`); return false; }
+            if(type==='refinery' && refineries.filter(r=>r.team===myTeam).length >= maxRefineries){ alert(`Максимум ${maxRefineries} НПЗ`); return false; }
+            let cost=costs[type]; if(resources<cost){ alert("Не хватает энергии"); return false; }
+            resources-=cost;
+        }
+        updateUI();
+        let building={id:Date.now()+Math.random(), lat, lng, type, team:myTeam, hp:(type==='radar'?120:(type==='pvo'?180:(type==='powerPlant'?100:(type==='refinery'?150:200)))), radarAngle:0, marker:null, radarCircle:null};
+        let icon; if(type==='radar') icon=getRadarIcon(); else if(type==='pvo') icon=getPvoIcon(); else if(type==='powerPlant') icon=getPowerPlantIcon(); else if(type==='refinery') icon=getRefineryIcon(); else if(type==='rocketFactory') icon=getRocketFactoryIcon(); else return false;
+        let marker=L.marker([lat,lng],{icon}).addTo(map); building.marker=marker; buildings.push(building);
+        if(type==='radar'){ radars.push(building); let circle=L.circle([lat,lng],{radius:150000,color:'#00ffff',weight:1,fillOpacity:0.05}).addTo(map); building.radarCircle=circle; showHint("🛡️ Теперь постройте ПВО"); addXP(5); }
+        if(type==='pvo'){ pvoSystems.push(building); showHint("⚡ Постройте Электростанцию"); addXP(10); }
+        if(type==='powerPlant'){ powerPlants.push(building); showHint("⛽ Постройте НПЗ"); }
+        if(type==='refinery') refineries.push(building);
+        if(type==='rocketFactory') rocketFactories.push(building);
+        updateUI();
+        if(!isAI && conn && conn.open) conn.send({ type:'build', buildType:type, lat, lng, team:myTeam, id:building.id });
+        return true;
+    }
+
+    // ---- Атака и цели ----
+    function getEnemyTargets(){
+        let targets = [];
+        buildings.forEach(b => {
+            if(b.team !== myTeam && b.hp > 0){
+                let maxHp = (b.type==='radar'?120:(b.type==='pvo'?180:(b.type==='powerPlant'?100:(b.type==='refinery'?150:200))));
+                let priority = 0;
+                if(b.type === 'refinery') priority = 100;
+                else if(b.type === 'rocketFactory') priority = 80;
+                else if(b.type === 'pvo') priority = 60;
+                else if(b.type === 'radar') priority = 40;
+                targets.push({ id: b.id, type: 'building', name: getBuildingName(b.type), lat: b.lat, lng: b.lng, hp: b.hp, maxHp: maxHp, priority: priority, display: `${getBuildingName(b.type)} (${Math.floor(b.hp/maxHp*100)}%)` });
+            }
+        });
+        zones.forEach(z => {
+            if(z.team !== myTeam && z.hp > 0){
+                targets.push({ id: z.id, type: 'zone', name: z.name, lat: z.center[0], lng: z.center[1], hp: z.hp, maxHp: z.baseHp, priority: 20, display: `${z.name} (${Math.floor(z.hp/z.baseHp*100)}%)` });
+            }
+        });
+        targets.sort((a,b)=>b.priority - a.priority);
+        return targets;
+    }
+
+    function launchAttack(airport, targetObj, type, count){
+        let weapon = weaponTypes[type];
+        let costPerUnit = weapon.cost;
+        if(!isSandbox && resources < costPerUnit * count){ alert("Не хватает энергии"); return false; }
+        let fromLatLng = airport.getLatLng();
+        if (!fromLatLng || typeof fromLatLng.lat !== 'number') return false;
+        for(let i=0;i<count;i++){
+            if(!isSandbox) resources -= costPerUnit;
+            let offset = (i - (count-1)/2) * 0.03;
+            let targetLat = targetObj.lat + offset;
+            let targetLng = targetObj.lng + offset * 0.5;
+            let p1 = map.latLngToLayerPoint([fromLatLng.lat, fromLatLng.lng]);
+            let p2 = map.latLngToLayerPoint([targetLat, targetLng]);
+            let dx = p2.x - p1.x;
+            let dy = p2.y - p1.y;
+            let angle = Math.atan2(dx, -dy) * 180 / Math.PI;
+            angle += weapon.spriteOffset;
+            let proj = { id: Date.now()+Math.random(), from: fromLatLng, to: {lat: targetLat, lng: targetLng}, progress: 0, speed: weapon.speed, damage: weapon.damage, team: myTeam, targetType: targetObj.type, targetId: targetObj.id, type: type, active: true, marker: null, lastInterceptCheck: 0, interceptedFlag: false, angle: angle };
+            let marker = L.marker([proj.from.lat, proj.from.lng], { icon: getMissileIcon(type, myTeam), rotationOrigin: 'center center', rotationAngle: angle }).addTo(map);
+            proj.marker = marker;
+            projectiles.push(proj);
+        }
+        updateUI(); playBeep(800,0.2);
+        if(!isAI && conn && conn.open) conn.send({ type:'launch', targetId:targetObj.id, targetType:targetObj.type, weapon:type, count, team:myTeam, lat:targetObj.lat, lng:targetObj.lng });
+        return true;
+    }
+
+    // ---- Перехват и снаряды ----
+    function tryIntercept(proj){
+        const now=Date.now(); if(now-proj.lastInterceptCheck<2000) return false; proj.lastInterceptCheck=now;
+        const pos = proj.marker.getLatLng();
+        for(let pvo of pvoSystems){
+            if(pvo.team !== proj.team){
+                let dist = map.distance([pvo.lat,pvo.lng], [pos.lat,pos.lng]);
+                if(dist < 100000){
+                    let chance = weaponTypes[proj.type]?.pvoChance || 0.10;
+                    if(Math.random() < chance){
+                        playBeep(600,0.15);
+                        launchInterceptor({lat:pvo.lat,lng:pvo.lng}, pos);
+                        return true;
+                    }
+                }
+            }
+        }
+        if(isAI && aiPvo && aiPvo.team !== proj.team){
+            let dist = map.distance([aiPvo.lat,aiPvo.lng], [pos.lat,pos.lng]);
+            if(dist < 100000){
+                let chance = weaponTypes[proj.type]?.pvoChance || 0.10;
+                if(Math.random() < chance){
+                    playBeep(600,0.15);
+                    launchInterceptor({lat:aiPvo.lat,lng:aiPvo.lng}, pos);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    function updateProjectiles(dt){
+        for(let i=0;i<projectiles.length;i++){
+            let p=projectiles[i]; if(!p.active) continue;
+            if(tryIntercept(p)){ p.active=false; map.removeLayer(p.marker); projectiles.splice(i,1); i--; continue; }
+            p.progress += p.speed * dt;
+            if(p.progress >= 1){
+                p.active=false; map.removeLayer(p.marker);
+                if(p.targetType === 'zone'){
+                    let targetZone = zones.find(z => z.id === p.targetId);
+                    if(targetZone && targetZone.hp > 0){
+                        targetZone.hp = Math.max(0, targetZone.hp - p.damage);
+                        updateZoneMarkers(); playBeep(200,0.4); addXP(20);
+                        if (targetZone.hp <= 0) { removeZoneIfDestroyed(targetZone); addXP(100); }
+                    }
+                } else if(p.targetType === 'building'){
+                    let targetBuilding = buildings.find(b => b.id == p.targetId);
+                    if(targetBuilding && targetBuilding.hp > 0){
+                        targetBuilding.hp -= p.damage; playBeep(200,0.4); addXP(20);
+                        if(targetBuilding.hp <= 0) destroyBuilding(targetBuilding);
+                    }
+                }
+                updateStatsAfterHit(p.damage, p.targetType, true);
+                projectiles.splice(i,1); i--;
+                continue;
+            }
+            let lat = p.from.lat + (p.to.lat - p.from.lat) * p.progress;
+            let lng = p.from.lng + (p.to.lng - p.from.lng) * p.progress;
+            p.marker.setLatLng([lat, lng]);
+            if (p.marker.setRotationAngle) p.marker.setRotationAngle(p.angle);
+        }
+    }
+
+    function updateProjectileVisibility(){
+        for(let p of projectiles){
+            if(p.team === myTeam){ p.marker._icon?.classList.remove('hidden-projectile'); continue; }
+            let detected = false;
+            for(let r of radars){ if(r.team !== myTeam) continue; let dist = map.distance([r.lat,r.lng], [p.marker.getLatLng().lat, p.marker.getLatLng().lng]); if(dist < 150000){ detected = true; break; } }
+            if(detected) p.marker._icon?.classList.remove('hidden-projectile');
+            else p.marker._icon?.classList.add('hidden-projectile');
+        }
+    }
+
+    function startRadarAnimation(){
+        if(radarAnimationInterval) clearInterval(radarAnimationInterval);
+        radarAnimationInterval = setInterval(() => {
+            for(let r of radars){ if(r.marker){ r.radarAngle = (r.radarAngle + 30) % 360; let iconDiv = r.marker._icon?.querySelector('.radar-icon'); if(iconDiv) iconDiv.style.transform = `rotate(${r.radarAngle}deg)`; } }
+            updateProjectileVisibility();
+        },1500);
+    }
+
+    function createExplosion(lat,lng){
+        let exp = L.marker([lat,lng], { icon: L.divIcon({ className:'', html:'<div class="explosion"></div>', iconSize:[60,60] }) }).addTo(map);
+        setTimeout(()=>{ map.removeLayer(exp); },500);
+    }
+    function launchInterceptor(start,end){
+        let missile = L.marker([start.lat,start.lng], { icon: getInterceptorIcon() }).addTo(map);
+        let trail = L.polyline([[start.lat,start.lng]], { color:'#ffffaa', weight:3 }).addTo(map);
+        let t=0;
+        const flight=setInterval(()=>{
+            t+=0.03;
+            if(t>=1){ clearInterval(flight); map.removeLayer(missile); createExplosion(end.lat,end.lng); setTimeout(()=>{ map.removeLayer(trail); },1500); return; }
+            let lat=start.lat+(end.lat-start.lat)*t;
+            let lng=start.lng+(end.lng-start.lng)*t;
+            let arcHeight=0.15;
+            lat+=Math.sin(t*Math.PI)*arcHeight;
+            missile.setLatLng([lat,lng]);
+            trail.addLatLng([lat,lng]);
+        },20);
+    }
+
+    // ---- ИИ ----
+    const priorityWeights = { refinery:100, city:90, pvo:80, radar:70, powerPlant:60, rocketFactory:85 };
+    function chooseAITargets(maxTargets=3){
+        let candidates = [];
+        buildings.forEach(b => { if(b.team !== myTeam) return; let base = priorityWeights[b.type]||30; let hpFactor = (b.hp<50)?20:0; candidates.push({ target:b, score:base+hpFactor }); });
+        zones.forEach(z => { if(z.team !== myTeam) return; let base = priorityWeights.city; let hpFactor = (z.hp<50)?30:0; candidates.push({ target:z, score:base+hpFactor }); });
+        candidates.sort((a,b)=>b.score-a.score);
+        let result = [];
+        for(let i=0; i<Math.min(maxTargets, candidates.length); i++) result.push(candidates[i].target);
+        if(difficulty === "EXTREME" && result.length>1 && Math.random()<0.4 && candidates.length>3) result.push(candidates[3].target);
+        return result;
+    }
+
+    let aiPvo = null, aiAirportCoords = null, aiBuildInterval = null;
+    function aiBuildLogic(){
+        if(!gameActive || !isAI) return;
+        let aiBuildings = buildings.filter(b=>b.team===enemyTeam);
+        let aiRadars = aiBuildings.filter(b=>b.type==='radar');
+        let aiPvos = aiBuildings.filter(b=>b.type==='pvo');
+        let aiRefineries = aiBuildings.filter(b=>b.type==='refinery');
+        let aiFactories = aiBuildings.filter(b=>b.type==='rocketFactory');
+        if(aiRadars.length < 2) aiBuild('radar');
+        else if(aiPvos.length < aiRadars.length) aiBuild('pvo');
+        else if(aiRefineries.length < 2) aiBuild('refinery');
+        else if(aiFactories.length < 1) aiBuild('rocketFactory');
+    }
+    function aiBuild(type){
+        let enemyZones = zones.filter(z=>z.team===enemyTeam);
+        if(enemyZones.length===0) return;
+        let zone = enemyZones[Math.floor(Math.random()*enemyZones.length)];
+        let lat = zone.center[0] + (Math.random()-0.5)*0.2;
+        let lng = zone.center[1] + (Math.random()-0.5)*0.2;
+        if(!canBuildForTeam(lat,lng,enemyTeam)) return;
+        let building = {id:Date.now()+Math.random(), lat, lng, type, team:enemyTeam, hp:(type==='radar'?120:(type==='pvo'?180:(type==='powerPlant'?100:(type==='refinery'?150:200)))), radarAngle:0, marker:null, radarCircle:null};
+        let icon; if(type==='radar') icon=getRadarIcon(); else if(type==='pvo') icon=getPvoIcon(); else if(type==='powerPlant') icon=getPowerPlantIcon(); else if(type==='refinery') icon=getRefineryIcon(); else if(type==='rocketFactory') icon=getRocketFactoryIcon();
+        if(icon){
+            let marker=L.marker([lat,lng],{icon}).addTo(map);
+            building.marker=marker;
+            buildings.push(building);
+            if(type==='radar') radars.push(building);
+            else if(type==='pvo') pvoSystems.push(building);
+            else if(type==='powerPlant') powerPlants.push(building);
+            else if(type==='refinery') refineries.push(building);
+            else if(type==='rocketFactory') rocketFactories.push(building);
+        }
+    }
+
+    function launchAIAttack(target){
+        let available = ['drone','cruise','ballistic','hypersonic'];
+        if(difficulty === "HARD" || difficulty === "EXTREME") available.push('x101','kalibr','kinzhal','iskander');
+        let type = available[Math.floor(Math.random() * available.length)];
+        let count = 1;
+        if(difficulty === "NORMAL") count = Math.floor(Math.random()*2)+1;
+        if(difficulty === "HARD") count = Math.floor(Math.random()*3)+1;
+        if(difficulty === "EXTREME") count = Math.floor(Math.random()*4)+2;
+        let targetLat, targetLng;
+        if(target.center){ targetLat = target.center[0]; targetLng = target.center[1]; }
+        else { targetLat = target.lat; targetLng = target.lng; }
+        for(let i=0;i<count;i++){
+            let offset = (i-(count-1)/2)*0.03;
+            let lat = targetLat + offset, lng = targetLng + offset*0.5;
+            let fromLatLng = {lat: aiAirportCoords.lat, lng: aiAirportCoords.lng};
+            let p1 = map.latLngToLayerPoint([fromLatLng.lat, fromLatLng.lng]), p2 = map.latLngToLayerPoint([lat, lng]);
+            let dx = p2.x - p1.x, dy = p2.y - p1.y;
+            let angle = Math.atan2(dx, -dy) * 180 / Math.PI + weaponTypes[type].spriteOffset;
+            let proj = { id: Date.now()+Math.random(), from: fromLatLng, to: {lat, lng}, progress:0, speed: weaponTypes[type].speed, damage: weaponTypes[type].damage, team: enemyTeam, targetType: (target.center ? 'zone' : 'building'), targetId: target.id, type: type, active:true, marker:null, lastInterceptCheck:0, interceptedFlag:false, angle:angle };
+            let marker = L.marker([proj.from.lat, proj.from.lng], { icon: getMissileIcon(type, enemyTeam), rotationOrigin: 'center center', rotationAngle: angle }).addTo(map);
+            proj.marker = marker;
+            projectiles.push(proj);
+        }
+    }
+
+    function initAI(){
+        let enemyZones = zones.filter(z=>z.team===enemyTeam);
+        if(enemyZones.length===0) return;
+        let getCenter=(z)=>z.center;
+        aiAirportCoords = {lat: getCenter(enemyZones[0])[0] + (Math.random()-0.5)*0.3, lng: getCenter(enemyZones[0])[1] + (Math.random()-0.5)*0.3};
+        aiPvo = {lat: getCenter(enemyZones[2]||enemyZones[0])[0] + (Math.random()-0.5)*0.3, lng: getCenter(enemyZones[2]||enemyZones[0])[1] + (Math.random()-0.5)*0.3, team: enemyTeam};
+        if(aiInterval) clearInterval(aiInterval);
+        let attackIntervalMs = 25000;
+        if(difficulty==="EASY") attackIntervalMs = 38000;
+        if(difficulty==="HARD") attackIntervalMs = 15000;
+        if(difficulty==="EXTREME") attackIntervalMs = 8000;
+        aiInterval = setInterval(()=>{
+            if(!gameActive) return;
+            let targets = chooseAITargets(difficulty === "EXTREME" ? 4 : 3);
+            if(targets.length === 0) return;
+            for(let t of targets) launchAIAttack(t);
+        }, attackIntervalMs);
+        if(aiBuildInterval) clearInterval(aiBuildInterval);
+        aiBuildInterval = setInterval(()=>aiBuildLogic(), 30000);
+    }
+
+    // ---- Основной цикл ----
+    function gameLoop(now) {
+        if (!gameActive) return;
+        let dt = Math.min(0.1, (now - lastUpdate) / 1000);
+        lastUpdate = now;
+        updateProjectiles(dt);
+        requestAnimationFrame(gameLoop);
+    }
+
+    // ---- Интерфейс вооружения ----
+    function buildWeaponGrid(){
+        let container = document.getElementById('weaponGrid'); if(!container) return;
+        container.innerHTML = '';
+        let types = ['drone','cruise','ballistic','hypersonic','x101','kalibr','kinzhal','iskander'];
+        types.forEach(type => {
+            let w = weaponTypes[type];
+            let card = document.createElement('div'); card.className = 'weapon-card'; if(attackType === type) card.classList.add('selected');
+            card.innerHTML = `<img src="images/${w.img}" alt="${w.name}" onerror="this.style.display='none'"><div class="weapon-name">${w.name}</div><div class="weapon-stats">💥 Урон: ${w.damage}<br>⚡ Цена: ${w.cost}</div>`;
+            card.onclick = () => { attackType = type; updateCostDisplay(); document.querySelectorAll('.weapon-card').forEach(c=>c.classList.remove('selected')); card.classList.add('selected'); };
+            container.appendChild(card);
+        });
+    }
+    function updateCostDisplay(){ let w = weaponTypes[attackType]; document.getElementById('costDisplay').innerHTML = `СТОИМОСТЬ: ${w.cost * attackCount} ⚡`; }
+    function closeAttackModal(){ document.getElementById('attackModal').style.display='none'; }
+
+    // ---- Инициализация игры ----
+    function initGameMapAndLogic(){
+        document.getElementById('menuScreen').style.display='none';
+        document.getElementById('lobbyScreen').style.display='none';
+        document.getElementById('gameContainer').style.display='block';
+        if(map) map.remove();
+        map = L.map('map', { zoomControl: false }).setView([55.0,40.0],5);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© CartoDB'}).addTo(map);
+        let ld = document.createElement('div'); ld.className='loading-indicator'; ld.innerText='Загрузка границ...'; document.body.appendChild(ld);
+        loadRealBorders(()=>{
+            if(ld) ld.remove();
+            initZones();
+            buildings = []; radars = []; pvoSystems = []; powerPlants = []; refineries = []; rocketFactories = []; projectiles = [];
+            if(isSandbox){
+                resources = 999999;
+                maxRadars = 999; maxPvo = 999; maxPowerPlants = 999; maxRefineries = 999;
+                isAI = false;
+            } else {
+                if(difficulty==="EASY") resources = 400;
+                else if(difficulty==="NORMAL") resources = 300;
+                else if(difficulty==="HARD") resources = 220;
+                else resources = 150;
+                maxRadars = 8; maxPvo = 12; maxPowerPlants = 5; maxRefineries = 3;
+            }
+            airportPlaced = false; updateUI();
+            map.off('click');
+            map.on('click', (e) => {
+                if(!airportPlaced){
+                    let lat = e.latlng.lat, lng = e.latlng.lng;
+                    if(!isOwnTerritory(lat,lng)){ alert("Аэродром можно поставить только на своей территории!"); return; }
+                    let icon = getAirportIcon();
+                    airportMarker = L.marker([lat,lng], {icon}).addTo(map);
+                    airportMarker.bindPopup('<b>АЭРОДРОМ</b>');
+                    airportMarker.on('click', () => {
+                        let targets = getEnemyTargets();
+                        if(targets.length === 0){ alert("Нет вражеских целей!"); return; }
+                        let select = document.getElementById('targetSelect');
+                        select.innerHTML = '';
+                        targets.forEach(t => {
+                            let opt = document.createElement('option');
+                            opt.value = t.id;
+                            opt.setAttribute('data-type', t.type);
+                            opt.textContent = `${t.display}`;
+                            select.appendChild(opt);
+                        });
+                        attackType = 'drone'; attackCount = 1;
+                        document.getElementById('countValue').innerText = attackCount;
+                        updateCostDisplay();
+                        currentAirport = airportMarker;
+                        buildWeaponGrid();
+                        document.getElementById('attackModal').style.display = 'block';
+                    });
+                    airportPlaced = true; gameActive = true; updateUI(); lastUpdate = performance.now();
+                    if(isAI && !isSandbox) initAI();
+                    startRadarAnimation();
+                    requestAnimationFrame(gameLoop);
+                    if(economyInterval) clearInterval(economyInterval);
+                    economyInterval = setInterval(() => { if(gameActive && !isSandbox){ let income = 5 + powerPlants.filter(p=>p.team===myTeam).length*3 + refineries.filter(r=>r.team===myTeam).length*15; resources += income; updateUI(); } else updateUI(); }, 1000);
+                    showHint("📡 Теперь постройте Радар");
+                    if(!isAI && conn && conn.open) conn.send({ type:'airportPlaced', lat, lng, team:myTeam });
+                    return;
+                }
+                if(buildMode){ tryBuild(e.latlng.lat, e.latlng.lng, buildMode); buildMode = null; }
+            });
+        });
+    }
+
+    // ============================================================
+    // 5.  ОБРАБОТЧИКИ КНОПОК
+    // ============================================================
+    document.getElementById('diffEasy').onclick=()=>{ document.querySelectorAll('.difficulty-btn').forEach(btn=>btn.classList.remove('selected')); document.getElementById('diffEasy').classList.add('selected'); difficulty="EASY"; };
+    document.getElementById('diffNormal').onclick=()=>{ document.querySelectorAll('.difficulty-btn').forEach(btn=>btn.classList.remove('selected')); document.getElementById('diffNormal').classList.add('selected'); difficulty="NORMAL"; };
+    document.getElementById('diffHard').onclick=()=>{ document.querySelectorAll('.difficulty-btn').forEach(btn=>btn.classList.remove('selected')); document.getElementById('diffHard').classList.add('selected'); difficulty="HARD"; };
+    document.getElementById('diffExtreme').onclick=()=>{ document.querySelectorAll('.difficulty-btn').forEach(btn=>btn.classList.remove('selected')); document.getElementById('diffExtreme').classList.add('selected'); difficulty="EXTREME"; };
+    document.getElementById('singleBtn').onclick=()=>{ playBeep(400,0.1); setTimeout(()=>{ playBeep(600,0.1); setTimeout(()=>{ playBeep(800,0.1); myTeam='russia'; enemyTeam='ukraine'; isAI=true; isSandbox=false; initGameMapAndLogic(); },100); },100); };
+    document.getElementById('sandboxBtn').onclick=()=>{ playBeep(400,0.1); setTimeout(()=>{ playBeep(600,0.1); setTimeout(()=>{ playBeep(800,0.1); myTeam='russia'; enemyTeam='ukraine'; isAI=false; isSandbox=true; initGameMapAndLogic(); },100); },100); };
+    document.getElementById('tutorialBtn').onclick=()=>{ alert("Обучение: постройте аэродром → радар → ПВО → атакуйте врага. В песочнице нет лимитов и бесконечная энергия."); };
+    document.getElementById('createGameBtn').onclick=()=>{ alert("Мультиплеер в разработке"); };
+    document.getElementById('joinGameBtn').onclick=()=>{ document.getElementById('roomCodeInput').style.display='block'; document.getElementById('confirmJoinBtn').style.display='block'; };
+    document.getElementById('confirmJoinBtn').onclick=()=>{ let code=document.getElementById('roomCodeInput').value.trim().toUpperCase(); if(code) alert("Мультиплеер в разработке"); else alert("Введите код"); };
+    document.getElementById('chooseRussia').onclick=()=>{ if(lobbyState[isHost?'player1':'player2']?.ready) return; lobbyState[isHost?'player1':'player2'].team='russia'; lobbyState[isHost?'player1':'player2'].ready=false; updateLobbyUI(); sendLobbyUpdate(); };
+    document.getElementById('chooseUkraine').onclick=()=>{ if(lobbyState[isHost?'player1':'player2']?.ready) return; lobbyState[isHost?'player1':'player2'].team='ukraine'; lobbyState[isHost?'player1':'player2'].ready=false; updateLobbyUI(); sendLobbyUpdate(); };
+    document.getElementById('readyBtn').onclick=()=>{ if(!lobbyState[isHost?'player1':'player2']?.team){ alert("Выберите страну!"); return; } lobbyState[isHost?'player1':'player2'].ready=true; updateLobbyUI(); sendLobbyUpdate(); };
+    document.getElementById('buildRadarBtn').onclick=()=>{ buildMode='radar'; };
+    document.getElementById('buildPvoBtn').onclick=()=>{ buildMode='pvo'; };
+    document.getElementById('buildPowerPlantBtn').onclick=()=>{ buildMode='powerPlant'; };
+    document.getElementById('buildRefineryBtn').onclick=()=>{ buildMode='refinery'; };
+    document.getElementById('buildRocketFactoryBtn').onclick=()=>{ buildMode='rocketFactory'; };
+    document.getElementById('cancelBuild').onclick=()=>{ buildMode=null; };
+    document.getElementById('countMinus').onclick=()=>{ if(attackCount>1) attackCount--; document.getElementById('countValue').innerText=attackCount; updateCostDisplay(); };
+    document.getElementById('countPlus').onclick=()=>{ if(attackCount<5) attackCount++; document.getElementById('countValue').innerText=attackCount; updateCostDisplay(); };
+    document.getElementById('attackConfirmBtn').onclick = () => {
+        let select = document.getElementById('targetSelect');
+        let targetId = select.value;
+        let targetType = select.options[select.selectedIndex].getAttribute('data-type');
+        let target;
+        if (targetType === 'zone') {
+            let z = zones.find(z => z.id === targetId);
+            if (!z) { alert("Цель не найдена"); return; }
+            target = { id: z.id, type: 'zone', lat: z.center[0], lng: z.center[1] };
+        } else {
+            let b = buildings.find(b => b.id == targetId);
+            if (!b) { alert("Цель не найдена"); return; }
+            target = { id: b.id, type: 'building', lat: b.lat, lng: b.lng };
+        }
+        if (currentAirport) launchAttack(currentAirport, target, attackType, attackCount);
+        closeAttackModal();
+    };
+    document.getElementById('attackCancelBtn').onclick=()=>closeAttackModal();
     document.getElementById('logoutBtn').onclick = logout;
     function updateLobbyUI(){}
     function sendLobbyUpdate(){}
 
     // ============================================================
-    // 5.  ДОПОЛНИТЕЛЬНЫЙ JS ДЛЯ ПАНЕЛИ ПОСТРОЕК (только интерфейс)
+    // 6.  УПРАВЛЕНИЕ ПАНЕЛЬЮ ПОСТРОЕК (мобильная версия)
     // ============================================================
     document.addEventListener('DOMContentLoaded', function() {
         const buildToggle = document.getElementById('buildToggle');
@@ -796,7 +1008,7 @@
         }
     });
 
-    console.log('✅ Аккаунты работают на всех устройствах! Войдите с любого браузера.');
+    console.log('✅ Игра полностью загружена. Аккаунты работают на всех устройствах!');
 </script>
 </body>
 </html>
