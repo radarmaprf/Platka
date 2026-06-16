@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Sky in Fire — мультиплеер 1v1 (исправлен)</title>
+    <title>Sky in Fire — мультиплеер 1v1 (карта исправлена)</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-rotatedmarker/leaflet.rotatedMarker.js"></script>
@@ -392,7 +392,7 @@
     let isHost = false;
     let mpGameRef = null;
     let isMultiplayer = false;
-    let mpInitDone = false; // Флаг, чтобы не инициализировать дважды
+    let mpInitDone = false;
 
     document.getElementById('multiplayerBtn').onclick = function() {
         const controls = document.getElementById('multiplayerControls');
@@ -407,7 +407,7 @@
             players: {
                 [currentUser]: { team: 'russia', ready: false }
             },
-            status: 'waiting', // waiting, playing, finished
+            status: 'waiting',
             createdAt: Date.now()
         };
         gamesRef.child(roomId).set(gameData).then(() => {
@@ -1108,7 +1108,9 @@
         });
     }
 
-    // ---- Мультиплеерная инициализация (исправлена) ----
+    // =================================================================
+    // 6. МУЛЬТИПЛЕЕРНАЯ ИНИЦИАЛИЗАЦИЯ (ИСПРАВЛЕНА)
+    // =================================================================
     function startMultiplayerGame(roomId, data) {
         // Сброс глобального состояния
         gameActive = false;
@@ -1128,6 +1130,8 @@
         isSandbox = false;
         document.getElementById('lobbyScreen').style.display = 'none';
         document.getElementById('gameContainer').style.display = 'block';
+        // Принудительно показываем карту (убеждаемся, что она не скрыта)
+        document.getElementById('map').style.display = 'block';
 
         mpGameRef = gamesRef.child(roomId).child('gameState');
         mpGameRef.once('value').then(snapshot => {
@@ -1154,10 +1158,11 @@
 
     function initMPGame(initialState) {
         if(map) { map.remove(); map = null; }
+        // Создаём карту
         map = L.map('map', { zoomControl: false }).setView([55.0,40.0],5);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© CartoDB'}).addTo(map);
         // Принудительно обновляем размер карты
-        setTimeout(() => { map.invalidateSize(); }, 100);
+        setTimeout(() => { if(map) map.invalidateSize(); }, 100);
 
         if (!bordersLoaded) {
             loadRealBorders(() => { initMPZones(initialState); });
@@ -1353,7 +1358,7 @@
     }
 
     // =================================================================
-    // 6. ОБРАБОТЧИКИ КНОПОК МЕНЮ
+    // 7. ОБРАБОТЧИКИ КНОПОК МЕНЮ
     // =================================================================
     document.getElementById('singleBtn').onclick = function() {
         if (!currentUser) { alert("Сначала войдите в аккаунт!"); return; }
