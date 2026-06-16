@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Sky in Fire — лицензионная версия</title>
+    <title>Sky in Fire — лицензионная версия (оптимизация под все устройства)</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-rotatedmarker/leaflet.rotatedMarker.js"></script>
@@ -12,39 +12,38 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
     <style>
-        /* ========== ВСЕ СТИЛИ (ОПТИМИЗИРОВАНЫ) ========== */
+        /* ========== БАЗОВЫЕ СТИЛИ ========== */
         * { margin:0; padding:0; box-sizing:border-box; user-select:none; -webkit-tap-highlight-color:transparent; }
         html, body { width:100%; height:100%; overflow:hidden; font-family:'Segoe UI',system-ui,-apple-system,sans-serif; background:#0a0f12; color:#eef; touch-action:manipulation; }
         .screen { position:absolute; top:0; left:0; width:100%; height:100%; display:flex; justify-content:center; align-items:center; z-index:2000; background:radial-gradient(circle at 20% 30%,#0a1f1a,#030a08); }
         .missile-bg { position:absolute; inset:0; background:radial-gradient(circle at 20% 20%,rgba(255,102,0,0.15),transparent 50%), radial-gradient(circle at 80% 60%,rgba(0,170,255,0.15),transparent 50%), repeating-linear-gradient(45deg,rgba(255,255,255,0.02) 0px,rgba(255,255,255,0.02) 2px,transparent 2px,transparent 8px); pointer-events:none; }
         .scan-line { position:absolute; top:0; left:0; width:100%; height:2px; background:linear-gradient(90deg,transparent,#00ffaa,transparent); animation:scan 8s linear infinite; opacity:0.3; pointer-events:none; }
         @keyframes scan { 0%{top:0;} 100%{top:100%;} }
-        .card { background:rgba(20,30,35,0.85); backdrop-filter:blur(14px); border-radius:48px; padding:clamp(20px, 4vw, 40px) clamp(16px, 3vw, 32px); text-align:center; max-width:92%; width:480px; color:#fff; box-shadow:0 25px 45px rgba(0,0,0,0.5),0 0 0 1px rgba(255,215,0,0.2); border:1px solid rgba(255,215,0,0.3); position:relative; z-index:10; max-height:92vh; overflow-y:auto; }
+        .card { background:rgba(20,30,35,0.85); backdrop-filter:blur(14px); border-radius:48px; padding:clamp(20px, 4vw, 40px) clamp(16px, 3vw, 32px); text-align:center; max-width:92%; width:480px; color:#fff; box-shadow:0 25px 45px rgba(0,0,0,0.5),0 0 0 1px rgba(255,215,0,0.2); border:1px solid rgba(255,215,0,0.3); position:relative; z-index:10; max-height:90vh; overflow-y:auto; }
         .card h1 { font-size:clamp(1.8rem, 5vw, 3rem); }
         .logo { font-size:clamp(2.2rem, 6vw, 3.5rem); font-weight:900; letter-spacing:4px; text-transform:uppercase; background:linear-gradient(135deg,#ffb347,#ff8c00); -webkit-background-clip:text; background-clip:text; color:transparent; text-shadow:0 0 15px rgba(255,140,0,0.5); margin-bottom:0.5rem; }
         .difficulty-select { display:flex; gap:8px; justify-content:center; margin-bottom:15px; margin-top:10px; flex-wrap:wrap; }
-        .difficulty-btn { background:#3a5e5e; border:2px solid #fff; border-radius:40px; padding:6px 12px; cursor:pointer; font-weight:bold; transition:0.1s; font-size:clamp(0.7rem, 1.5vw, 1rem); }
+        .difficulty-btn { background:#3a5e5e; border:2px solid #fff; border-radius:40px; padding:6px 12px; cursor:pointer; font-weight:bold; transition:0.1s; font-size:clamp(0.7rem, 1.5vw, 1rem); touch-action:manipulation; }
         .difficulty-btn.selected { background:#ffaa33; border-color:gold; color:#1a2a2a; }
-        .card button { display:block; width:100%; background:rgba(255,255,255,0.08); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,0.15); color:white; padding:clamp(12px, 2.5vh, 16px); margin:8px 0; font-size:clamp(0.9rem, 2.2vw, 1.2rem); font-weight:bold; border-radius:60px; cursor:pointer; transition:0.2s; box-shadow:0 2px 5px rgba(0,0,0,0.2); touch-action:manipulation; }
+        .card button { display:block; width:100%; background:rgba(255,255,255,0.08); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,0.15); color:white; padding:clamp(12px, 2.5vh, 16px); margin:10px 0; font-size:clamp(1rem, 2.5vw, 1.2rem); font-weight:bold; border-radius:60px; cursor:pointer; transition:0.2s; box-shadow:0 2px 5px rgba(0,0,0,0.2); touch-action:manipulation; }
         .card button:hover { transform:translateY(-2px); background:rgba(255,255,255,0.15); border-color:rgba(255,215,0,0.5); }
         .card button:active { transform:scale(0.96); }
-        .card input { width:100%; padding:clamp(12px, 2.5vh, 16px); border-radius:60px; border:none; margin:8px 0; text-align:center; background:rgba(42,58,58,0.8); color:#fff; font-size:clamp(0.9rem, 2vw, 1.2rem); }
+        .card input { width:100%; padding:clamp(12px, 2.5vh, 16px); border-radius:60px; border:none; margin:10px 0; text-align:center; background:rgba(42,58,58,0.8); color:#fff; font-size:clamp(1rem, 2vw, 1.2rem); }
         .lobby-info { margin:8px 0; background:rgba(0,0,0,0.5); border-radius:40px; padding:8px; font-size:clamp(0.8rem, 1.5vw, 1rem); }
         .country-select { display:flex; gap:12px; justify-content:center; margin:15px 0; flex-wrap:wrap; }
-        .country-btn { flex:1; min-width:80px; background:#3a5e5e; border:2px solid #fff; border-radius:40px; padding:clamp(10px, 2vh, 14px) 8px; cursor:pointer; font-weight:bold; transition:0.1s; font-size:clamp(0.8rem, 1.5vw, 1.1rem); text-align:center; }
+        .country-btn { flex:1; min-width:80px; background:#3a5e5e; border:2px solid #fff; border-radius:40px; padding:12px 8px; cursor:pointer; font-weight:bold; transition:0.1s; font-size:clamp(0.8rem, 1.5vw, 1.1rem); text-align:center; touch-action:manipulation; }
         .country-btn.selected { background:#ffaa33; border-color:gold; color:#1a2a2a; }
         .ready-btn { background:#ffaa33!important; color:#1a2a2a!important; }
         .auth-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.96); z-index:10000; display:flex; justify-content:center; align-items:center; font-family:'Segoe UI',system-ui; }
         .auth-card { background:rgba(20,30,35,0.95); backdrop-filter:blur(14px); border-radius:48px; padding:clamp(20px, 4vw, 40px) clamp(16px, 3vw, 32px); text-align:center; width:400px; max-width:92%; color:#fff; border:1px solid rgba(255,215,0,0.3); box-shadow:0 25px 45px rgba(0,0,0,0.5); max-height:95vh; overflow-y:auto; }
         .auth-card h2 { font-size:clamp(1.6rem, 4vw, 2.2rem); margin-bottom:15px; }
-        .auth-card input { width:100%; padding:clamp(12px, 2.5vh, 16px); margin:8px 0; border-radius:60px; border:none; background:rgba(42,58,58,0.8); color:#fff; text-align:center; font-size:clamp(0.9rem, 2vw, 1.2rem); }
-        .auth-card button { width:100%; background:#ffaa33; border:none; padding:clamp(12px, 2.5vh, 16px); border-radius:60px; font-weight:bold; cursor:pointer; margin-top:10px; color:#1a2a2a; font-size:clamp(0.9rem, 2vw, 1.2rem); }
+        .auth-card input { width:100%; padding:clamp(12px, 2.5vh, 16px); margin:8px 0; border-radius:60px; border:none; background:rgba(42,58,58,0.8); color:#fff; text-align:center; font-size:clamp(1rem, 2vw, 1.2rem); }
+        .auth-card button { width:100%; background:#ffaa33; border:none; padding:clamp(12px, 2.5vh, 16px); border-radius:60px; font-weight:bold; cursor:pointer; margin-top:10px; color:#1a2a2a; font-size:clamp(1rem, 2vw, 1.2rem); touch-action:manipulation; }
         .auth-card button:hover { background:#ffcc66; }
         .auth-card .error-msg { color:#ff6666; margin-top:8px; font-size:clamp(0.8rem, 1.5vw, 1rem); }
         .auth-card .toggle-link { margin-top:12px; font-size:clamp(0.8rem, 1.5vw, 1rem); cursor:pointer; color:#88aaff; }
-        .auth-card .toggle-link:hover { text-decoration:underline; }
 
-        /* HUD */
+        /* ========== HUD (верхняя панель) ========== */
         #gameHUD {
             position:fixed;
             top:8px;
@@ -53,7 +52,7 @@
             background:rgba(5,10,15,0.88);
             backdrop-filter:blur(12px);
             border-radius:clamp(16px, 3vw, 30px);
-            padding:6px 12px;
+            padding:clamp(4px, 1vh, 10px) clamp(8px, 2vw, 16px);
             display:flex;
             flex-wrap:wrap;
             justify-content:space-between;
@@ -63,19 +62,19 @@
             box-shadow:0 0 20px rgba(0,255,170,0.15);
             font-weight:bold;
             gap:4px;
-            font-size:clamp(0.7rem, 1.6vw, 1rem);
+            font-size:clamp(0.6rem, 1.6vw, 1rem);
             min-height:clamp(40px, 8vh, 60px);
         }
-        .hud-resource { background:#1e2e2e; padding:4px 12px; border-radius:40px; display:inline-flex; align-items:center; gap:4px; color:#00ffaa; font-size:clamp(0.9rem, 2vw, 1.2rem); }
-        .hud-rank { background:#1e2e2e; padding:4px 12px; border-radius:40px; display:inline-flex; align-items:center; gap:4px; font-size:clamp(0.7rem, 1.5vw, 1rem); }
-        .health-bars { display:flex; gap:clamp(6px, 2vw, 20px); background:rgba(0,0,0,0.5); padding:4px 10px; border-radius:40px; flex-wrap:wrap; }
-        .health-bar { display:flex; align-items:center; gap:4px; font-size:clamp(0.6rem, 1.2vw, 0.9rem); }
-        .bar-bg { width:clamp(60px, 15vw, 120px); height:clamp(6px, 1.5vh, 10px); background:#333; border-radius:10px; overflow:hidden; }
+        .hud-resource { background:#1e2e2e; padding:2px 10px; border-radius:40px; display:inline-flex; align-items:center; gap:4px; color:#00ffaa; font-size:clamp(0.8rem, 2vw, 1.2rem); }
+        .hud-rank { background:#1e2e2e; padding:2px 10px; border-radius:40px; display:inline-flex; align-items:center; gap:4px; font-size:clamp(0.6rem, 1.5vw, 1rem); }
+        .health-bars { display:flex; gap:clamp(4px, 2vw, 20px); background:rgba(0,0,0,0.5); padding:2px 8px; border-radius:40px; flex-wrap:wrap; }
+        .health-bar { display:flex; align-items:center; gap:4px; font-size:clamp(0.5rem, 1.2vw, 0.9rem); }
+        .bar-bg { width:clamp(40px, 15vw, 120px); height:clamp(4px, 1.5vh, 10px); background:#333; border-radius:10px; overflow:hidden; }
         .bar-fill { height:100%; width:0%; transition:width 0.3s; }
         .ru-fill { background:#ff5555; }
         .ua-fill { background:#55aaff; }
 
-        /* Панель построек */
+        /* ========== ПАНЕЛЬ ПОСТРОЕК (адаптивная) ========== */
         #buildPanel {
             position:fixed;
             bottom:clamp(10px, 3vh, 20px);
@@ -89,7 +88,7 @@
             background:linear-gradient(180deg,#ffaa33,#e68a00);
             border:none;
             color:#1a2a2a;
-            padding:clamp(10px, 2vh, 14px) clamp(14px, 2.5vw, 20px);
+            padding:clamp(10px, 2vh, 16px) clamp(14px, 3vw, 20px);
             border-radius:60px;
             cursor:pointer;
             font-weight:bold;
@@ -104,107 +103,116 @@
         #buildMenu {
             display:none;
             flex-direction:column;
-            gap:6px;
+            gap:4px;
             background:rgba(0,0,0,0.85);
             backdrop-filter:blur(12px);
-            border-radius:clamp(20px, 4vw, 30px);
-            padding:clamp(8px, 1.5vh, 12px);
+            border-radius:clamp(16px, 3vw, 30px);
+            padding:clamp(8px, 1.5vh, 14px);
             border:1px solid #ffaa3344;
-            max-height:clamp(300px, 50vh, 500px);
+            max-height:clamp(250px, 50vh, 400px);
             overflow-y:auto;
         }
-        #buildMenu.show { display:flex; }
-        .build-btn {
+        #buildMenu .build-btn {
             background:linear-gradient(180deg,#24353d,#17242b);
             border:1px solid #00ffaa44;
-            box-shadow:0 0 10px rgba(0,255,170,0.1);
-            transition:0.2s;
+            box-shadow:0 0 10px rgba(0,255,170,0.08);
             border:none;
             color:#fff;
-            padding:clamp(8px, 1.5vh, 12px) clamp(12px, 2vw, 16px);
+            padding:clamp(8px, 1.5vh, 12px) clamp(12px, 2vw, 18px);
             border-radius:40px;
             cursor:pointer;
             font-weight:bold;
             text-align:left;
-            font-size:clamp(0.8rem, 1.5vw, 1rem);
+            font-size:clamp(0.8rem, 1.8vw, 1.1rem);
+            touch-action:manipulation;
             white-space:nowrap;
-            min-height:clamp(36px, 6vh, 44px);
         }
-        .build-btn:active { transform:scale(0.95); background:linear-gradient(180deg,#2a4a5a,#1a2a3a); }
+        #buildMenu .build-btn:active { transform:scale(0.96); }
+        #buildMenu .build-btn.cancel { background:#aa3333; border-color:#ff4444; }
 
-        /* Модалка атаки */
+        /* ========== МОДАЛЬНОЕ ОКНО ========== */
         .modal {
             position:fixed;
             top:50%;
             left:50%;
             transform:translate(-50%,-50%);
             background:linear-gradient(180deg,#091116,#020508);
-            border-radius:clamp(30px, 5vw, 40px);
-            padding:clamp(16px, 3vw, 24px);
+            border-radius:clamp(24px, 5vw, 40px);
+            padding:clamp(16px, 3vh, 30px);
             z-index:3000;
             color:#fff;
-            width:clamp(320px, 90vw, 450px);
-            max-width:94%;
+            width:clamp(300px, 90vw, 500px);
+            max-height:90vh;
+            overflow-y:auto;
             text-align:center;
             border:2px solid #00ffaa;
             box-shadow:0 0 40px rgba(0,255,170,0.3);
-            max-height:95vh;
+        }
+        .modal h3 { font-size:clamp(1.2rem, 3vw, 1.8rem); margin-bottom:12px; }
+        .modal select { width:100%; padding:clamp(10px, 2vh, 14px); border-radius:40px; background:#1a2a2a; color:#fff; border:1px solid #00ffaa44; font-size:clamp(0.9rem, 2vw, 1.1rem); margin-bottom:10px; }
+        .modal .weapon-grid {
+            display:grid;
+            grid-template-columns:1fr 1fr;
+            gap:8px;
+            margin:10px 0;
+            max-height:clamp(200px, 40vh, 350px);
             overflow-y:auto;
         }
-        .modal h3 { font-size:clamp(1.2rem, 3vw, 1.8rem); margin-bottom:10px; }
-        .modal select { width:100%; padding:10px; border-radius:20px; background:#1a2a2a; color:#fff; border:1px solid #00ffaa; font-size:clamp(0.9rem, 2vw, 1.1rem); margin-bottom:10px; }
-        .weapon-grid { display:grid; grid-template-columns:1fr 1fr; gap:clamp(8px, 1.5vw, 12px); margin:12px 0; max-height:clamp(200px, 40vh, 350px); overflow-y:auto; padding-right:5px; }
-        .weapon-card { background:#101820; border:2px solid #333; border-radius:clamp(16px, 3vw, 20px); padding:clamp(8px, 1.5vh, 12px); cursor:pointer; transition:0.2s; text-align:center; }
-        .weapon-card:active { transform:scale(0.95); }
-        .weapon-card.selected { border-color:#00ffaa; box-shadow:0 0 15px rgba(0,255,170,0.4); background:#1e3038; }
-        .weapon-card img { width:100%; height:clamp(50px, 10vh, 80px); object-fit:contain; margin-bottom:4px; }
-        .weapon-name { font-weight:bold; font-size:clamp(0.7rem, 1.5vw, 1rem); margin:4px 0; }
-        .weapon-stats { font-size:clamp(0.6rem, 1.2vw, 0.9rem); opacity:0.8; }
-        .modal button { padding:clamp(10px, 2vh, 14px) clamp(16px, 3vw, 24px); border-radius:60px; border:none; font-weight:bold; cursor:pointer; margin:6px; font-size:clamp(0.9rem, 2vw, 1.1rem); touch-action:manipulation; }
-        .modal button:active { transform:scale(0.95); }
-        #attackConfirmBtn { background:#00ffaa; color:#000; }
-        #attackCancelBtn { background:#aa3333; color:#fff; }
+        .modal .weapon-card {
+            background:#101820;
+            border:2px solid #333;
+            border-radius:16px;
+            padding:8px;
+            cursor:pointer;
+            transition:0.2s;
+            text-align:center;
+            touch-action:manipulation;
+        }
+        .modal .weapon-card:active { transform:scale(0.95); }
+        .modal .weapon-card.selected { border-color:#00ffaa; box-shadow:0 0 15px rgba(0,255,170,0.4); background:#1e3038; }
+        .modal .weapon-card img { width:100%; height:clamp(40px, 8vh, 80px); object-fit:contain; margin-bottom:4px; }
+        .modal .weapon-name { font-weight:bold; font-size:clamp(0.7rem, 1.5vw, 1rem); }
+        .modal .weapon-stats { font-size:clamp(0.6rem, 1.2vw, 0.8rem); opacity:0.8; }
+        .modal .flex { display:flex; gap:8px; justify-content:center; align-items:center; flex-wrap:wrap; margin:8px 0; }
+        .modal .flex button { background:#3a5e5e; border:none; color:#fff; padding:6px 14px; border-radius:40px; cursor:pointer; font-size:clamp(1rem, 2vw, 1.2rem); touch-action:manipulation; }
+        .modal .flex button:active { transform:scale(0.95); }
+        .modal .flex span { font-size:clamp(1rem, 2vw, 1.2rem); min-width:30px; }
+        .modal button { width:100%; padding:clamp(10px, 2vh, 14px); border-radius:40px; border:none; font-weight:bold; cursor:pointer; margin-top:6px; font-size:clamp(0.9rem, 2vw, 1.1rem); touch-action:manipulation; }
+        .modal button:active { transform:scale(0.96); }
+        #costDisplay { margin:8px 0; font-weight:bold; font-size:clamp(0.9rem, 2vw, 1.2rem); }
 
-        /* Прочие элементы */
-        .zone-marker { background:rgba(0,0,0,0.8); border-radius:16px; padding:6px 10px; text-align:center; font-weight:bold; color:#fff; font-size:clamp(0.6rem, 1.2vw, 0.9rem); box-shadow:0 0 10px rgba(0,0,0,0.5); white-space:nowrap; }
-        @keyframes radarSpin { from{transform:translateX(-50%) rotate(0deg);} to{transform:translateX(-50%) rotate(360deg);} }
-        .leaflet-marker-icon { transform-origin:center center; }
+        /* ========== АДАПТИВНЫЕ ПРАВКИ ========== */
+        @media (max-width: 600px) {
+            #gameHUD { flex-direction:column; align-items:stretch; gap:4px; }
+            .health-bars { justify-content:space-around; }
+            .bar-bg { width:60px; }
+            #buildPanel { bottom:10px; left:10px; }
+            #buildToggle { padding:8px 14px; font-size:0.9rem; min-height:40px; }
+            #buildMenu .build-btn { font-size:0.8rem; padding:6px 12px; white-space:normal; }
+            .modal { width:95vw; padding:16px; }
+        }
+        @media (max-width: 400px) {
+            .card { padding:16px; }
+            .difficulty-btn { font-size:0.6rem; padding:4px 8px; }
+            .card button { font-size:0.9rem; padding:10px; }
+            .bar-bg { width:40px; }
+        }
+        @media (orientation: landscape) and (max-height: 500px) {
+            #gameHUD { font-size:0.6rem; padding:2px 8px; min-height:30px; }
+            .hud-resource { font-size:0.7rem; padding:2px 6px; }
+            .bar-bg { width:40px; height:4px; }
+            #buildToggle { padding:6px 12px; font-size:0.8rem; min-height:30px; }
+            #buildMenu .build-btn { font-size:0.7rem; padding:4px 10px; }
+        }
+        /* ========== ПРОЧЕЕ ========== */
+        .zone-marker { background:rgba(0,0,0,0.8); border-radius:16px; padding:4px 8px; text-align:center; font-weight:bold; color:#fff; font-size:clamp(0.5rem, 1vw, 0.8rem); box-shadow:0 0 10px rgba(0,0,0,0.5); white-space:nowrap; }
         .hidden-projectile { display:none !important; }
-        .loading-indicator { background:rgba(0,0,0,0.7); color:white; padding:8px 16px; border-radius:30px; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:3000; font-size:clamp(1rem, 2vw, 1.2rem); }
+        .loading-indicator { background:rgba(0,0,0,0.7); color:white; padding:8px 16px; border-radius:30px; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:3000; font-size:clamp(0.9rem, 2vw, 1.2rem); }
         .explosion{ width:30px; height:30px; border-radius:50%; background:#ffcc00; box-shadow:0 0 20px #ffcc00,0 0 40px orange,0 0 80px red; animation:explode .5s forwards; }
         @keyframes explode{ from{ transform:scale(.2); opacity:1; } to{ transform:scale(3); opacity:0; } }
-
-        /* Настройки для ПК */
-        @media (min-width: 1024px) {
-            #buildMenu { max-height:70vh; }
-            .build-btn:hover { transform:translateX(5px); border-color:#00ffaa; background:linear-gradient(180deg,#2a4a5a,#1a2a3a); }
-            .card button:hover { transform:translateY(-2px); }
-            .weapon-card:hover { transform:scale(1.02); background:#1a2830; }
-        }
-        /* Телефоны */
-        @media (max-width: 480px) {
-            .card { padding:16px; border-radius:30px; }
-            .auth-card { padding:16px; border-radius:30px; }
-            #gameHUD { padding:4px 8px; gap:2px; font-size:0.6rem; }
-            .hud-resource { font-size:0.8rem; padding:2px 8px; }
-            .hud-rank { font-size:0.6rem; padding:2px 8px; }
-            .health-bar { font-size:0.5rem; }
-            .bar-bg { width:40px; height:5px; }
-            #buildToggle { font-size:0.8rem; padding:8px 12px; min-height:36px; }
-            .build-btn { font-size:0.7rem; padding:6px 10px; min-height:30px; }
-            .modal { padding:12px; }
-            .weapon-grid { grid-template-columns:1fr 1fr; gap:6px; }
-            .weapon-card { padding:6px; }
-            .weapon-name { font-size:0.6rem; }
-            .weapon-stats { font-size:0.5rem; }
-            .modal button { font-size:0.8rem; padding:8px 12px; }
-        }
-        /* Планшеты */
-        @media (min-width: 481px) and (max-width: 1023px) {
-            .card { padding:24px; }
-            #gameHUD { font-size:0.8rem; }
-            .bar-bg { width:80px; }
-        }
+        @keyframes radarSpin { from{transform:translateX(-50%) rotate(0deg);} to{transform:translateX(-50%) rotate(360deg);} }
+        .leaflet-marker-icon { transform-origin:center center; }
+        .leaflet-control-zoom { display:none !important; }
     </style>
 </head>
 <body>
@@ -243,14 +251,13 @@
         <button id="joinGameBtn">🔌 ПОДКЛЮЧИТЬСЯ</button>
         <input type="text" id="roomCodeInput" placeholder="КОД КОМНАТЫ" style="display:none;">
         <button id="confirmJoinBtn" style="display:none;">ПОДКЛЮЧИТЬСЯ</button>
-        <div id="roomDisplay" style="margin-top:10px; font-size:clamp(0.7rem, 1.5vw, 1rem); opacity:0.8;"></div>
+        <div id="roomDisplay" style="margin-top:10px; font-size:clamp(0.6rem, 1.2vw, 0.9rem); opacity:0.8;"></div>
         <button id="logoutBtn" style="margin-top:15px; background:#aa3333;">🚪 ВЫЙТИ ИЗ АККАУНТА</button>
     </div>
 </div>
 
-<!-- Лобби -->
 <div id="lobbyScreen" class="screen" style="display:none;">
-    <div class="card" style="width:400px;">
+    <div class="card" style="width:400px; max-width:92%;">
         <h1>ЛОББИ</h1>
         <div class="lobby-info">Код комнаты: <span id="lobbyRoomCode"></span></div>
         <div class="lobby-info">Игрок 1: <span id="player1Name">—</span> <span id="player1Ready">⚪</span></div>
@@ -264,29 +271,36 @@
     </div>
 </div>
 
-<!-- Модалка атаки -->
+<!-- Модальное окно атаки -->
 <div id="attackModal" class="modal" style="display:none;">
     <h3>🎯 ВЫБОР ЦЕЛИ</h3>
-    <select id="targetSelect" size="6" style="width:100%; margin-bottom:10px;"></select>
-    <div>💥 ВООРУЖЕНИЕ (прокрутите вниз)</div>
+    <select id="targetSelect" size="5" style="width:100%; margin-bottom:10px;"></select>
+    <div style="font-size:clamp(0.8rem, 1.5vw, 1rem);">💥 ВООРУЖЕНИЕ (прокрутите вниз)</div>
     <div id="weaponGrid" class="weapon-grid"></div>
-    <div style="margin:10px 0;">⚡ КОЛИЧЕСТВО: <button id="countMinus" style="padding:6px 12px; border-radius:30px; background:#333; color:#fff; border:none; font-size:1.2rem; min-width:40px;">-</button> <span id="countValue" style="font-size:1.2rem; padding:0 10px;">1</span> <button id="countPlus" style="padding:6px 12px; border-radius:30px; background:#333; color:#fff; border:none; font-size:1.2rem; min-width:40px;">+</button></div>
-    <div id="costDisplay" style="margin:10px 0; font-weight:bold; font-size:clamp(1rem, 2vw, 1.2rem);">СТОИМОСТЬ: 0 ⚡</div>
-    <button id="attackConfirmBtn">АТАКОВАТЬ</button>
-    <button id="attackCancelBtn">ОТМЕНА</button>
+    <div class="flex">
+        <span>⚡ КОЛ-ВО:</span>
+        <button id="countMinus">−</button>
+        <span id="countValue">1</span>
+        <button id="countPlus">+</button>
+    </div>
+    <div id="costDisplay">СТОИМОСТЬ: 0 ⚡</div>
+    <button id="attackConfirmBtn" style="background:#ffaa33; color:#1a2a2a;">АТАКОВАТЬ</button>
+    <button id="attackCancelBtn" style="background:#555; color:#fff;">ОТМЕНА</button>
 </div>
 
-<!-- Игровой контейнер -->
+<!-- Контейнер игры -->
 <div id="gameContainer" style="display:none; width:100%; height:100%; position:relative;">
     <div id="map" style="width:100%; height:100%;"></div>
     <div id="gameHUD">
         <div class="hud-resource">⚡ <span id="energy">300</span></div>
-        <div class="hud-rank" id="rankDisplay">⭐ <span id="rankTitle">Рядовой</span> <span id="rankXp">0 XP</span></div>
+        <div class="hud-rank">⭐ <span id="rankTitle">Рядовой</span> <span id="rankXp">0 XP</span></div>
         <div class="health-bars">
             <div class="health-bar"><span>🇷🇺</span><div class="bar-bg"><div class="bar-fill ru-fill" id="ruFill"></div></div><span id="ruPercent">0%</span></div>
             <div class="health-bar"><span>🇺🇦</span><div class="bar-bg"><div class="bar-fill ua-fill" id="uaFill"></div></div><span id="uaPercent">0%</span></div>
         </div>
     </div>
+
+    <!-- Панель построек (адаптивная) -->
     <div id="buildPanel">
         <button id="buildToggle">🏗️ Стройка</button>
         <div id="buildMenu">
@@ -295,33 +309,15 @@
             <button class="build-btn" id="buildPowerPlantBtn">⚡ ЭЛЕКТРОСТАНЦИЯ (250)</button>
             <button class="build-btn" id="buildRefineryBtn">⛽ НПЗ (400)</button>
             <button class="build-btn" id="buildRocketFactoryBtn">🚀 ЗАВОД РАКЕТ (500)</button>
-            <button class="build-btn" id="cancelBuild">❌ ОТМЕНА</button>
+            <button class="build-btn cancel" id="cancelBuild">❌ ОТМЕНА</button>
         </div>
     </div>
 </div>
 
 <script>
-    // ========== НОВЫЕ 50 ЛИЦЕНЗИОННЫХ КЛЮЧЕЙ ==========
-    const VALID_KEYS = [
-        "f7x9m2q4c8h5n6p1-3k7j9z2", "r4t8y3u1i7o5p9a2-6d8f3g", "h3j8l9m4n6b7v5c2-9w1x4z",
-        "z7x3c9v6b5n4m8k2-1p5q7r", "l9k4j8h7g6f5d3s2-8y2u4i", "o6p9i8u7y5t4r3e2-1q7w2x",
-        "c5v7b9n4m3k2j8h6-4r6t8y", "u3i7o9p0l5k2j8h6-2x4c6v", "m8n4b7v5c3x9z2l1-6f7g8h",
-        "q5w7e9r4t6y8u3i1-9p2o4i", "l2k8j7h6g5f4d3s1-7u9y2t", "b3n6m9k2j8h7g4f5-3r6t9y",
-        "v7c5x9z3l4k8j2h6-1p5q8r", "y3u7i9o4p6l2k8j5-7t9r4w", "m9n4b7v5c3x8z2l6-4f6g8h",
-        "j8h7g6f5d4s3l2k9-2q5w7e", "t6y9u3i7o4p2l8k5-1r4t6y", "c5v7b9n4m3k2j8h6-5r7t9y",
-        "l9k4j8h7g6f5d3s2-3q6w8e", "o6p9i8u7y5t4r3e2-7r9t2y", "z7x3c9v6b5n4m8k2-4w6e8r",
-        "h3j8l9m4n6b7v5c2-9t2y4u", "r4t8y3u1i7o5p9a2-6d8f3g", "f7x9m2q4c8h5n6p1-3k7j9z2",
-        "b3n6m9k2j8h7g4f5-8r6t3y", "v7c5x9z3l4k8j2h6-4p7q9w", "y3u7i9o4p6l2k8j5-2t5r7e",
-        "m9n4b7v5c3x8z2l6-7f8g9h", "j8h7g6f5d4s3l2k9-5q8w1e", "t6y9u3i7o4p2l8k5-3r6t9y",
-        "c5v7b9n4m3k2j8h6-2p5r7t", "l9k4j8h7g6f5d3s2-8q2w4e", "o6p9i8u7y5t4r3e2-5r8t1y",
-        "z7x3c9v6b5n4m8k2-7w9e2r", "h3j8l9m4n6b7v5c2-3t6y9u", "r4t8y3u1i7o5p9a2-9f2d6g",
-        "f7x9m2q4c8h5n6p1-1k8j5z", "b3n6m9k2j8h7g4f5-6r9t2y", "v7c5x9z3l4k8j2h6-8p1w4q",
-        "y3u7i9o4p6l2k8j5-5t7r9e", "m9n4b7v5c3x8z2l6-3f6g8h", "j8h7g6f5d4s3l2k9-1q5w8e",
-        "t6y9u3i7o4p2l8k5-7r9t2y", "c5v7b9n4m3k2j8h6-4p6r8t", "l9k4j8h7g6f5d3s2-2q5w7e",
-        "o6p9i8u7y5t4r3e2-9r3t6y", "z7x3c9v6b5n4m8k2-6w9e2r", "h3j8l9m4n6b7v5c2-4t7y9u"
-    ];
-
-    // ========== НАСТРОЙКИ FIREBASE ==========
+    // ============================================================
+    // 1.  FIREBASE НАСТРОЙКИ
+    // ============================================================
     const firebaseConfig = {
         apiKey: "AIzaSyCksMAKAI1U2gXRHefO0vAZYbY4Y6ES1Sg",
         authDomain: "keys-c7467.firebaseapp.com",
@@ -337,7 +333,42 @@
     const sessionsRef = db.ref('sessions');
     const usedKeysRef = db.ref('usedKeys');
 
-    // ========== УПРАВЛЕНИЕ АККАУНТАМИ И СЕССИЯМИ ==========
+    // ============================================================
+    // 2.  ГЕНЕРАЦИЯ 50 ЛИЦЕНЗИОННЫХ КЛЮЧЕЙ (динамически, но постоянно)
+    // ============================================================
+    function generateRandomKey() {
+        const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+        const part1 = Array.from({length: 8}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+        const part2 = Array.from({length: 8}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+        return part1 + '-' + part2;
+    }
+
+    function getOrGenerateKeys() {
+        let keys = localStorage.getItem('skyfire_valid_keys');
+        if (keys) {
+            try { return JSON.parse(keys); } catch(e) {}
+        }
+        // Генерируем 50 уникальных ключей
+        const newKeys = [];
+        const seen = new Set();
+        while (newKeys.length < 50) {
+            const key = generateRandomKey();
+            if (!seen.has(key)) {
+                seen.add(key);
+                newKeys.push(key);
+            }
+        }
+        localStorage.setItem('skyfire_valid_keys', JSON.stringify(newKeys));
+        console.log('✅ Сгенерированы новые лицензионные ключи:');
+        console.log(newKeys);
+        return newKeys;
+    }
+
+    const VALID_KEYS = getOrGenerateKeys();
+
+    // ============================================================
+    // 3.  УПРАВЛЕНИЕ АККАУНТАМИ И СЕССИЯМИ (Firebase)
+    // ============================================================
     let currentUser = null;
     let currentSessionToken = null;
 
@@ -352,7 +383,11 @@
     const toggleLink = document.getElementById('toggleAuthMode');
     let isLoginMode = true;
 
-    function showKeyInput() { authKeyGroup.style.display = 'block'; authSubmitBtn.innerText = "АКТИВИРОВАТЬ КЛЮЧ"; }
+    function showKeyInput() {
+        authKeyGroup.style.display = 'block';
+        authSubmitBtn.innerText = "АКТИВИРОВАТЬ КЛЮЧ";
+    }
+
     function toggleMode() {
         isLoginMode = !isLoginMode;
         authTitle.innerText = isLoginMode ? "ВХОД" : "РЕГИСТРАЦИЯ";
@@ -366,9 +401,12 @@
     }
 
     function register(login, password) {
-        if(!login || !password) { authMessage.innerText = "Введите логин и пароль"; return false; }
+        if (!login || !password) {
+            authMessage.innerText = "Введите логин и пароль";
+            return false;
+        }
         usersRef.child(login).get().then(snapshot => {
-            if(snapshot.exists()) {
+            if (snapshot.exists()) {
                 authMessage.innerText = "Аккаунт уже существует!";
             } else {
                 usersRef.child(login).set({
@@ -389,15 +427,18 @@
     }
 
     async function login(login, password) {
-        if(!login || !password) { authMessage.innerText = "Введите логин и пароль"; return false; }
+        if (!login || !password) {
+            authMessage.innerText = "Введите логин и пароль";
+            return false;
+        }
         try {
             const snapshot = await usersRef.child(login).get();
-            if(!snapshot.exists()) {
+            if (!snapshot.exists()) {
                 authMessage.innerText = "Аккаунт не найден";
                 return false;
             }
             const userData = snapshot.val();
-            if(userData.password !== password) {
+            if (userData.password !== password) {
                 authMessage.innerText = "Неверный пароль";
                 return false;
             }
@@ -407,7 +448,7 @@
             await sessionsRef.child(token).set({ login: login, createdAt: Date.now() });
             localStorage.setItem("skyfire_session_token", token);
             authMessage.innerText = "Вход выполнен!";
-            if(userData.keyUsed) {
+            if (userData.keyUsed) {
                 loadGameForUser(userData);
             } else {
                 authTitle.innerText = "АКТИВАЦИЯ ЛИЦЕНЗИИ";
@@ -418,27 +459,38 @@
                 showKeyInput();
             }
             return true;
-        } catch(err) {
+        } catch (err) {
             authMessage.innerText = "Ошибка: " + err.message;
             return false;
         }
     }
 
     async function activateKey(key) {
-        if(!key) { authMessage.innerText = "Введите ключ"; return false; }
-        if(!VALID_KEYS.includes(key)) {
-            authMessage.innerText = "Неверный ключ (не соответствует формату)";
+        if (!key) {
+            authMessage.innerText = "Введите ключ";
             return false;
         }
+        // Проверяем, есть ли ключ в списке валидных
+        if (!VALID_KEYS.includes(key)) {
+            authMessage.innerText = "Неверный ключ! Проверьте правильность ввода.";
+            return false;
+        }
+        // Проверяем, не использован ли ключ глобально
         const usedSnap = await usedKeysRef.child(key).get();
-        if(usedSnap.exists()) {
+        if (usedSnap.exists()) {
             authMessage.innerText = "Этот ключ уже был использован другим игроком!";
             return false;
         }
+        // Помечаем ключ как использованный
         await usedKeysRef.child(key).set(true);
+        // Удаляем ключ из локального массива (чтобы повторно не использовать)
+        const index = VALID_KEYS.indexOf(key);
+        if (index !== -1) VALID_KEYS.splice(index, 1);
+        localStorage.setItem('skyfire_valid_keys', JSON.stringify(VALID_KEYS));
+        // Обновляем данные пользователя
         const userRef = usersRef.child(currentUser);
         const userSnap = await userRef.get();
-        if(!userSnap.exists()) {
+        if (!userSnap.exists()) {
             authMessage.innerText = "Ошибка: пользователь не найден";
             return false;
         }
@@ -450,37 +502,42 @@
     }
 
     function loadGameForUser(userData) {
-        if(userData.gameData) {
+        if (userData.gameData) {
             try {
                 const data = JSON.parse(userData.gameData);
-                if(data.playerXP) playerXP = data.playerXP;
-                if(data.playerStats) playerStats = data.playerStats;
-                if(data.difficulty) difficulty = data.difficulty;
+                if (data.playerXP) playerXP = data.playerXP;
+                if (data.playerStats) playerStats = data.playerStats;
+                if (data.difficulty) difficulty = data.difficulty;
                 updateRankUI();
-                document.querySelectorAll('.difficulty-btn').forEach(btn=>btn.classList.remove('selected'));
-                if(difficulty === "EASY") document.getElementById('diffEasy').classList.add('selected');
-                else if(difficulty === "NORMAL") document.getElementById('diffNormal').classList.add('selected');
-                else if(difficulty === "HARD") document.getElementById('diffHard').classList.add('selected');
-                else if(difficulty === "EXTREME") document.getElementById('diffExtreme').classList.add('selected');
-            } catch(e) {}
+                document.querySelectorAll('.difficulty-btn').forEach(btn => btn.classList.remove('selected'));
+                if (difficulty === "EASY") document.getElementById('diffEasy').classList.add('selected');
+                else if (difficulty === "NORMAL") document.getElementById('diffNormal').classList.add('selected');
+                else if (difficulty === "HARD") document.getElementById('diffHard').classList.add('selected');
+                else if (difficulty === "EXTREME") document.getElementById('diffExtreme').classList.add('selected');
+            } catch (e) {}
         }
         authOverlay.style.display = 'none';
         document.getElementById('menuScreen').style.display = 'flex';
-        if(window.saveInterval) clearInterval(window.saveInterval);
+        if (window.saveInterval) clearInterval(window.saveInterval);
         window.saveInterval = setInterval(() => {
-            if(currentUser) {
+            if (currentUser) {
                 const data = JSON.stringify({ playerXP, playerStats, difficulty });
                 usersRef.child(currentUser).update({ gameData: data });
             }
         }, 30000);
+        // Выводим ключи в консоль для удобства
+        console.log('🔑 Доступные лицензионные ключи:', VALID_KEYS);
     }
 
     async function restoreSession() {
         const token = localStorage.getItem("skyfire_session_token");
-        if(!token) { authOverlay.style.display = 'flex'; return; }
+        if (!token) {
+            authOverlay.style.display = 'flex';
+            return;
+        }
         try {
             const snap = await sessionsRef.child(token).get();
-            if(!snap.exists()) {
+            if (!snap.exists()) {
                 localStorage.removeItem("skyfire_session_token");
                 authOverlay.style.display = 'flex';
                 return;
@@ -488,22 +545,22 @@
             const sessionData = snap.val();
             const login = sessionData.login;
             const userSnap = await usersRef.child(login).get();
-            if(!userSnap.exists()) {
+            if (!userSnap.exists()) {
                 localStorage.removeItem("skyfire_session_token");
                 authOverlay.style.display = 'flex';
                 return;
             }
             currentUser = login;
             currentSessionToken = token;
-            const userData = userSnap.val();
             const age = Date.now() - sessionData.createdAt;
-            if(age > 30 * 24 * 3600 * 1000) {
+            if (age > 30 * 24 * 3600 * 1000) {
                 await sessionsRef.child(token).remove();
                 localStorage.removeItem("skyfire_session_token");
                 authOverlay.style.display = 'flex';
                 return;
             }
-            if(userData.keyUsed) {
+            const userData = userSnap.val();
+            if (userData.keyUsed) {
                 loadGameForUser(userData);
             } else {
                 authOverlay.style.display = 'flex';
@@ -514,19 +571,19 @@
                 authMessage.innerText = "Введите лицензионный ключ для активации игры";
                 showKeyInput();
             }
-        } catch(err) {
+        } catch (err) {
             console.error("Ошибка восстановления сессии:", err);
             authOverlay.style.display = 'flex';
         }
     }
 
     async function logout() {
-        if(window.saveInterval) clearInterval(window.saveInterval);
-        if(currentUser) {
+        if (window.saveInterval) clearInterval(window.saveInterval);
+        if (currentUser) {
             const data = JSON.stringify({ playerXP, playerStats, difficulty });
             await usersRef.child(currentUser).update({ gameData: data });
         }
-        if(currentSessionToken) {
+        if (currentSessionToken) {
             await sessionsRef.child(currentSessionToken).remove();
         }
         localStorage.removeItem("skyfire_session_token");
@@ -536,9 +593,9 @@
     }
 
     authSubmitBtn.onclick = async () => {
-        if(authKeyGroup.style.display === 'block') {
+        if (authKeyGroup.style.display === 'block') {
             await activateKey(authKey.value.trim());
-        } else if(isLoginMode) {
+        } else if (isLoginMode) {
             await login(authLogin.value.trim(), authPassword.value.trim());
         } else {
             register(authLogin.value.trim(), authPassword.value.trim());
@@ -548,33 +605,37 @@
 
     restoreSession();
 
-    // ========== ПОЛНАЯ ИГРОВАЯ ЛОГИКА ==========
+    // ============================================================
+    // 4.  ИГРОВОЙ ДВИЖОК (полный, с адаптивными элементами)
+    // ============================================================
     let map, gameActive = false;
     let resources = 300;
     let buildings = [], zones = [], projectiles = [];
     let radars = [], pvoSystems = [], powerPlants = [], refineries = [], rocketFactories = [];
     let buildMode = null;
-    let airportMarker = null;
+    let airportMarker = null, enemyAirportMarker = null;
     let airportPlaced = false;
     let lastUpdate = 0;
     let myTeam = null, enemyTeam = null;
-    let isAI = false, isSandbox = false;
+    let isAI = false;
+    let isSandbox = false;
     let difficulty = "NORMAL";
     let russiaGeoJSON = null, ukraineGeoJSON = null, bordersLoaded = false;
     let radarAnimationInterval = null, aiInterval = null, economyInterval = null;
-    let peer = null, conn = null, isHost = false;
+    let peer = null, conn = null;
+    let isHost = false;
     let lobbyState = { player1: { ready: false, team: null }, player2: { ready: false, team: null } };
     let roomId = null;
 
     const weaponTypes = {
-        drone: { name: 'SHAHED', speed: 0.006, damage: 25, cost: 60, pvoChance: 0.08, spriteOffset: 0, img: 'drone.png' },
-        cruise: { name: 'CRUISE', speed: 0.02, damage: 35, cost: 90, pvoChance: 0.10, spriteOffset: 90, img: 'cruise.png' },
-        ballistic: { name: 'BALLISTIC', speed: 0.05, damage: 50, cost: 130, pvoChance: 0.10, spriteOffset: -45, img: 'ballistic.png' },
+        drone:      { name: 'SHAHED', speed: 0.006, damage: 25, cost: 60, pvoChance: 0.08, spriteOffset: 0, img: 'drone.png' },
+        cruise:     { name: 'CRUISE', speed: 0.02, damage: 35, cost: 90, pvoChance: 0.10, spriteOffset: 90, img: 'cruise.png' },
+        ballistic:  { name: 'BALLISTIC', speed: 0.05, damage: 50, cost: 130, pvoChance: 0.10, spriteOffset: -45, img: 'ballistic.png' },
         hypersonic: { name: 'HYPERSONIC', speed: 0.09, damage: 70, cost: 200, pvoChance: 0.10, spriteOffset: 0, img: 'hypersonic.png' },
-        x101: { name: 'X-101', speed: 0.03, damage: 65, cost: 160, pvoChance: 0.12, spriteOffset: 0, img: 'x101.png' },
-        kalibr: { name: 'KALIBR', speed: 0.025, damage: 200, cost: 750, pvoChance: 0.08, spriteOffset: 0, img: 'kalibr.png' },
-        kinzhal: { name: 'KINZHAL', speed: 0.11, damage: 250, cost: 850, pvoChance: 0.05, spriteOffset: 0, img: 'kinzhal.png' },
-        iskander: { name: 'ISKANDER', speed: 0.07, damage: 300, cost: 1000, pvoChance: 0.04, spriteOffset: 0, img: 'iskander.png' }
+        x101:       { name: 'X-101',    speed: 0.03, damage: 65, cost: 160, pvoChance: 0.12, spriteOffset: 0, img: 'x101.png' },
+        kalibr:     { name: 'KALIBR',   speed: 0.025, damage: 200, cost: 750, pvoChance: 0.08, spriteOffset: 0, img: 'kalibr.png' },
+        kinzhal:    { name: 'KINZHAL',  speed: 0.11, damage: 250, cost: 850, pvoChance: 0.05, spriteOffset: 0, img: 'kinzhal.png' },
+        iskander:   { name: 'ISKANDER', speed: 0.07, damage: 300, cost: 1000, pvoChance: 0.04, spriteOffset: 0, img: 'iskander.png' }
     };
     let attackType = 'drone', attackCount = 1, currentAirport = null;
     const costs = { radar: 180, pvo: 220, powerPlant: 250, refinery: 400, rocketFactory: 500 };
@@ -709,7 +770,7 @@
             showHint(`🏙️ Город ${zone.name} уничтожен!`);
         }
     }
-    function showHint(text){ let h=document.createElement('div'); h.innerHTML=text; h.style.cssText='position:fixed; top:clamp(60px, 12vh, 120px); left:50%; transform:translateX(-50%); background:#000; color:white; padding:clamp(10px, 2vh, 15px) clamp(16px, 3vw, 25px); border-radius:15px; border:2px solid gold; z-index:9999; font-size:clamp(0.9rem, 2vw, 1.2rem); text-align:center; white-space:nowrap; max-width:90%;'; document.body.appendChild(h); setTimeout(()=>h.remove(),5000); }
+    function showHint(text){ let h=document.createElement('div'); h.innerHTML=text; h.style.cssText='position:fixed; top:clamp(60px, 15vh, 120px); left:50%; transform:translateX(-50%); background:#000; color:white; padding:clamp(10px, 2vh, 20px) clamp(16px, 4vw, 30px); border-radius:15px; border:2px solid gold; z-index:9999; font-size:clamp(0.9rem, 2.5vw, 1.4rem); text-align:center; max-width:90%; pointer-events:none;'; document.body.appendChild(h); setTimeout(()=>h.remove(),5000); }
     function destroyBuilding(building){
         if(building.marker) map.removeLayer(building.marker);
         if(building.radarCircle && map.hasLayer(building.radarCircle)) map.removeLayer(building.radarCircle);
@@ -1051,7 +1112,7 @@
         types.forEach(type => {
             let w = weaponTypes[type];
             let card = document.createElement('div'); card.className = 'weapon-card'; if(attackType === type) card.classList.add('selected');
-            card.innerHTML = `<img src="images/${w.img}" alt="${w.name}" onerror="this.style.display='none'"><div class="weapon-name">${w.name}</div><div class="weapon-stats">💥 ${w.damage} ⚡${w.cost}</div>`;
+            card.innerHTML = `<img src="images/${w.img}" alt="${w.name}" onerror="this.style.display='none'"><div class="weapon-name">${w.name}</div><div class="weapon-stats">💥 Урон: ${w.damage}<br>⚡ Цена: ${w.cost}</div>`;
             card.onclick = () => { attackType = type; updateCostDisplay(); document.querySelectorAll('.weapon-card').forEach(c=>c.classList.remove('selected')); card.classList.add('selected'); };
             container.appendChild(card);
         });
@@ -1066,12 +1127,6 @@
         if(map) map.remove();
         map = L.map('map', { zoomControl: false }).setView([55.0,40.0],5);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© CartoDB'}).addTo(map);
-        // Добавляем зум-контрол на мобильных устройствах
-        if(window.innerWidth > 768) {
-            L.control.zoom({position: 'topright'}).addTo(map);
-        } else {
-            L.control.zoom({position: 'bottomright'}).addTo(map);
-        }
         let ld = document.createElement('div'); ld.className='loading-indicator'; ld.innerText='Загрузка границ...'; document.body.appendChild(ld);
         loadRealBorders(()=>{
             if(ld) ld.remove();
@@ -1131,7 +1186,29 @@
         });
     }
 
-    // ========== ОБРАБОТЧИКИ ==========
+    // ============================================================
+    // 5.  ОБРАБОТЧИКИ КНОПОК (адаптивные + панель построек)
+    // ============================================================
+    // Сворачиваемая панель построек
+    const buildToggle = document.getElementById('buildToggle');
+    const buildMenu = document.getElementById('buildMenu');
+    let buildMenuVisible = false;
+
+    buildToggle.addEventListener('click', () => {
+        buildMenuVisible = !buildMenuVisible;
+        buildMenu.style.display = buildMenuVisible ? 'flex' : 'none';
+        buildToggle.textContent = buildMenuVisible ? '🏗️ Закрыть' : '🏗️ Стройка';
+    });
+
+    // Закрываем меню при выборе действия
+    document.querySelectorAll('#buildMenu .build-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            buildMenu.style.display = 'none';
+            buildMenuVisible = false;
+            buildToggle.textContent = '🏗️ Стройка';
+        });
+    });
+
     document.getElementById('diffEasy').onclick=()=>{ document.querySelectorAll('.difficulty-btn').forEach(btn=>btn.classList.remove('selected')); document.getElementById('diffEasy').classList.add('selected'); difficulty="EASY"; };
     document.getElementById('diffNormal').onclick=()=>{ document.querySelectorAll('.difficulty-btn').forEach(btn=>btn.classList.remove('selected')); document.getElementById('diffNormal').classList.add('selected'); difficulty="NORMAL"; };
     document.getElementById('diffHard').onclick=()=>{ document.querySelectorAll('.difficulty-btn').forEach(btn=>btn.classList.remove('selected')); document.getElementById('diffHard').classList.add('selected'); difficulty="HARD"; };
@@ -1145,16 +1222,12 @@
     document.getElementById('chooseRussia').onclick=()=>{ if(lobbyState[isHost?'player1':'player2']?.ready) return; lobbyState[isHost?'player1':'player2'].team='russia'; lobbyState[isHost?'player1':'player2'].ready=false; updateLobbyUI(); sendLobbyUpdate(); };
     document.getElementById('chooseUkraine').onclick=()=>{ if(lobbyState[isHost?'player1':'player2']?.ready) return; lobbyState[isHost?'player1':'player2'].team='ukraine'; lobbyState[isHost?'player1':'player2'].ready=false; updateLobbyUI(); sendLobbyUpdate(); };
     document.getElementById('readyBtn').onclick=()=>{ if(!lobbyState[isHost?'player1':'player2']?.team){ alert("Выберите страну!"); return; } lobbyState[isHost?'player1':'player2'].ready=true; updateLobbyUI(); sendLobbyUpdate(); };
-    document.getElementById('buildRadarBtn').onclick=()=>{ buildMode='radar'; document.getElementById('buildMenu').classList.remove('show'); };
-    document.getElementById('buildPvoBtn').onclick=()=>{ buildMode='pvo'; document.getElementById('buildMenu').classList.remove('show'); };
-    document.getElementById('buildPowerPlantBtn').onclick=()=>{ buildMode='powerPlant'; document.getElementById('buildMenu').classList.remove('show'); };
-    document.getElementById('buildRefineryBtn').onclick=()=>{ buildMode='refinery'; document.getElementById('buildMenu').classList.remove('show'); };
-    document.getElementById('buildRocketFactoryBtn').onclick=()=>{ buildMode='rocketFactory'; document.getElementById('buildMenu').classList.remove('show'); };
-    document.getElementById('cancelBuild').onclick=()=>{ buildMode=null; document.getElementById('buildMenu').classList.remove('show'); };
-    document.getElementById('buildToggle').onclick=()=>{
-        const menu = document.getElementById('buildMenu');
-        menu.classList.toggle('show');
-    };
+    document.getElementById('buildRadarBtn').onclick=()=>{ buildMode='radar'; };
+    document.getElementById('buildPvoBtn').onclick=()=>{ buildMode='pvo'; };
+    document.getElementById('buildPowerPlantBtn').onclick=()=>{ buildMode='powerPlant'; };
+    document.getElementById('buildRefineryBtn').onclick=()=>{ buildMode='refinery'; };
+    document.getElementById('buildRocketFactoryBtn').onclick=()=>{ buildMode='rocketFactory'; };
+    document.getElementById('cancelBuild').onclick=()=>{ buildMode=null; };
     document.getElementById('countMinus').onclick=()=>{ if(attackCount>1) attackCount--; document.getElementById('countValue').innerText=attackCount; updateCostDisplay(); };
     document.getElementById('countPlus').onclick=()=>{ if(attackCount<5) attackCount++; document.getElementById('countValue').innerText=attackCount; updateCostDisplay(); };
     document.getElementById('attackConfirmBtn').onclick = () => {
@@ -1176,8 +1249,16 @@
     };
     document.getElementById('attackCancelBtn').onclick=()=>closeAttackModal();
     document.getElementById('logoutBtn').onclick = logout;
+
     function updateLobbyUI(){}
     function sendLobbyUpdate(){}
+
+    // ============================================================
+    // 6.  ВЫВОД КЛЮЧЕЙ В КОНСОЛЬ (для администратора)
+    // ============================================================
+    console.log('🔑 Список всех лицензионных ключей (сохраните их):');
+    console.log(VALID_KEYS);
+    console.log('📌 Скопируйте любой ключ и введите при активации.');
 </script>
 </body>
 </html>
