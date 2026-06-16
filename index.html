@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Sky in Fire — мультиплеер (карта работает)</title>
+    <title>Sky in Fire — рейтинг + мультиплеер</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-rotatedmarker/leaflet.rotatedMarker.js"></script>
@@ -12,7 +12,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
     <style>
-        /* ====== БАЗОВЫЕ СТИЛИ (адаптивные, без изменений) ====== */
+        /* ====== БАЗОВЫЕ СТИЛИ (адаптивные) ====== */
         *{margin:0;padding:0;box-sizing:border-box;user-select:none;-webkit-tap-highlight-color:transparent}
         body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#0a0f12;overflow:hidden;height:100vh;color:#eef;touch-action:manipulation}
         .screen{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;justify-content:center;align-items:center;z-index:2000;background:radial-gradient(circle at 20% 30%,#0a1f1a,#030a08)}
@@ -82,6 +82,19 @@
         @keyframes radarSpin{0%{transform:translateX(-50%) rotate(0)}100%{transform:translateX(-50%) rotate(360deg)}}
         .leaflet-marker-icon{transform-origin:center center}
         .leaflet-control-zoom{display:none!important}
+        /* Модалка рейтинга */
+        .ranking-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:linear-gradient(180deg,#0d1a1a,#020808);border-radius:40px;padding:clamp(20px,4vw,35px);z-index:5000;color:#fff;width:clamp(320px,90vw,500px);max-height:85vh;overflow-y:auto;border:2px solid #ffaa33;box-shadow:0 0 50px rgba(255,170,51,0.3)}
+        .ranking-modal h2{font-size:clamp(1.6rem,4vw,2.2rem);text-align:center;margin-bottom:15px;color:#ffaa33}
+        .ranking-modal .close-btn{position:absolute;top:10px;right:20px;font-size:2rem;cursor:pointer;color:#aaa;transition:.2s}
+        .ranking-modal .close-btn:hover{color:#fff}
+        .ranking-list{list-style:none;padding:0}
+        .ranking-list li{display:flex;justify-content:space-between;padding:10px 15px;border-bottom:1px solid rgba(255,255,255,0.05);font-size:clamp(.9rem,2vw,1.1rem)}
+        .ranking-list li:nth-child(1){background:rgba(255,215,0,0.1);border-radius:10px 10px 0 0}
+        .ranking-list li:nth-child(2){background:rgba(192,192,192,0.08)}
+        .ranking-list li:nth-child(3){background:rgba(205,127,50,0.08)}
+        .ranking-list .rank{color:#ffaa33;font-weight:700;margin-right:10px}
+        .ranking-list .elo{color:#00ffaa;font-weight:700}
+        .no-players{text-align:center;padding:20px;color:#888}
         @media (max-width:600px){#gameHUD{flex-direction:column;align-items:stretch;gap:3px;padding:4px 8px;font-size:.7rem;top:4px;left:4px;right:4px;border-radius:16px;min-height:auto}.hud-resource,.hud-rank{font-size:.9rem;padding:2px 8px;justify-content:center}.health-bars{justify-content:space-around;padding:2px 4px;gap:4px}.health-bar{font-size:.6rem;gap:2px}.bar-bg{width:50px;height:5px}#buildPanel{bottom:10px;left:10px;gap:4px}#buildToggle{display:block;font-size:1rem;padding:8px 14px;min-height:44px;min-width:44px}#buildMenu{display:none;padding:8px;max-height:200px;border-radius:16px}#buildMenu.open{display:flex}#buildMenu .build-btn{font-size:.8rem;padding:6px 12px;white-space:normal}.modal{width:95vw;padding:16px;max-height:85vh;border-radius:24px}.modal .weapon-grid{grid-template-columns:1fr 1fr;gap:6px;max-height:200px}.modal .weapon-card{padding:6px}.modal .weapon-card img{height:40px}.modal .flex button{padding:4px 12px;font-size:.9rem}.card,.auth-card{padding:20px 16px;border-radius:32px;width:100%;max-width:95%}.logo{font-size:2rem}.difficulty-btn{font-size:.6rem;padding:4px 8px}.card button,.auth-card button{font-size:.9rem;padding:10px;margin:6px 0}.card input,.auth-card input{font-size:.9rem;padding:10px}}
         @media (min-width:601px) and (max-width:900px){#gameHUD{padding:4px 12px;font-size:.8rem}.bar-bg{width:80px;height:7px}.modal{width:80vw;padding:20px}.card,.auth-card{padding:30px 24px}.logo{font-size:2.5rem}}
         @media (max-width:800px) and (orientation:landscape){#gameHUD{flex-direction:row;flex-wrap:wrap;font-size:.6rem;padding:2px 8px;min-height:30px}.hud-resource,.hud-rank{font-size:.7rem;padding:2px 6px}.bar-bg{width:40px;height:4px}#buildToggle{padding:6px 12px;font-size:.8rem;min-height:30px}#buildMenu .build-btn{font-size:.7rem;padding:4px 10px}.modal{width:70vw;max-height:80vh;padding:12px}.modal .weapon-grid{max-height:150px}.modal .weapon-card img{height:30px}}
@@ -121,6 +134,7 @@
         <button id="sandboxBtn">🏖️ ПЕСОЧНИЦА</button>
         <button id="multiplayerBtn">🌐 МУЛЬТИПЛЕЕР 1v1</button>
         <button id="tutorialBtn">📖 ОБУЧЕНИЕ</button>
+        <button id="rankBtn">🏆 ТОП ИГРОКОВ</button>
         <div id="multiplayerControls" style="display:none; margin-top:10px;">
             <button id="createRoomBtn">СОЗДАТЬ КОМНАТУ</button>
             <div style="display:flex; gap:8px; align-items:center; margin:8px 0;">
@@ -144,6 +158,15 @@
         <button id="readyBtn" class="ready-btn">ГОТОВ</button>
         <button id="leaveLobbyBtn" style="margin-top:10px; background:#aa3333;">ВЫЙТИ</button>
     </div>
+</div>
+
+<!-- Модалка рейтинга -->
+<div id="rankModal" class="ranking-modal" style="display:none;">
+    <span class="close-btn" id="closeRankModal">&times;</span>
+    <h2>🏆 ТОП ИГРОКОВ</h2>
+    <ul id="rankList" class="ranking-list">
+        <li style="text-align:center; color:#888; padding:20px;">Загрузка...</li>
+    </ul>
 </div>
 
 <!-- Модалка атаки -->
@@ -225,7 +248,7 @@
     ];
 
     // =================================================================
-    // 3. УПРАВЛЕНИЕ АККАУНТАМИ И СЕССИЯМИ (без изменений)
+    // 3. УПРАВЛЕНИЕ АККАУНТАМИ И СЕССИЯМИ
     // =================================================================
     let currentUser = null;
     let currentSessionToken = null;
@@ -258,7 +281,7 @@
         usersRef.child(login).get().then(snapshot => {
             if(snapshot.exists()) { authMessage.innerText = "Аккаунт уже существует!"; }
             else {
-                usersRef.child(login).set({ password: password, keyUsed: null, gameData: null })
+                usersRef.child(login).set({ password: password, keyUsed: null, gameData: null, elo: 1000 })
                     .then(() => { authMessage.innerText = "Аккаунт создан! Теперь войдите."; toggleMode(); })
                     .catch(err => { authMessage.innerText = "Ошибка записи в БД: " + err.message; });
             }
@@ -386,7 +409,87 @@
     restoreSession();
 
     // =================================================================
-    // 4. МУЛЬТИПЛЕЕР: ЛОББИ И КОМНАТЫ
+    // 4. СИСТЕМА ЭЛО
+    // =================================================================
+    async function updateElo(win, mode) {
+        if (!currentUser) return;
+        let eloChange = 0;
+        // Определяем изменение Эло
+        if (mode === 'multiplayer') {
+            eloChange = win ? 30 : -15;
+        } else {
+            // Одиночная игра или песочница (песочница тоже одиночная с ИИ)
+            switch (difficulty) {
+                case 'EASY': eloChange = win ? 10 : -5; break;
+                case 'NORMAL': eloChange = win ? 20 : -10; break;
+                case 'HARD': eloChange = win ? 30 : -15; break;
+                case 'EXTREME': eloChange = win ? 50 : -25; break;
+                default: eloChange = win ? 20 : -10;
+            }
+        }
+        // Обновляем в Firebase
+        const userRef = usersRef.child(currentUser);
+        const snap = await userRef.get();
+        if (!snap.exists()) return;
+        const currentElo = snap.val().elo || 1000;
+        const newElo = Math.max(0, currentElo + eloChange);
+        await userRef.update({ elo: newElo });
+        // Выводим сообщение
+        console.log(`Эло изменено на ${eloChange}, теперь ${newElo}`);
+    }
+
+    // =================================================================
+    // 5. КНОПКА "ТОП ИГРОКОВ"
+    // =================================================================
+    document.getElementById('rankBtn').onclick = function() {
+        const modal = document.getElementById('rankModal');
+        modal.style.display = 'block';
+        loadRanking();
+    };
+    document.getElementById('closeRankModal').onclick = function() {
+        document.getElementById('rankModal').style.display = 'none';
+    };
+    window.addEventListener('click', function(e) {
+        if (e.target === document.getElementById('rankModal')) {
+            document.getElementById('rankModal').style.display = 'none';
+        }
+    });
+
+    async function loadRanking() {
+        const list = document.getElementById('rankList');
+        list.innerHTML = '<li style="text-align:center; color:#888; padding:20px;">Загрузка...</li>';
+        try {
+            const snapshot = await usersRef.orderByChild('elo').limitToLast(10).get();
+            const data = snapshot.val();
+            if (!data) {
+                list.innerHTML = '<li class="no-players">Нет игроков</li>';
+                return;
+            }
+            // Преобразуем в массив и сортируем по убыванию
+            const players = Object.keys(data).map(key => ({
+                login: key,
+                elo: data[key].elo || 1000
+            })).sort((a,b) => b.elo - a.elo);
+            list.innerHTML = '';
+            players.forEach((p, index) => {
+                const li = document.createElement('li');
+                const rankSpan = document.createElement('span');
+                rankSpan.innerHTML = `<span class="rank">#${index+1}</span> ${p.login}`;
+                const eloSpan = document.createElement('span');
+                eloSpan.className = 'elo';
+                eloSpan.textContent = p.elo;
+                li.appendChild(rankSpan);
+                li.appendChild(eloSpan);
+                list.appendChild(li);
+            });
+        } catch(e) {
+            list.innerHTML = '<li class="no-players">Ошибка загрузки</li>';
+            console.error(e);
+        }
+    }
+
+    // =================================================================
+    // 6. МУЛЬТИПЛЕЕР: ЛОББИ И КОМНАТЫ
     // =================================================================
     let currentRoomId = null;
     let gameListenerRef = null;
@@ -546,7 +649,7 @@
     }
 
     // =================================================================
-    // 5. ИГРОВОЙ ДВИЖОК
+    // 7. ИГРОВОЙ ДВИЖОК (одиночный и мультиплеер)
     // =================================================================
     let map, gameActive = false;
     let resources = 300;
@@ -697,17 +800,31 @@
         document.getElementById('uaFill').style.width=uaPercent+'%';
         if(ruTotal<=0 && gameActive){
             gameActive=false;
-            if(myTeam==='ukraine') alert("🏆 ПОБЕДА! Вы уничтожили все города России.");
+            // Победа или поражение
+            const victory = (myTeam==='ukraine');
+            if(victory) alert("🏆 ПОБЕДА! Вы уничтожили все города России.");
             else alert("💀 ПОРАЖЕНИЕ! Ваши города России уничтожены.");
-            updateStatsAfterGame(myTeam==='ukraine');
+            updateStatsAfterGame(victory);
+            // Обновление Эло
+            if (isMultiplayer) {
+                updateElo(victory, 'multiplayer');
+            } else if (isAI) {
+                updateElo(victory, 'single');
+            }
             if(isMultiplayer && currentRoomId) gamesRef.child(currentRoomId).remove();
             setTimeout(()=>location.reload(),3000);
         }
         if(uaTotal<=0 && gameActive){
             gameActive=false;
-            if(myTeam==='russia') alert("🏆 ПОБЕДА! Вы уничтожили все города Украины.");
+            const victory = (myTeam==='russia');
+            if(victory) alert("🏆 ПОБЕДА! Вы уничтожили все города Украины.");
             else alert("💀 ПОРАЖЕНИЕ! Ваши города Украины уничтожены.");
-            updateStatsAfterGame(myTeam==='russia');
+            updateStatsAfterGame(victory);
+            if (isMultiplayer) {
+                updateElo(victory, 'multiplayer');
+            } else if (isAI) {
+                updateElo(victory, 'single');
+            }
             if(isMultiplayer && currentRoomId) gamesRef.child(currentRoomId).remove();
             setTimeout(()=>location.reload(),3000);
         }
@@ -1107,7 +1224,9 @@
             if(isSandbox){
                 resources = 999999;
                 maxRadars = 999; maxPvo = 999; maxPowerPlants = 999; maxRefineries = 999;
-                isAI = false;
+                // В песочнице тоже включаем ИИ (если isAI уже true, то оставляем)
+                // но в песочнице мы передаём isAI = true при вызове?
+                // Сейчас isAI устанавливается в обработчике кнопки
             } else {
                 if(difficulty==="EASY") resources = 400;
                 else if(difficulty==="NORMAL") resources = 300;
@@ -1140,11 +1259,10 @@
     }
 
     // =================================================================
-    // 6. МУЛЬТИПЛЕЕРНАЯ ИНИЦИАЛИЗАЦИЯ (ИСПРАВЛЕНА — карта создаётся)
+    // 6. МУЛЬТИПЛЕЕРНАЯ ИНИЦИАЛИЗАЦИЯ (исправлена карта)
     // =================================================================
     function startMultiplayerGame(roomId, data) {
-        console.log("🔵 startMultiplayerGame", roomId, data);
-        // Сброс
+        console.log("startMultiplayerGame", roomId, data);
         gameActive = false;
         if (map) { map.remove(); map = null; }
         buildings = []; radars = []; pvoSystems = []; powerPlants = []; refineries = []; rocketFactories = [];
@@ -1189,10 +1307,9 @@
     }
 
     function initMPGame(initialState) {
-        console.log("🟢 initMPGame", initialState);
+        console.log("initMPGame", initialState);
         // ==== СОЗДАЁМ КАРТУ ====
         if (map) { map.remove(); map = null; }
-        // Убеждаемся, что контейнер виден
         document.getElementById('gameContainer').style.display = 'block';
         document.getElementById('map').style.display = 'block';
 
@@ -1201,7 +1318,6 @@
         // Принудительно обновляем размер
         setTimeout(() => { if (map) map.invalidateSize(); }, 50);
 
-        // Загружаем границы
         let ld = document.createElement('div');
         ld.className = 'loading-indicator';
         ld.innerText = 'Загрузка границ...';
@@ -1279,7 +1395,6 @@
                 }
             }, 1000);
 
-            // Слушаем изменения состояния из Firebase
             if (mpGameRef) {
                 mpGameRef.off();
                 mpGameRef.on('value', (snapshot) => {
@@ -1290,7 +1405,6 @@
                 });
             }
 
-            // Обработка кликов на карте
             map.off('click');
             map.on('click', (e) => {
                 if (!airportPlaced) {
@@ -1312,7 +1426,6 @@
                 }
             });
 
-            // Ещё раз обновляем размер карты через 300 мс
             setTimeout(() => { if (map) map.invalidateSize(); }, 300);
         });
     }
@@ -1429,7 +1542,7 @@
             playBeep(600, 0.1);
             setTimeout(() => {
                 playBeep(800, 0.1);
-                isAI = false;
+                isAI = true; // Включаем ИИ в песочнице
                 isSandbox = true;
                 isMultiplayer = false;
                 myTeam = 'russia';
@@ -1521,7 +1634,7 @@
         closeAttackModal();
     };
 
-    console.log("✅ Игра полностью загружена. Мультиплеер: карта создаётся.");
+    console.log("✅ Игра полностью загружена. Мультиплеер: карта создаётся. Рейтинг добавлен.");
 </script>
 </body>
 </html>
