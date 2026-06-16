@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Sky in Fire — лицензионная версия (оптимизация под все устройства)</title>
+    <title>Sky in Fire — лицензионная версия</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-rotatedmarker/leaflet.rotatedMarker.js"></script>
@@ -334,37 +334,23 @@
     const usedKeysRef = db.ref('usedKeys');
 
     // ============================================================
-    // 2.  ГЕНЕРАЦИЯ 50 ЛИЦЕНЗИОННЫХ КЛЮЧЕЙ (динамически, но постоянно)
+    // 2.  НОВЫЕ 50 ЛИЦЕНЗИОННЫХ КЛЮЧЕЙ (жёстко в коде)
     // ============================================================
-    function generateRandomKey() {
-        const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-        const part1 = Array.from({length: 8}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-        const part2 = Array.from({length: 8}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-        return part1 + '-' + part2;
-    }
-
-    function getOrGenerateKeys() {
-        let keys = localStorage.getItem('skyfire_valid_keys');
-        if (keys) {
-            try { return JSON.parse(keys); } catch(e) {}
-        }
-        // Генерируем 50 уникальных ключей
-        const newKeys = [];
-        const seen = new Set();
-        while (newKeys.length < 50) {
-            const key = generateRandomKey();
-            if (!seen.has(key)) {
-                seen.add(key);
-                newKeys.push(key);
-            }
-        }
-        localStorage.setItem('skyfire_valid_keys', JSON.stringify(newKeys));
-        console.log('✅ Сгенерированы новые лицензионные ключи:');
-        console.log(newKeys);
-        return newKeys;
-    }
-
-    const VALID_KEYS = getOrGenerateKeys();
+    const VALID_KEYS = [
+        "a7k2m9x4-q5r8w3n1", "b3c6f9h2-j8l4m6p7", "d4e8g1k5-t6y9u3i7", "f2h7j4m9-x8c3v5b6",
+        "g5k8n3q1-z7m4p2r9", "h1j6l9c4-s3d8f6g2", "k3m7p2r8-w4n5y9t1", "l4n8q3t7-e6u1i2o9",
+        "m2p5r9u4-c7v8b3n6", "n6q1t8w5-g4h7j9k2", "p3r7u2x9-l5m8n1c4", "q5t8w1y4-n7p3r6h9",
+        "r2u6x9c5-m4q8t1s7", "s4w7y1n8-b5v9k3l6", "t3x6z9f2-a7c4e8g1", "u5y8b2m7-d9f3h6k1",
+        "v7c1e4g9-j5l8n2q3", "w3m6p9t2-r4u7x1y5", "x5n8q1u4-s7v2c9f6", "y2p7r4m9-t5w8b3k1",
+        "z4u8x3c7-v1n6m9q2", "a1b5d8g3-h7k2l4p9", "c6e9f1m4-n8q3t5w7", "d2g7j4p9-r5u8x1y3",
+        "f4k8n1t6-z7c3v9m2", "g1l5p8s3-d6f9h2j7", "h3m7q2u9-w5n1t8c4", "j5n9t3x7-e2g6k1p4",
+        "k2p6r9c5-v8m3l7f1", "l4s8w1y5-n2q7t9g3", "m1u5x9f3-b7c4e8h2", "n3w7c2g9-j5l1p6t4",
+        "p5x1f8m3-s9v2c7g4", "q2t6y9k4-r8u3n7m1", "r4v8b2m7-f1j5l9c3", "s1w5n9c4-t7y2p6g8",
+        "t3x7f1m5-v9c2k8u4", "u5y9c3f7-b1n4m8g2", "v1n6m3p9-t5w8c2x4", "w3q7t2m6-x9f1j5l8",
+        "x5s9k4n1-y7c2v3p6", "y2u6f9m4-c7t1s8n3", "z4x8c3n6-m9p2f7t1", "a1c5e7g9-k3m6p8s2",
+        "b3d6f8h2-j5l7n9q1", "c4e7g1k5-t8u2y6i9", "d2f5h8m3-q9t4w7c1", "e1g4j7p2-r6u9x3n5",
+        "f3h6k9n1-w5c8v2b7", "g2j5l8q4-z7m3p6r9"
+    ];
 
     // ============================================================
     // 3.  УПРАВЛЕНИЕ АККАУНТАМИ И СЕССИЯМИ (Firebase)
@@ -486,7 +472,6 @@
         // Удаляем ключ из локального массива (чтобы повторно не использовать)
         const index = VALID_KEYS.indexOf(key);
         if (index !== -1) VALID_KEYS.splice(index, 1);
-        localStorage.setItem('skyfire_valid_keys', JSON.stringify(VALID_KEYS));
         // Обновляем данные пользователя
         const userRef = usersRef.child(currentUser);
         const userSnap = await userRef.get();
@@ -526,7 +511,8 @@
             }
         }, 30000);
         // Выводим ключи в консоль для удобства
-        console.log('🔑 Доступные лицензионные ключи:', VALID_KEYS);
+        console.log('🔑 Доступные лицензионные ключи (скопируйте их):');
+        console.log(VALID_KEYS);
     }
 
     async function restoreSession() {
@@ -606,7 +592,7 @@
     restoreSession();
 
     // ============================================================
-    // 4.  ИГРОВОЙ ДВИЖОК (полный, с адаптивными элементами)
+    // 4.  ИГРОВОЙ ДВИЖОК (полный)
     // ============================================================
     let map, gameActive = false;
     let resources = 300;
@@ -1189,7 +1175,6 @@
     // ============================================================
     // 5.  ОБРАБОТЧИКИ КНОПОК (адаптивные + панель построек)
     // ============================================================
-    // Сворачиваемая панель построек
     const buildToggle = document.getElementById('buildToggle');
     const buildMenu = document.getElementById('buildMenu');
     let buildMenuVisible = false;
@@ -1200,7 +1185,6 @@
         buildToggle.textContent = buildMenuVisible ? '🏗️ Закрыть' : '🏗️ Стройка';
     });
 
-    // Закрываем меню при выборе действия
     document.querySelectorAll('#buildMenu .build-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             buildMenu.style.display = 'none';
