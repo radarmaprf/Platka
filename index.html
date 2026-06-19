@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Sky in Fire —лицензионная версия </title>
+    <title>Sky in Fire — лицензионная версия</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-rotatedmarker/leaflet.rotatedMarker.js"></script>
@@ -11,10 +11,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
-    <!-- SHA-256 для хеширования паролей и ключей -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
-        /* ====== БАЗОВЫЕ СТИЛИ ====== */
         *{margin:0;padding:0;box-sizing:border-box;user-select:none;-webkit-tap-highlight-color:transparent}
         body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#0a0f12;overflow:hidden;height:100vh;color:#eef;touch-action:manipulation}
         .screen{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;justify-content:center;align-items:center;z-index:2000;background:radial-gradient(circle at 20% 30%,#0a1f1a,#030a08)}
@@ -23,9 +21,6 @@
         @keyframes scan{0%{top:0}100%{top:100%}}
         .card{background:rgba(20,30,35,0.85);backdrop-filter:blur(14px);border-radius:48px;padding:clamp(20px,4vw,40px) clamp(16px,3vw,32px);text-align:center;max-width:92%;width:480px;color:#fff;box-shadow:0 25px 45px rgba(0,0,0,0.5),0 0 0 1px rgba(255,215,0,0.2);border:1px solid rgba(255,215,0,0.3);position:relative;z-index:10;max-height:90vh;overflow-y:auto}
         .logo{font-size:clamp(2.2rem,6vw,3.5rem);font-weight:900;letter-spacing:4px;text-transform:uppercase;background:linear-gradient(135deg,#ffb347,#ff8c00);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 0 15px rgba(255,140,0,0.5);margin-bottom:.5rem}
-        .difficulty-select{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:10px 0 15px}
-        .difficulty-btn{background:#3a5e5e;border:2px solid #fff;border-radius:40px;padding:6px 12px;cursor:pointer;font-weight:700;transition:.1s;font-size:clamp(.7rem,1.5vw,1rem);touch-action:manipulation}
-        .difficulty-btn.selected{background:#ffaa33;border-color:gold;color:#1a2a2a}
         .card button{display:block;width:100%;background:rgba(255,255,255,0.08);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.15);color:#fff;padding:clamp(12px,2.5vh,16px);margin:10px 0;font-size:clamp(1rem,2.5vw,1.2rem);font-weight:700;border-radius:60px;cursor:pointer;transition:.2s;box-shadow:0 2px 5px rgba(0,0,0,0.2);touch-action:manipulation}
         .card button:hover{transform:translateY(-2px);background:rgba(255,255,255,0.15);border-color:rgba(255,215,0,0.5)}
         .card button:active{transform:scale(.96)}
@@ -91,18 +86,153 @@
         .ranking-list .rank{color:#ffaa33;font-weight:700;margin-right:10px}
         .ranking-list .elo{color:#00ffaa;font-weight:700}
         .no-players{text-align:center;padding:20px;color:#888}
-        .zone-marker{background:rgba(0,0,0,.8);border-radius:16px;padding:4px 8px;text-align:center;font-weight:700;color:#fff;font-size:clamp(.5rem,1vw,.8rem);box-shadow:0 0 10px rgba(0,0,0,.5);white-space:nowrap}
         .hidden-projectile{display:none!important}
         .loading-indicator{background:rgba(0,0,0,.7);color:#fff;padding:8px 16px;border-radius:30px;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:3000;font-size:clamp(.9rem,2vw,1.2rem)}
         .explosion{width:30px;height:30px;border-radius:50%;background:#ffcc00;box-shadow:0 0 20px #ffcc00,0 0 40px orange,0 0 80px red;animation:explode .5s forwards}
         @keyframes explode{0%{transform:scale(.2);opacity:1}100%{transform:scale(3);opacity:0}}
-        @keyframes radarSpin{0%{transform:translateX(-50%) rotate(0)}100%{transform:translateX(-50%) rotate(360deg)}}
+        @keyframes radarSpin{0%{transform:translateX(-50%) rotate(0)}100%{transform:translateX(-50%) rotate(360)}}
         .leaflet-marker-icon{transform-origin:center center}
         .leaflet-control-zoom{display:none!important}
-        @media (max-width:600px){#gameHUD{padding:4px 8px;font-size:.7rem;min-height:auto}.hud-top,.hud-bottom{flex-wrap:wrap;justify-content:center;gap:2px}.hud-resource,.hud-rank{font-size:.8rem;padding:2px 6px}.health-bars{justify-content:space-around;padding:2px 4px}.health-bar{font-size:.6rem;gap:2px}.bar-bg{width:50px;height:5px}#buildToggle{font-size:.9rem;padding:6px 12px;min-height:40px;min-width:44px}#buildMenu .build-btn{font-size:.8rem;padding:4px 10px;white-space:normal}.modal{width:95vw;padding:12px}.modal .weapon-grid{grid-template-columns:1fr 1fr;gap:6px;max-height:200px}.modal .weapon-card{padding:4px}.modal .weapon-card img{height:40px}.card,.auth-card{padding:16px;border-radius:32px;width:100%;max-width:95%}.logo{font-size:2rem}.difficulty-btn{font-size:.6rem;padding:4px 8px}.card button,.auth-card button{font-size:.9rem;padding:10px;margin:6px 0}.card input,.auth-card input{font-size:.9rem;padding:10px}}
+        @media (max-width:600px){#gameHUD{padding:4px 8px;font-size:.7rem;min-height:auto}.hud-top,.hud-bottom{flex-wrap:wrap;justify-content:center;gap:2px}.hud-resource,.hud-rank{font-size:.8rem;padding:2px 6px}.health-bars{justify-content:space-around;padding:2px 4px}.health-bar{font-size:.6rem;gap:2px}.bar-bg{width:50px;height:5px}#buildToggle{font-size:.9rem;padding:6px 12px;min-height:40px;min-width:44px}#buildMenu .build-btn{font-size:.8rem;padding:4px 10px;white-space:normal}.modal{width:95vw;padding:12px}.modal .weapon-grid{grid-template-columns:1fr 1fr;gap:6px;max-height:200px}.modal .weapon-card{padding:4px}.modal .weapon-card img{height:40px}.card,.auth-card{padding:16px;border-radius:32px;width:100%;max-width:95%}.logo{font-size:2rem}.card button,.auth-card button{font-size:.9rem;padding:10px;margin:6px 0}.card input,.auth-card input{font-size:.9rem;padding:10px}}
         @media (min-width:601px) and (max-width:900px){#gameHUD{padding:4px 12px;font-size:.8rem}.bar-bg{width:80px;height:7px}.modal{width:80vw;padding:20px}.card,.auth-card{padding:30px 24px}.logo{font-size:2.5rem}}
         @media (max-width:800px) and (orientation:landscape){#gameHUD{flex-direction:row;flex-wrap:wrap;font-size:.6rem;padding:2px 8px;min-height:30px}.hud-resource,.hud-rank{font-size:.7rem;padding:2px 6px}.bar-bg{width:40px;height:4px}#buildToggle{padding:6px 12px;font-size:.8rem;min-height:30px}#buildMenu .build-btn{font-size:.7rem;padding:4px 10px}.modal{width:70vw;max-height:80vh;padding:12px}.modal .weapon-grid{max-height:150px}.modal .weapon-card img{height:30px}}
-        @media (max-width:400px){.card,.auth-card{padding:12px 10px;border-radius:24px}.logo{font-size:1.6rem}.difficulty-btn{font-size:.5rem;padding:3px 6px}.card button,.auth-card button{font-size:.8rem;padding:8px;margin:4px 0}.card input,.auth-card input{font-size:.8rem;padding:8px}.bar-bg{width:35px;height:4px}.modal{padding:10px;width:98vw}.modal h3{font-size:1rem}.modal .weapon-card{padding:4px}.modal .weapon-card img{height:30px}}
+        @media (max-width:400px){.card,.auth-card{padding:12px 10px;border-radius:24px}.logo{font-size:1.6rem}.card button,.auth-card button{font-size:.8rem;padding:8px;margin:4px 0}.card input,.auth-card input{font-size:.8rem;padding:8px}.bar-bg{width:35px;height:4px}.modal{padding:10px;width:98vw}.modal h3{font-size:1rem}.modal .weapon-card{padding:4px}.modal .weapon-card img{height:30px}}
+
+        /* Красивые маркеры городов */
+        .zone-marker {
+            background: rgba(10, 20, 30, 0.85);
+            backdrop-filter: blur(8px);
+            border-radius: 16px;
+            padding: 8px 14px;
+            text-align: center;
+            font-weight: 700;
+            color: #fff;
+            font-size: clamp(0.6rem, 1.2vw, 0.9rem);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.7), 0 0 15px rgba(0,255,200,0.1);
+            border: 2px solid rgba(255,255,255,0.25);
+            min-width: 70px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            letter-spacing: 0.5px;
+            line-height: 1.3;
+            pointer-events: none;
+        }
+        .zone-marker .city-name {
+            font-size: clamp(0.7rem, 1.4vw, 1rem);
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: block;
+            margin-bottom: 2px;
+        }
+        .zone-marker .city-hp {
+            display: block;
+            font-size: clamp(0.6rem, 1.1vw, 0.85rem);
+            font-weight: 600;
+            opacity: 0.9;
+            background: rgba(0,0,0,0.3);
+            border-radius: 20px;
+            padding: 2px 8px;
+            margin-top: 2px;
+        }
+        .zone-marker.russia {
+            border-color: #ff6b6b;
+            background: rgba(40, 10, 10, 0.85);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.7), 0 0 20px rgba(255,80,80,0.2);
+        }
+        .zone-marker.ukraine {
+            border-color: #6baaff;
+            background: rgba(10, 20, 50, 0.85);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.7), 0 0 20px rgba(80,150,255,0.2);
+        }
+        .zone-marker .hp-high { color: #66ff88; }
+        .zone-marker .hp-mid { color: #ffdd44; }
+        .zone-marker .hp-low { color: #ff6644; animation: pulseHp 1s infinite alternate; }
+        @keyframes pulseHp {
+            0% { opacity: 0.7; transform: scale(0.95); }
+            100% { opacity: 1; transform: scale(1.05); }
+        }
+        .zone-marker:hover {
+            transform: scale(1.08);
+            box-shadow: 0 8px 35px rgba(0,0,0,0.9), 0 0 30px rgba(255,200,100,0.3);
+        }
+
+        /* Меню настройки */
+        #setupModal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(180deg, #0d1a1a, #020808);
+            border-radius: 40px;
+            padding: clamp(20px, 4vw, 35px);
+            z-index: 6000;
+            color: #fff;
+            width: clamp(320px, 90vw, 700px);
+            max-height: 85vh;
+            overflow-y: auto;
+            border: 2px solid #ffaa33;
+            box-shadow: 0 0 50px rgba(255,170,51,0.3);
+            display: none;
+        }
+        #setupModal h2 { text-align: center; color: #ffaa33; font-size: clamp(1.6rem, 4vw, 2.2rem); margin-bottom: 15px; }
+        .setup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 15px 0; }
+        .setup-col { background: rgba(0,0,0,0.4); border-radius: 20px; padding: 12px; }
+        .setup-col h3 { text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; margin-bottom: 10px; font-size: clamp(1rem, 2vw, 1.3rem); }
+        .setup-col .city-list { max-height: 200px; overflow-y: auto; font-size: clamp(.8rem, 1.5vw, 1rem); line-height: 1.8; padding-left: 5px; text-align: left; }
+        .setup-col .city-list label { display: block; cursor: pointer; padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .setup-col .city-list label:hover { background: rgba(255,255,255,0.05); }
+        .setup-col .city-list input[type="checkbox"] { margin-right: 8px; transform: scale(1.1); vertical-align: middle; }
+        #setupModal .difficulty-select-modal { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin: 10px 0 15px; }
+        #setupModal .difficulty-btn-modal { background: #3a5e5e; border: 2px solid #fff; border-radius: 40px; padding: 6px 16px; cursor: pointer; font-weight: 700; transition: .1s; font-size: clamp(.7rem, 1.5vw, 1rem); touch-action: manipulation; color: #fff; }
+        #setupModal .difficulty-btn-modal.selected { background: #ffaa33; border-color: gold; color: #1a2a2a; }
+        #setupModal .country-select-modal { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin: 10px 0 15px; }
+        #setupModal .country-btn-modal { flex: 1; min-width: 100px; background: #3a5e5e; border: 2px solid #fff; border-radius: 40px; padding: 8px 16px; cursor: pointer; font-weight: 700; transition: .1s; font-size: clamp(.8rem, 1.5vw, 1.1rem); text-align: center; color: #fff; }
+        #setupModal .country-btn-modal.selected { background: #ffaa33; border-color: gold; color: #1a2a2a; }
+        #setupModal .close-setup { position: absolute; top: 10px; right: 20px; font-size: 2rem; cursor: pointer; color: #aaa; transition: .2s; }
+        #setupModal .close-setup:hover { color: #fff; }
+        #setupModal .start-btn { display: block; width: 100%; background: #ffaa33; border: none; padding: clamp(12px, 2.5vh, 16px); border-radius: 60px; font-weight: 700; cursor: pointer; margin-top: 15px; color: #1a2a2a; font-size: clamp(1rem, 2vw, 1.2rem); touch-action: manipulation; }
+        #setupModal .start-btn:active { transform: scale(.96); }
+        @media (max-width: 600px) { .setup-grid { grid-template-columns: 1fr; gap: 10px; } }
+
+        /* Кнопка копирования в лобби */
+        .copy-btn {
+            background: #2a5a5a;
+            border: 2px solid #00ffaa;
+            border-radius: 40px;
+            padding: 6px 16px;
+            cursor: pointer;
+            font-weight: 700;
+            color: #fff;
+            font-size: clamp(.8rem, 1.5vw, 1rem);
+            touch-action: manipulation;
+            transition: .2s;
+            margin-left: 8px;
+        }
+        .copy-btn:hover {
+            background: #00ffaa;
+            color: #1a2a2a;
+            transform: scale(1.05);
+        }
+        .copy-btn:active { transform: scale(.95); }
+        #copyNotification {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #00ffaa;
+            color: #1a2a2a;
+            padding: 10px 24px;
+            border-radius: 40px;
+            font-weight: 700;
+            font-size: 1rem;
+            z-index: 9999;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+            box-shadow: 0 0 20px rgba(0,255,170,0.5);
+        }
+        #copyNotification.show { opacity: 1; }
     </style>
 </head>
 <body>
@@ -128,12 +258,6 @@
     <div class="scan-line"></div>
     <div class="card">
         <div class="logo">☢️ SKY IN FIRE</div>
-        <div class="difficulty-select">
-            <div id="diffEasy" class="difficulty-btn">EASY</div>
-            <div id="diffNormal" class="difficulty-btn selected">NORMAL</div>
-            <div id="diffHard" class="difficulty-btn">HARD</div>
-            <div id="diffExtreme" class="difficulty-btn">EXTREME</div>
-        </div>
         <button id="singleBtn">⚔️ ОДИНОЧНАЯ ИГРА</button>
         <button id="sandboxBtn">🏖️ ПЕСОЧНИЦА</button>
         <button id="multiplayerBtn">🌐 МУЛЬТИПЛЕЕР 1v1</button>
@@ -155,7 +279,10 @@
 <div id="lobbyScreen" class="screen" style="display:none;">
     <div class="card" style="width:400px; max-width:92%;">
         <h1>ЛОББИ</h1>
-        <div class="lobby-info">Код комнаты: <span id="lobbyRoomCode"></span></div>
+        <div class="lobby-info">
+            Код комнаты: <span id="lobbyRoomCode"></span>
+            <button class="copy-btn" id="copyRoomCodeBtn">📋 КОПИРОВАТЬ</button>
+        </div>
         <div class="lobby-info">Игрок 1: <span id="player1Name">—</span> <span id="player1Ready">⚪</span></div>
         <div class="lobby-info">Игрок 2: <span id="player2Name">—</span> <span id="player2Ready">⚪</span></div>
         <div id="lobbyStatus" style="margin:10px 0; font-weight:bold; color:#ffaa33;">Ожидание игроков...</div>
@@ -163,14 +290,34 @@
         <button id="leaveLobbyBtn" style="margin-top:10px; background:#aa3333;">ВЫЙТИ</button>
     </div>
 </div>
+<div id="copyNotification">✅ Код скопирован!</div>
 
 <!-- Модалка рейтинга -->
 <div id="rankModal" class="ranking-modal" style="display:none;">
     <span class="close-btn" id="closeRankModal">&times;</span>
     <h2>🏆 ТОП ИГРОКОВ</h2>
-    <ul id="rankList" class="ranking-list">
-        <li style="text-align:center; color:#888; padding:20px;">Загрузка...</li>
-    </ul>
+    <ul id="rankList" class="ranking-list"><li style="text-align:center; color:#888; padding:20px;">Загрузка...</li></ul>
+</div>
+
+<!-- Меню настройки -->
+<div id="setupModal">
+    <span class="close-setup" id="closeSetupModal">&times;</span>
+    <h2>⚙️ НАСТРОЙКА ИГРЫ</h2>
+    <div class="country-select-modal">
+        <div class="country-btn-modal selected" data-country="russia">🇷🇺 РОССИЯ</div>
+        <div class="country-btn-modal" data-country="ukraine">🇺🇦 УКРАИНА</div>
+    </div>
+    <div class="difficulty-select-modal">
+        <div class="difficulty-btn-modal" data-diff="EASY">EASY</div>
+        <div class="difficulty-btn-modal selected" data-diff="NORMAL">NORMAL</div>
+        <div class="difficulty-btn-modal" data-diff="HARD">HARD</div>
+        <div class="difficulty-btn-modal" data-diff="EXTREME">EXTREME</div>
+    </div>
+    <div class="setup-grid">
+        <div class="setup-col"><h3>🇷🇺 РОССИЯ</h3><div id="russiaCityList" class="city-list"></div></div>
+        <div class="setup-col"><h3>🇺🇦 УКРАИНА</h3><div id="ukraineCityList" class="city-list"></div></div>
+    </div>
+    <button class="start-btn" id="startGameBtn">🚀 НАЧАТЬ ИГРУ</button>
 </div>
 
 <!-- Модалка атаки -->
@@ -242,7 +389,6 @@
     // =================================================================
     // 3. ЛИЦЕНЗИОННЫЕ КЛЮЧИ (ХЕШИРОВАННЫЕ)
     // =================================================================
-    // Оригинальные ключи (для проверки хранятся только хеши)
     const VALID_KEYS_ORIGINAL = [
         "theoqjzn6heuwn478-yeneis528y","kf92jdn30qpeor83-xmz73kdl","h8d73jf92kdn392u-jd83mz",
         "vgs392kf92jdn30qpe-xy81m4n","pq83jf92jdn30qpeor-74hs8w2","mz73kdl92jdn30qpe-93jsk2l",
@@ -262,11 +408,10 @@
         "5j2hs9f92jdn30qpeor-6n7ks5","8n5ks3jf92jdn30qpeor-9k1slb","1k6slakf92jdn30qpe-2j3hs4",
         "3j0hs2f92jdn30qpeor-4n9ks7","6n7ks5jf92jdn30qpeor-7k2slc"
     ];
-    // Хеши ключей
     const VALID_KEYS_HASHES = VALID_KEYS_ORIGINAL.map(k => hashSHA256(k));
 
     // =================================================================
-    // 4. УПРАВЛЕНИЕ АККАУНТАМИ И СЕССИЯМИ (БЕЗОПАСНО)
+    // 4. УПРАВЛЕНИЕ АККАУНТАМИ И СЕССИЯМИ
     // =================================================================
     let currentUser = null;
     let currentSessionToken = null;
@@ -349,18 +494,15 @@
     async function activateKey(key) {
         if(!key) { authMessage.innerText = "Введите ключ"; return false; }
         const keyHash = hashSHA256(key);
-        // Проверяем, есть ли ключ в списке допустимых (по хешу)
         if(!VALID_KEYS_HASHES.includes(keyHash)) {
             authMessage.innerText = "Неверный ключ (не соответствует формату)";
             return false;
         }
-        // Проверяем, не использован ли ключ глобально
         const usedSnap = await db.ref('usedKeys/' + keyHash).get();
         if(usedSnap.exists()) {
             authMessage.innerText = "Этот ключ уже был использован другим игроком!";
             return false;
         }
-        // Помечаем ключ как использованный (храним хеш)
         await db.ref('usedKeys/' + keyHash).set(true);
         const userRef = usersRef.child(currentUser);
         const userSnap = await userRef.get();
@@ -381,13 +523,7 @@
                 const data = JSON.parse(userData.gameData);
                 if(data.playerXP) playerXP = data.playerXP;
                 if(data.playerStats) playerStats = data.playerStats;
-                if(data.difficulty) difficulty = data.difficulty;
                 updateRankUI();
-                document.querySelectorAll('.difficulty-btn').forEach(btn=>btn.classList.remove('selected'));
-                if(difficulty === "EASY") document.getElementById('diffEasy').classList.add('selected');
-                else if(difficulty === "NORMAL") document.getElementById('diffNormal').classList.add('selected');
-                else if(difficulty === "HARD") document.getElementById('diffHard').classList.add('selected');
-                else if(difficulty === "EXTREME") document.getElementById('diffExtreme').classList.add('selected');
             } catch(e) {}
         }
         authOverlay.style.display = 'none';
@@ -395,7 +531,7 @@
         if(window.saveInterval) clearInterval(window.saveInterval);
         window.saveInterval = setInterval(() => {
             if(currentUser) {
-                const data = JSON.stringify({ playerXP, playerStats, difficulty });
+                const data = JSON.stringify({ playerXP, playerStats });
                 usersRef.child(currentUser).update({ gameData: data });
             }
         }, 30000);
@@ -443,7 +579,7 @@
     async function logout() {
         if(window.saveInterval) clearInterval(window.saveInterval);
         if(currentUser) {
-            const data = JSON.stringify({ playerXP, playerStats, difficulty });
+            const data = JSON.stringify({ playerXP, playerStats });
             await usersRef.child(currentUser).update({ gameData: data });
         }
         if(currentSessionToken) await sessionsRef.child(currentSessionToken).remove();
@@ -469,7 +605,7 @@
         if (mode === 'multiplayer') {
             eloChange = win ? 30 : -15;
         } else {
-            switch (difficulty) {
+            switch (setupDifficulty) {
                 case 'EASY': eloChange = win ? 10 : -5; break;
                 case 'NORMAL': eloChange = win ? 20 : -10; break;
                 case 'HARD': eloChange = win ? 30 : -15; break;
@@ -490,8 +626,7 @@
     // 6. КНОПКА "ТОП ИГРОКОВ"
     // =================================================================
     document.getElementById('rankBtn').onclick = function() {
-        const modal = document.getElementById('rankModal');
-        modal.style.display = 'block';
+        document.getElementById('rankModal').style.display = 'block';
         loadRanking();
     };
     document.getElementById('closeRankModal').onclick = function() {
@@ -545,6 +680,7 @@
     let mpGameRef = null;
     let isMultiplayer = false;
     let mpInitDone = false;
+    let actionsListenerRef = null;
 
     document.getElementById('multiplayerBtn').onclick = function() {
         const controls = document.getElementById('multiplayerControls');
@@ -602,6 +738,40 @@
         let id = '';
         for (let i = 0; i < 6; i++) id += chars.charAt(Math.floor(Math.random() * chars.length));
         return id;
+    }
+
+    document.getElementById('copyRoomCodeBtn').onclick = function() {
+        const code = document.getElementById('lobbyRoomCode').innerText;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(code).then(() => {
+                showCopyNotification('✅ Код скопирован!');
+            }).catch(() => {
+                fallbackCopy(code);
+            });
+        } else {
+            fallbackCopy(code);
+        }
+    };
+    function fallbackCopy(text) {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        try {
+            document.execCommand('copy');
+            showCopyNotification('✅ Код скопирован!');
+        } catch (e) {
+            alert('Не удалось скопировать код. Скопируйте его вручную: ' + text);
+        }
+        document.body.removeChild(textarea);
+    }
+    function showCopyNotification(msg) {
+        const el = document.getElementById('copyNotification');
+        el.textContent = msg;
+        el.classList.add('show');
+        setTimeout(() => el.classList.remove('show'), 2500);
     }
 
     function enterLobby(roomId) {
@@ -681,6 +851,7 @@
     function leaveLobby() {
         mpInitDone = false;
         if (gameListenerRef) { gameListenerRef.off(); gameListenerRef = null; }
+        if (actionsListenerRef) { actionsListenerRef.off(); actionsListenerRef = null; }
         if (currentRoomId) {
             if (isHost) {
                 gamesRef.child(currentRoomId).remove().catch(()=>{});
@@ -697,7 +868,7 @@
     }
 
     // =================================================================
-    // 8. ИГРОВОЙ ДВИЖОК (одиночный и мультиплеер)
+    // 8. ИГРОВОЙ ДВИЖОК
     // =================================================================
     let map, gameActive = false;
     let resources = 300;
@@ -710,15 +881,318 @@
     let myTeam = null, enemyTeam = null;
     let isAI = false;
     let isSandbox = false;
-    let difficulty = "NORMAL";
     let russiaGeoJSON = null, ukraineGeoJSON = null, bordersLoaded = false;
     let radarAnimationInterval = null, aiInterval = null, economyInterval = null;
-    let peer = null, conn = null, isHostPeer = false, lobbyState = { player1: { ready: false, team: null }, player2: { ready: false, team: null } };
-    let roomId = null;
-    let currentAirport = null;
     let attackType = 'drone', attackCount = 1;
+    let maxRadars = 8, maxPvo = 12, maxPowerPlants = 5, maxRefineries = 3;
 
-    // ---- Fallback границы ----
+    // ---- БАЗОВЫЙ СПИСОК ВСЕХ ГОРОДОВ ----
+    const allCities = [
+        { name: 'БРЯНСК', center: [53.2433, 34.3637], team: 'russia' },
+        { name: 'СМОЛЕНСК', center: [54.7826, 32.0453], team: 'russia' },
+        { name: 'БЕЛГОРОД', center: [50.5975, 36.5858], team: 'russia' },
+        { name: 'КУРСК', center: [51.7304, 36.1927], team: 'russia' },
+        { name: 'КАЛУГА', center: [54.5138, 36.2612], team: 'russia' },
+        { name: 'ВЕЛИКИЙ НОВГОРОД', center: [58.5213, 31.2755], team: 'russia' },
+        { name: 'МОСКВА', center: [55.7558, 37.6173], team: 'russia' },
+        { name: 'РОСТОВ-НА-ДОНУ', center: [47.2357, 39.7015], team: 'russia' },
+        { name: 'КРАСНОДАР', center: [45.0355, 38.9753], team: 'russia' },
+        { name: 'СТАВРОПОЛЬ', center: [45.0448, 41.9691], team: 'russia' },
+        { name: 'ИЖЕВСК', center: [56.8528, 53.2119], team: 'russia' },
+        { name: 'ЕКАТЕРИНБУРГ', center: [56.8389, 60.6057], team: 'russia' },
+        { name: 'ПЕРМЬ', center: [58.0104, 56.2294], team: 'russia' },
+        { name: 'ЧЕЛЯБИНСК', center: [55.1644, 61.4368], team: 'russia' },
+        { name: 'ЧЕБОКСАРЫ (ЧУВАШИЯ)', center: [56.1432, 47.2489], team: 'russia' },
+        { name: 'ХАРЬКОВ', center: [49.9935, 36.2304], team: 'ukraine' },
+        { name: 'ДНЕПР', center: [48.4647, 35.0467], team: 'ukraine' },
+        { name: 'ЗАПОРОЖЬЕ', center: [47.8388, 35.1396], team: 'ukraine' },
+        { name: 'СУМЫ', center: [50.9077, 34.7981], team: 'ukraine' },
+        { name: 'ПОЛТАВА', center: [49.5891, 34.5514], team: 'ukraine' },
+        { name: 'ЧЕРНИГОВ', center: [51.4982, 31.2893], team: 'ukraine' },
+        { name: 'КИЕВ', center: [50.4501, 30.5234], team: 'ukraine' },
+        { name: 'ЧЕРКАССЫ', center: [49.4264, 32.0591], team: 'ukraine' },
+        { name: 'ВИННИЦА', center: [49.2328, 28.4810], team: 'ukraine' },
+        { name: 'ХМЕЛЬНИЦКИЙ', center: [49.4223, 26.9872], team: 'ukraine' },
+        { name: 'НИКОЛАЕВ', center: [46.9750, 31.9946], team: 'ukraine' },
+        { name: 'КРИВОЙ РОГ', center: [47.9087, 33.3947], team: 'ukraine' },
+        { name: 'МАРИУПОЛЬ', center: [47.0971, 37.5433], team: 'ukraine' },
+        { name: 'ОДЕССА', center: [46.4825, 30.7233], team: 'ukraine' },
+        { name: 'ЛЬВОВ', center: [49.8397, 24.0297], team: 'ukraine' }
+    ];
+
+    let setupDifficulty = 'NORMAL';
+    let setupMode = 'single';
+    let selectedCityNames = [];
+    let selectedCountry = 'russia';
+
+    function prepareCities(selectedNames) {
+        let filtered = allCities.filter(c => selectedNames.includes(c.name));
+        let russia = filtered.filter(c => c.team === 'russia').sort((a,b) => a.center[1] - b.center[1]);
+        let ukraine = filtered.filter(c => c.team === 'ukraine').sort((a,b) => b.center[1] - a.center[1]);
+        let minHp = 200, maxHp = 500;
+        russia.forEach((city, idx) => {
+            let hp = Math.round(minHp + (idx / (russia.length - 1 || 1)) * (maxHp - minHp));
+            city.hp = hp;
+            city.baseHp = hp;
+        });
+        ukraine.forEach((city, idx) => {
+            let hp = Math.round(minHp + (idx / (ukraine.length - 1 || 1)) * (maxHp - minHp));
+            city.hp = hp;
+            city.baseHp = hp;
+        });
+        return [...russia, ...ukraine];
+    }
+
+    function populateCityLists() {
+        const russiaList = document.getElementById('russiaCityList');
+        const ukraineList = document.getElementById('ukraineCityList');
+        russiaList.innerHTML = '';
+        ukraineList.innerHTML = '';
+        const russiaCities = allCities.filter(c => c.team === 'russia').sort((a,b) => a.center[1] - b.center[1]);
+        const ukraineCities = allCities.filter(c => c.team === 'ukraine').sort((a,b) => b.center[1] - a.center[1]);
+        russiaCities.forEach(city => {
+            const label = document.createElement('label');
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.value = city.name;
+            cb.checked = true;
+            label.appendChild(cb);
+            label.appendChild(document.createTextNode(' ' + city.name));
+            russiaList.appendChild(label);
+        });
+        ukraineCities.forEach(city => {
+            const label = document.createElement('label');
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.value = city.name;
+            cb.checked = true;
+            label.appendChild(cb);
+            label.appendChild(document.createTextNode(' ' + city.name));
+            ukraineList.appendChild(label);
+        });
+    }
+
+    function showSetupModal(mode) {
+        setupMode = mode;
+        const modal = document.getElementById('setupModal');
+        populateCityLists();
+        document.querySelectorAll('.country-btn-modal').forEach(btn => {
+            btn.classList.toggle('selected', btn.dataset.country === selectedCountry);
+        });
+        document.querySelectorAll('.difficulty-btn-modal').forEach(btn => {
+            btn.classList.toggle('selected', btn.dataset.diff === setupDifficulty);
+        });
+        modal.style.display = 'block';
+    }
+
+    document.querySelectorAll('.country-btn-modal').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.country-btn-modal').forEach(b => b.classList.remove('selected'));
+            this.classList.add('selected');
+            selectedCountry = this.dataset.country;
+        });
+    });
+
+    document.querySelectorAll('.difficulty-btn-modal').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.difficulty-btn-modal').forEach(b => b.classList.remove('selected'));
+            this.classList.add('selected');
+            setupDifficulty = this.dataset.diff;
+        });
+    });
+
+    document.getElementById('closeSetupModal').onclick = function() {
+        document.getElementById('setupModal').style.display = 'none';
+    };
+    window.addEventListener('click', function(e) {
+        if (e.target === document.getElementById('setupModal')) {
+            document.getElementById('setupModal').style.display = 'none';
+        }
+    });
+
+    document.getElementById('startGameBtn').onclick = function() {
+        const modal = document.getElementById('setupModal');
+        modal.style.display = 'none';
+        const checkboxes = modal.querySelectorAll('.city-list input[type="checkbox"]');
+        selectedCityNames = [];
+        checkboxes.forEach(cb => { if (cb.checked) selectedCityNames.push(cb.value); });
+        if (selectedCityNames.length < 2) {
+            alert("Выберите хотя бы 2 города (в обеих странах)");
+            return;
+        }
+        const preparedCities = prepareCities(selectedCityNames);
+        isSandbox = (setupMode === 'sandbox');
+        isAI = true;
+        isMultiplayer = false;
+        myTeam = selectedCountry;
+        enemyTeam = (myTeam === 'russia') ? 'ukraine' : 'russia';
+        initGameMapAndLogic(preparedCities);
+    };
+
+    // ---- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ ИКОНОК ----
+    function getMissileImage(type, team) {
+        if (type === 'drone') {
+            return (team === 'ukraine') ? 'images/drone_ua.png' : 'images/drone.png';
+        }
+        const map = {
+            cruise: 'images/cruise.png',
+            ballistic: 'images/ballistic.png',
+            hypersonic: 'images/hypersonic.png',
+            x101: 'images/x101.png',
+            kalibr: 'images/kalibr.png',
+            kinzhal: 'images/kinzhal.png',
+            iskander: 'images/iskander.png'
+        };
+        return map[type] || 'images/missile.png';
+    }
+
+    function getMissileIcon(type, team) {
+        const url = getMissileImage(type, team);
+        try {
+            return L.icon({ iconUrl: url, iconSize: [28,28], iconAnchor: [14,14] });
+        } catch(e) {
+            return L.divIcon({ html: '💥', iconSize:[28,28] });
+        }
+    }
+
+    // ---- ФУНКЦИЯ ДЛЯ СОЗДАНИЯ КРАСИВОГО МАРКЕРА ГОРОДА ----
+    function createCityMarker(city) {
+        const percent = Math.floor((city.hp / city.baseHp) * 100);
+        const hpClass = percent > 60 ? 'hp-high' : (percent > 30 ? 'hp-mid' : 'hp-low');
+        const teamClass = city.team === 'russia' ? 'russia' : 'ukraine';
+        const html = `
+            <div class="zone-marker ${teamClass}">
+                <span class="city-name">${city.name}</span>
+                <span class="city-hp ${hpClass}">${percent}%</span>
+            </div>
+        `;
+        return L.divIcon({ html, className: '', iconSize: [100, 60], iconAnchor: [50, 30] });
+    }
+
+    // ---- ИНИЦИАЛИЗАЦИЯ ИГРЫ (одиночная) ----
+    function initGameMapAndLogic(citiesArray) {
+        document.getElementById('menuScreen').style.display = 'none';
+        document.getElementById('lobbyScreen').style.display = 'none';
+        document.getElementById('gameContainer').style.display = 'block';
+        if(map) map.remove();
+        map = L.map('map', { zoomControl: false }).setView([55.0,40.0],5);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© CartoDB'}).addTo(map);
+        let ld = document.createElement('div'); ld.className='loading-indicator'; ld.innerText='Загрузка границ...'; document.body.appendChild(ld);
+        loadRealBorders(()=>{
+            if(ld) ld.remove();
+            initZones(citiesArray);
+            buildings = []; radars = []; pvoSystems = []; powerPlants = []; refineries = []; rocketFactories = []; projectiles = [];
+            if(isSandbox){
+                resources = 999999;
+                maxRadars = 999; maxPvo = 999; maxPowerPlants = 999; maxRefineries = 999;
+            } else {
+                if(setupDifficulty === "EASY") resources = 400;
+                else if(setupDifficulty === "NORMAL") resources = 300;
+                else if(setupDifficulty === "HARD") resources = 220;
+                else resources = 150;
+                maxRadars = 8; maxPvo = 12; maxPowerPlants = 5; maxRefineries = 3;
+            }
+            airportPlaced = false; updateUI();
+            map.off('click');
+            map.on('click', (e) => {
+                if(!airportPlaced){
+                    let lat = e.latlng.lat, lng = e.latlng.lng;
+                    if(!isOwnTerritory(lat,lng)){ alert("Аэродром можно поставить только на своей территории!"); return; }
+                    let icon = getAirportIcon();
+                    airportMarker = L.marker([lat,lng], {icon}).addTo(map);
+                    airportMarker.bindPopup('<b>АЭРОДРОМ</b>');
+                    airportMarker.on('click', () => showAttackModal(airportMarker));
+                    airportPlaced = true; gameActive = true; updateUI(); lastUpdate = performance.now();
+                    if(isAI) initAI();
+                    startRadarAnimation();
+                    requestAnimationFrame(gameLoop);
+                    if(economyInterval) clearInterval(economyInterval);
+                    economyInterval = setInterval(() => { if(gameActive && !isSandbox){ let income = 5 + powerPlants.filter(p=>p.team===myTeam).length*3 + refineries.filter(r=>r.team===myTeam).length*15; resources += income; updateUI(); } else updateUI(); }, 1000);
+                    showHint("📡 Теперь постройте Радар");
+                    return;
+                }
+                if(buildMode){ 
+                    if(!isOwnTerritory(e.latlng.lat, e.latlng.lng)){
+                        alert("Можно строить только на своей территории!");
+                        return;
+                    }
+                    tryBuild(e.latlng.lat, e.latlng.lng, buildMode); 
+                    buildMode = null; 
+                }
+            });
+        });
+    }
+
+    function initZones(cities) {
+        zones = [];
+        cities.forEach(z => {
+            let circle = L.circle(z.center, { radius: 15000, color: z.team === 'russia' ? '#ff5555' : '#55aaff', weight: 2, fillOpacity: 0.25 }).addTo(map);
+            let marker = L.marker(z.center, { icon: createCityMarker(z) }).addTo(map);
+            zones.push({ id: z.name, name: z.name, center: z.center, team: z.team, hp: z.hp, baseHp: z.baseHp, circle: circle, marker: marker });
+        });
+        updateZoneMarkers();
+        updateTotalPercent();
+    }
+
+    // ---- ОСТАЛЬНЫЕ ФУНКЦИИ ИГРОВОГО ДВИЖКА ----
+    const weaponTypes = {
+        drone: { name: 'SHAHED', speed: 0.006, damage: 25, cost: 60, pvoChance: 0.08, spriteOffset: 0, img: 'drone.png' },
+        cruise: { name: 'CRUISE', speed: 0.02, damage: 35, cost: 90, pvoChance: 0.10, spriteOffset: 90, img: 'cruise.png' },
+        ballistic: { name: 'BALLISTIC', speed: 0.05, damage: 50, cost: 130, pvoChance: 0.10, spriteOffset: -45, img: 'ballistic.png' },
+        hypersonic: { name: 'HYPERSONIC', speed: 0.09, damage: 70, cost: 200, pvoChance: 0.10, spriteOffset: 0, img: 'hypersonic.png' },
+        x101: { name: 'X-101', speed: 0.03, damage: 65, cost: 160, pvoChance: 0.12, spriteOffset: 0, img: 'x101.png' },
+        kalibr: { name: 'KALIBR', speed: 0.025, damage: 200, cost: 750, pvoChance: 0.08, spriteOffset: 0, img: 'kalibr.png' },
+        kinzhal: { name: 'KINZHAL', speed: 0.11, damage: 250, cost: 850, pvoChance: 0.05, spriteOffset: 0, img: 'kinzhal.png' },
+        iskander: { name: 'ISKANDER', speed: 0.07, damage: 300, cost: 1000, pvoChance: 0.04, spriteOffset: 0, img: 'iskander.png' }
+    };
+    const costs = { radar: 180, pvo: 220, powerPlant: 250, refinery: 400, rocketFactory: 500 };
+    const ranks = [
+        { level:1, xp:0, title:"Рядовой" }, { level:2, xp:500, title:"Сержант" }, { level:3, xp:1200, title:"Лейтенант" },
+        { level:4, xp:2500, title:"Капитан" }, { level:5, xp:5000, title:"Майор" }, { level:6, xp:9000, title:"Полковник" },
+        { level:7, xp:15000, title:"Генерал" }
+    ];
+    let playerXP = 0;
+    let playerStats = { wins:0, losses:0, citiesDestroyed:0, buildingsDestroyed:0, missilesLaunched:0, hits:0, totalShots:0 };
+    let audioCtx = null;
+
+    function playBeep(freq, duration, type='sine') {
+        if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.frequency.value = freq; osc.type = type;
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.00001, now + duration);
+        osc.start(); osc.stop(now + duration);
+    }
+
+    function getAirportIcon() { try { return L.icon({ iconUrl: 'images/airport.png', iconSize: [48,48], iconAnchor: [24,24] }); } catch(e){ return L.divIcon({ html:'🏠', iconSize:[48,48] }); } }
+    function getRadarIcon() { try { return L.icon({ iconUrl: 'images/radar.png', iconSize: [40,40], iconAnchor: [20,20] }); } catch(e){ return L.divIcon({ html:'📡', iconSize:[40,40] }); } }
+    function getPvoIcon() { try { return L.icon({ iconUrl: 'images/pvo.png', iconSize: [40,40], iconAnchor: [20,20] }); } catch(e){ return L.divIcon({ html:'🛡️', iconSize:[40,40] }); } }
+    function getPowerPlantIcon() { try { return L.icon({ iconUrl: 'images/powerplant.png', iconSize: [40,40], iconAnchor: [20,20] }); } catch(e){ return L.divIcon({ html:'⚡', iconSize:[40,40] }); } }
+    function getRefineryIcon() { try { return L.icon({ iconUrl: 'images/refinery.png', iconSize: [40,40], iconAnchor: [20,20] }); } catch(e){ return L.divIcon({ html:'⛽', iconSize:[40,40] }); } }
+    function getRocketFactoryIcon() { try { return L.icon({ iconUrl: 'images/rocket_factory.png', iconSize: [40,40], iconAnchor: [20,20] }); } catch(e){ return L.divIcon({ html:'🏭', iconSize:[40,40] }); } }
+    function getInterceptorIcon() { try { return L.icon({ iconUrl: 'images/pvo_rocket.png', iconSize: [24,24], iconAnchor: [12,12] }); } catch(e){ return L.divIcon({ html:'🚀', iconSize:[24,24] }); } }
+
+    function loadRealBorders(cb) {
+        Promise.all([
+            fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries/RUS.geo.json').then(r=>r.json()).catch(()=>fallbackRussia),
+            fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries/UKR.geo.json').then(r=>r.json()).catch(()=>fallbackUkraine)
+        ]).then(([rus,ukr])=>{
+            russiaGeoJSON=rus; ukraineGeoJSON=ukr; bordersLoaded=true;
+            L.geoJSON(rus,{style:{color:'#ff6666',weight:2,fillOpacity:0.08}}).addTo(map);
+            L.geoJSON(ukr,{style:{color:'#66aaff',weight:2,fillOpacity:0.08}}).addTo(map);
+            if(cb)cb();
+        }).catch(e=>{
+            console.warn("Ошибка загрузки границ, использую fallback", e);
+            russiaGeoJSON=fallbackRussia; ukraineGeoJSON=fallbackUkraine; bordersLoaded=true;
+            L.geoJSON(fallbackRussia,{style:{color:'#ff6666',weight:2,fillOpacity:0.08}}).addTo(map);
+            L.geoJSON(fallbackUkraine,{style:{color:'#66aaff',weight:2,fillOpacity:0.08}}).addTo(map);
+            if(cb)cb();
+        });
+    }
+
     const fallbackRussia = {
         "type":"FeatureCollection",
         "features":[{
@@ -742,89 +1216,6 @@
         }]
     };
 
-    const weaponTypes = {
-        drone: { name: 'SHAHED', speed: 0.006, damage: 25, cost: 60, pvoChance: 0.08, spriteOffset: 0, img: 'drone.png' },
-        cruise: { name: 'CRUISE', speed: 0.02, damage: 35, cost: 90, pvoChance: 0.10, spriteOffset: 90, img: 'cruise.png' },
-        ballistic: { name: 'BALLISTIC', speed: 0.05, damage: 50, cost: 130, pvoChance: 0.10, spriteOffset: -45, img: 'ballistic.png' },
-        hypersonic: { name: 'HYPERSONIC', speed: 0.09, damage: 70, cost: 200, pvoChance: 0.10, spriteOffset: 0, img: 'hypersonic.png' },
-        x101: { name: 'X-101', speed: 0.03, damage: 65, cost: 160, pvoChance: 0.12, spriteOffset: 0, img: 'x101.png' },
-        kalibr: { name: 'KALIBR', speed: 0.025, damage: 200, cost: 750, pvoChance: 0.08, spriteOffset: 0, img: 'kalibr.png' },
-        kinzhal: { name: 'KINZHAL', speed: 0.11, damage: 250, cost: 850, pvoChance: 0.05, spriteOffset: 0, img: 'kinzhal.png' },
-        iskander: { name: 'ISKANDER', speed: 0.07, damage: 300, cost: 1000, pvoChance: 0.04, spriteOffset: 0, img: 'iskander.png' }
-    };
-    const costs = { radar: 180, pvo: 220, powerPlant: 250, refinery: 400, rocketFactory: 500 };
-    let maxRadars = 8, maxPvo = 12, maxPowerPlants = 5, maxRefineries = 3;
-
-    let playerXP = 0;
-    let playerStats = { wins:0, losses:0, citiesDestroyed:0, buildingsDestroyed:0, missilesLaunched:0, hits:0, totalShots:0 };
-    const ranks = [
-        { level:1, xp:0, title:"Рядовой" }, { level:2, xp:500, title:"Сержант" }, { level:3, xp:1200, title:"Лейтенант" },
-        { level:4, xp:2500, title:"Капитан" }, { level:5, xp:5000, title:"Майор" }, { level:6, xp:9000, title:"Полковник" },
-        { level:7, xp:15000, title:"Генерал" }
-    ];
-    let audioCtx = null;
-    function playBeep(freq, duration, type='sine') {
-        if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const now = audioCtx.currentTime;
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.connect(gain); gain.connect(audioCtx.destination);
-        osc.frequency.value = freq; osc.type = type;
-        gain.gain.setValueAtTime(0.15, now);
-        gain.gain.exponentialRampToValueAtTime(0.00001, now + duration);
-        osc.start(); osc.stop(now + duration);
-    }
-
-    const zoneData = [
-        { name: 'КИЕВ', center: [50.4501,30.5234], team: 'ukraine', hp: 400, baseHp: 400 },
-        { name: 'ОДЕССА', center: [46.4825,30.7233], team: 'ukraine', hp: 320, baseHp: 320 },
-        { name: 'ХАРЬКОВ', center: [49.9935,36.2304], team: 'ukraine', hp: 360, baseHp: 360 },
-        { name: 'ДНЕПР', center: [48.4647,35.0467], team: 'ukraine', hp: 340, baseHp: 340 },
-        { name: 'ЛЬВОВ', center: [49.8397,24.0297], team: 'ukraine', hp: 280, baseHp: 280 },
-        { name: 'МОСКВА', center: [55.7558,37.6173], team: 'russia', hp: 480, baseHp: 480 },
-        { name: 'БЕЛГОРОД', center: [50.5975,36.5858], team: 'russia', hp: 240, baseHp: 240 },
-        { name: 'РОСТОВ', center: [47.2357,39.7015], team: 'russia', hp: 300, baseHp: 300 },
-        { name: 'ВОРОНЕЖ', center: [51.6605,39.2003], team: 'russia', hp: 320, baseHp: 320 },
-        { name: 'ВОЛГОГРАД', center: [48.7047,44.5133], team: 'russia', hp: 340, baseHp: 340 },
-        { name: 'КРАСНОДАР', center: [45.0355,38.9753], team: 'russia', hp: 280, baseHp: 280 }
-    ];
-    const teamColors = { russia: '#ff5555', ukraine: '#55aaff' };
-
-    function getAirportIcon() { try { return L.icon({ iconUrl: 'images/airport.png', iconSize: [48,48], iconAnchor: [24,24] }); } catch(e){ return L.divIcon({ html:'🏠', iconSize:[48,48] }); } }
-    function getRadarIcon() { try { return L.icon({ iconUrl: 'images/radar.png', iconSize: [40,40], iconAnchor: [20,20] }); } catch(e){ return L.divIcon({ html:'📡', iconSize:[40,40] }); } }
-    function getPvoIcon() { try { return L.icon({ iconUrl: 'images/pvo.png', iconSize: [40,40], iconAnchor: [20,20] }); } catch(e){ return L.divIcon({ html:'🛡️', iconSize:[40,40] }); } }
-    function getPowerPlantIcon() { try { return L.icon({ iconUrl: 'images/powerplant.png', iconSize: [40,40], iconAnchor: [20,20] }); } catch(e){ return L.divIcon({ html:'⚡', iconSize:[40,40] }); } }
-    function getRefineryIcon() { try { return L.icon({ iconUrl: 'images/refinery.png', iconSize: [40,40], iconAnchor: [20,20] }); } catch(e){ return L.divIcon({ html:'⛽', iconSize:[40,40] }); } }
-    function getRocketFactoryIcon() { try { return L.icon({ iconUrl: 'images/rocket_factory.png', iconSize: [40,40], iconAnchor: [20,20] }); } catch(e){ return L.divIcon({ html:'🏭', iconSize:[40,40] }); } }
-    function getInterceptorIcon() { try { return L.icon({ iconUrl: 'images/pvo_rocket.png', iconSize: [24,24], iconAnchor: [12,12] }); } catch(e){ return L.divIcon({ html:'🚀', iconSize:[24,24] }); } }
-    function getMissileIcon(type, team) {
-        if(type === 'drone') {
-            const img = (team === 'ukraine') ? 'images/drone_ua.png' : 'images/drone.png';
-            try { return L.icon({ iconUrl: img, iconSize: [28,28], iconAnchor: [14,14] }); } catch(e){ return L.divIcon({ html: '🛸', iconSize:[28,28] }); }
-        }
-        const map = { cruise:'images/cruise.png', ballistic:'images/ballistic.png', hypersonic:'images/hypersonic.png', x101:'images/x101.png', kalibr:'images/kalibr.png', kinzhal:'images/kinzhal.png', iskander:'images/iskander.png' };
-        const url = map[type] || 'images/missile.png';
-        try { return L.icon({ iconUrl: url, iconSize: [28,28], iconAnchor: [14,14] }); } catch(e){ return L.divIcon({ html: '💥', iconSize:[28,28] }); }
-    }
-
-    // ---- География ----
-    function loadRealBorders(cb) {
-        Promise.all([
-            fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries/RUS.geo.json').then(r=>r.json()).catch(()=>fallbackRussia),
-            fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries/UKR.geo.json').then(r=>r.json()).catch(()=>fallbackUkraine)
-        ]).then(([rus,ukr])=>{
-            russiaGeoJSON=rus; ukraineGeoJSON=ukr; bordersLoaded=true;
-            L.geoJSON(rus,{style:{color:'#ff6666',weight:2,fillOpacity:0.08}}).addTo(map);
-            L.geoJSON(ukr,{style:{color:'#66aaff',weight:2,fillOpacity:0.08}}).addTo(map);
-            if(cb)cb();
-        }).catch(e=>{
-            console.warn("Ошибка загрузки границ, использую fallback", e);
-            russiaGeoJSON=fallbackRussia; ukraineGeoJSON=fallbackUkraine; bordersLoaded=true;
-            L.geoJSON(fallbackRussia,{style:{color:'#ff6666',weight:2,fillOpacity:0.08}}).addTo(map);
-            L.geoJSON(fallbackUkraine,{style:{color:'#66aaff',weight:2,fillOpacity:0.08}}).addTo(map);
-            if(cb)cb();
-        });
-    }
     function isInsideCountry(lat,lng,country) {
         if(!bordersLoaded||!russiaGeoJSON||!ukraineGeoJSON) return false;
         const point=turf.point([lng,lat]);
@@ -833,10 +1224,13 @@
         try { return turf.booleanPointInPolygon(point,feat); } catch(e){ return true; }
     }
     function isOwnTerritory(lat,lng){ if(!myTeam) return false; return isInsideCountry(lat,lng,myTeam); }
-    function canBuildHere(lat,lng){ if(!isOwnTerritory(lat,lng)) return false; for(let b of buildings) if(map.distance([lat,lng],[b.lat,b.lng])<4000) return false; return true; }
+    function canBuildHere(lat,lng){ 
+        if(!isOwnTerritory(lat,lng)) return false; 
+        for(let b of buildings) if(map.distance([lat,lng],[b.lat,b.lng])<4000) return false; 
+        return true; 
+    }
     function canBuildForTeam(lat,lng,team){ if(!isInsideCountry(lat,lng,team)) return false; for(let b of buildings) if(map.distance([lat,lng],[b.lat,b.lng])<4000) return false; return true; }
 
-    // ---- Города ----
     function updateTotalPercent() {
         let ruTotal=0,ruBase=0,uaTotal=0,uaBase=0;
         zones.forEach(z=>{ if(z.team==='russia'){ ruTotal+=z.hp; ruBase+=z.baseHp; } else { uaTotal+=z.hp; uaBase+=z.baseHp; } });
@@ -870,24 +1264,13 @@
         }
     }
 
-    function initZones(){
-        zones=[];
-        zoneData.forEach(z=>{
-            let circle=L.circle(z.center,{radius:15000,color:z.team==='russia'?teamColors.russia:teamColors.ukraine,weight:2,fillOpacity:0.25}).addTo(map);
-            let marker=L.marker(z.center,{icon:L.divIcon({html:`<div class="zone-marker" style="border-color: ${z.team==='russia'?'#ff8888':'#88aaff'};">${z.name}<br>${Math.floor((z.hp/z.baseHp)*100)}%</div>`,iconSize:[80,40]})}).addTo(map);
-            zones.push({id:z.name,name:z.name,center:z.center,team:z.team,hp:z.hp,baseHp:z.baseHp,circle:circle,marker:marker});
-        });
-        updateZoneMarkers();
-        updateTotalPercent();
-    }
     function updateZoneMarkers(){
-        zones.forEach(z=>{
-            let percent=Math.floor((z.hp/z.baseHp)*100);
-            let html=`<div class="zone-marker" style="border-color: ${z.team==='russia'?'#ff8888':'#88aaff'};">${z.name}<br>${percent}%</div>`;
-            z.marker.setIcon(L.divIcon({html,iconSize:[80,40]}));
+        zones.forEach(z => {
+            z.marker.setIcon(createCityMarker(z));
         });
         updateTotalPercent();
     }
+
     function removeZoneIfDestroyed(zone){
         if(zone.hp<=0){
             if(zone.circle) map.removeLayer(zone.circle);
@@ -921,7 +1304,6 @@
         }
     }
     function updateUI(){ document.getElementById('energy').innerHTML = isSandbox ? '∞' : Math.floor(resources); }
-
     function addXP(amount){ playerXP += amount; updateRankUI(); }
     function updateRankUI(){
         let idx = ranks.length-1; while(idx>0 && playerXP < ranks[idx].xp) idx--;
@@ -931,7 +1313,6 @@
     function updateStatsAfterHit(damage, targetType, isHit){ playerStats.totalShots++; if(isHit){ playerStats.hits++; if(targetType === 'zone') playerStats.citiesDestroyed++; else playerStats.buildingsDestroyed++; } }
     function updateStatsAfterGame(victory){ if(victory) playerStats.wins++; else playerStats.losses++; if(victory) addXP(300); }
 
-    // ---- Постройка ----
     function tryBuild(lat,lng,type){
         if(!airportPlaced){ alert("Сначала постройте аэродром!"); return false; }
         if(!canBuildHere(lat,lng)){ alert("Можно строить только на своей территории и не ближе 4 км к другим зданиям!"); return false; }
@@ -953,11 +1334,11 @@
         if(type==='refinery') refineries.push(building);
         if(type==='rocketFactory') rocketFactories.push(building);
         updateUI();
-        if(isMultiplayer) sendMpAction({ type:'build', building });
+        if(isMultiplayer && isHost) sendMpAction({ type:'build', building });
+        // Для клиента не отправляем, т.к. он не должен создавать локально
         return true;
     }
 
-    // ---- Цели ----
     function getEnemyTargets(){
         let targets = [];
         buildings.forEach(b => {
@@ -980,7 +1361,6 @@
         return targets;
     }
 
-    // ---- Атака ----
     function launchAttack(airport, targetObj, type, count){
         let weapon = weaponTypes[type];
         let costPerUnit = weapon.cost;
@@ -1007,7 +1387,6 @@
         return true;
     }
 
-    // ---- Перехват ----
     function tryIntercept(proj){
         const now=Date.now(); if(now-proj.lastInterceptCheck<2000) return false; proj.lastInterceptCheck=now;
         const pos = proj.marker.getLatLng();
@@ -1111,16 +1490,32 @@
         },20);
     }
 
-    // ---- ИИ ----
+    // ===== AI (атакует игрока) =====
     const priorityWeights = { refinery:100, city:90, pvo:80, radar:70, powerPlant:60, rocketFactory:85 };
     function chooseAITargets(maxTargets=3){
         let candidates = [];
-        buildings.forEach(b => { if(b.team !== myTeam) return; let base = priorityWeights[b.type]||30; let hpFactor = (b.hp<50)?20:0; candidates.push({ target:b, score:base+hpFactor }); });
-        zones.forEach(z => { if(z.team !== myTeam) return; let base = priorityWeights.city; let hpFactor = (z.hp<50)?30:0; candidates.push({ target:z, score:base+hpFactor }); });
-        candidates.sort((a,b)=>b.score-a.score);
+        buildings.forEach(b => { 
+            if(b.team === myTeam) { 
+                let base = priorityWeights[b.type] || 30; 
+                let hpFactor = (b.hp < 50) ? 20 : 0; 
+                candidates.push({ target: b, score: base + hpFactor }); 
+            } 
+        });
+        zones.forEach(z => { 
+            if(z.team === myTeam) { 
+                let base = priorityWeights.city; 
+                let hpFactor = (z.hp < 50) ? 30 : 0; 
+                candidates.push({ target: z, score: base + hpFactor }); 
+            } 
+        });
+        candidates.sort((a,b) => b.score - a.score);
         let result = [];
-        for(let i=0; i<Math.min(maxTargets, candidates.length); i++) result.push(candidates[i].target);
-        if(difficulty === "EXTREME" && result.length>1 && Math.random()<0.4 && candidates.length>3) result.push(candidates[3].target);
+        for(let i=0; i<Math.min(maxTargets, candidates.length); i++) {
+            result.push(candidates[i].target);
+        }
+        if(setupDifficulty === "EXTREME" && result.length > 1 && Math.random() < 0.4 && candidates.length > 3) {
+            result.push(candidates[3].target);
+        }
         return result;
     }
 
@@ -1160,12 +1555,12 @@
 
     function launchAIAttack(target){
         let available = ['drone','cruise','ballistic','hypersonic'];
-        if(difficulty === "HARD" || difficulty === "EXTREME") available.push('x101','kalibr','kinzhal','iskander');
+        if(setupDifficulty === "HARD" || setupDifficulty === "EXTREME") available.push('x101','kalibr','kinzhal','iskander');
         let type = available[Math.floor(Math.random() * available.length)];
         let count = 1;
-        if(difficulty === "NORMAL") count = Math.floor(Math.random()*2)+1;
-        if(difficulty === "HARD") count = Math.floor(Math.random()*3)+1;
-        if(difficulty === "EXTREME") count = Math.floor(Math.random()*4)+2;
+        if(setupDifficulty === "NORMAL") count = Math.floor(Math.random()*2)+1;
+        if(setupDifficulty === "HARD") count = Math.floor(Math.random()*3)+1;
+        if(setupDifficulty === "EXTREME") count = Math.floor(Math.random()*4)+2;
         let targetLat, targetLng;
         if(target.center){ targetLat = target.center[0]; targetLng = target.center[1]; }
         else { targetLat = target.lat; targetLng = target.lng; }
@@ -1191,12 +1586,12 @@
         aiPvo = {lat: getCenter(enemyZones[2]||enemyZones[0])[0] + (Math.random()-0.5)*0.3, lng: getCenter(enemyZones[2]||enemyZones[0])[1] + (Math.random()-0.5)*0.3, team: enemyTeam};
         if(aiInterval) clearInterval(aiInterval);
         let attackIntervalMs = 25000;
-        if(difficulty==="EASY") attackIntervalMs = 38000;
-        if(difficulty==="HARD") attackIntervalMs = 15000;
-        if(difficulty==="EXTREME") attackIntervalMs = 8000;
+        if(setupDifficulty==="EASY") attackIntervalMs = 38000;
+        if(setupDifficulty==="HARD") attackIntervalMs = 15000;
+        if(setupDifficulty==="EXTREME") attackIntervalMs = 8000;
         aiInterval = setInterval(()=>{
             if(!gameActive) return;
-            let targets = chooseAITargets(difficulty === "EXTREME" ? 4 : 3);
+            let targets = chooseAITargets(setupDifficulty === "EXTREME" ? 4 : 3);
             if(targets.length === 0) return;
             for(let t of targets) launchAIAttack(t);
         }, attackIntervalMs);
@@ -1204,7 +1599,6 @@
         aiBuildInterval = setInterval(()=>aiBuildLogic(), 30000);
     }
 
-    // ---- Основной цикл ----
     function gameLoop(now) {
         if (!gameActive) return;
         let dt = Math.min(0.1, (now - lastUpdate) / 1000);
@@ -1213,19 +1607,22 @@
         requestAnimationFrame(gameLoop);
     }
 
-    // ---- Интерфейс вооружения ----
     function buildWeaponGrid(){
         let container = document.getElementById('weaponGrid'); if(!container) return;
         container.innerHTML = '';
         let types = ['drone','cruise','ballistic','hypersonic','x101','kalibr','kinzhal','iskander'];
         types.forEach(type => {
             let w = weaponTypes[type];
-            let card = document.createElement('div'); card.className = 'weapon-card'; if(attackType === type) card.classList.add('selected');
-            card.innerHTML = `<img src="images/${w.img}" alt="${w.name}" onerror="this.style.display='none'"><div class="weapon-name">${w.name}</div><div class="weapon-stats">💥 Урон: ${w.damage}<br>⚡ Цена: ${w.cost}</div>`;
+            let card = document.createElement('div'); 
+            card.className = 'weapon-card'; 
+            if(attackType === type) card.classList.add('selected');
+            let imgSrc = getMissileImage(type, myTeam);
+            card.innerHTML = `<img src="${imgSrc}" alt="${w.name}" onerror="this.style.display='none'"><div class="weapon-name">${w.name}</div><div class="weapon-stats">💥 Урон: ${w.damage}<br>⚡ Цена: ${w.cost}</div>`;
             card.onclick = () => { attackType = type; updateCostDisplay(); document.querySelectorAll('.weapon-card').forEach(c=>c.classList.remove('selected')); card.classList.add('selected'); };
             container.appendChild(card);
         });
     }
+
     function updateCostDisplay(){ let w = weaponTypes[attackType]; document.getElementById('costDisplay').innerHTML = `СТОИМОСТЬ: ${w.cost * attackCount} ⚡`; }
     function closeAttackModal(){ document.getElementById('attackModal').style.display='none'; }
     function showAttackModal(airport){
@@ -1248,55 +1645,8 @@
         document.getElementById('attackModal').style.display = 'block';
     }
 
-    // ---- Инициализация одиночной игры ----
-    function initGameMapAndLogic(){
-        document.getElementById('menuScreen').style.display='none';
-        document.getElementById('lobbyScreen').style.display='none';
-        document.getElementById('gameContainer').style.display='block';
-        if(map) map.remove();
-        map = L.map('map', { zoomControl: false }).setView([55.0,40.0],5);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© CartoDB'}).addTo(map);
-        let ld = document.createElement('div'); ld.className='loading-indicator'; ld.innerText='Загрузка границ...'; document.body.appendChild(ld);
-        loadRealBorders(()=>{
-            if(ld) ld.remove();
-            initZones();
-            buildings = []; radars = []; pvoSystems = []; powerPlants = []; refineries = []; rocketFactories = []; projectiles = [];
-            if(isSandbox){
-                resources = 999999;
-                maxRadars = 999; maxPvo = 999; maxPowerPlants = 999; maxRefineries = 999;
-            } else {
-                if(difficulty==="EASY") resources = 400;
-                else if(difficulty==="NORMAL") resources = 300;
-                else if(difficulty==="HARD") resources = 220;
-                else resources = 150;
-                maxRadars = 8; maxPvo = 12; maxPowerPlants = 5; maxRefineries = 3;
-            }
-            airportPlaced = false; updateUI();
-            map.off('click');
-            map.on('click', (e) => {
-                if(!airportPlaced){
-                    let lat = e.latlng.lat, lng = e.latlng.lng;
-                    if(!isOwnTerritory(lat,lng)){ alert("Аэродром можно поставить только на своей территории!"); return; }
-                    let icon = getAirportIcon();
-                    airportMarker = L.marker([lat,lng], {icon}).addTo(map);
-                    airportMarker.bindPopup('<b>АЭРОДРОМ</b>');
-                    airportMarker.on('click', () => showAttackModal(airportMarker));
-                    airportPlaced = true; gameActive = true; updateUI(); lastUpdate = performance.now();
-                    if(isAI) initAI();
-                    startRadarAnimation();
-                    requestAnimationFrame(gameLoop);
-                    if(economyInterval) clearInterval(economyInterval);
-                    economyInterval = setInterval(() => { if(gameActive && !isSandbox){ let income = 5 + powerPlants.filter(p=>p.team===myTeam).length*3 + refineries.filter(r=>r.team===myTeam).length*15; resources += income; updateUI(); } else updateUI(); }, 1000);
-                    showHint("📡 Теперь постройте Радар");
-                    return;
-                }
-                if(buildMode){ tryBuild(e.latlng.lat, e.latlng.lng, buildMode); buildMode = null; }
-            });
-        });
-    }
-
     // =================================================================
-    // 9. МУЛЬТИПЛЕЕРНАЯ ИНИЦИАЛИЗАЦИЯ
+    // 9. МУЛЬТИПЛЕЕР (исправленный для клиента)
     // =================================================================
     function startMultiplayerGame(roomId, data) {
         console.log("startMultiplayerGame", roomId, data);
@@ -1324,9 +1674,10 @@
             let state = snapshot.val();
             if (!state) {
                 if (isHost) {
+                    const allCitiesWithHp = prepareCities(allCities.map(c => c.name));
                     state = {
                         resources: { russia: 300, ukraine: 300 },
-                        zones: zoneData.map(z => ({ id: z.id, hp: z.hp })),
+                        zones: allCitiesWithHp.map(z => ({ id: z.name, hp: z.hp })),
                         buildings: [],
                         projectiles: []
                     };
@@ -1340,6 +1691,121 @@
                 initMPGame(state);
             }
         }).catch(err => console.error("Ошибка загрузки состояния:", err));
+
+        // ---- Хост слушает действия клиентов ----
+        if (isHost) {
+            const actionsRef = gamesRef.child(roomId).child('actions');
+            if (actionsListenerRef) actionsListenerRef.off();
+            actionsListenerRef = actionsRef;
+            actionsRef.on('child_added', (snapshot) => {
+                const action = snapshot.val();
+                if (!action) return;
+                if (action.player === currentUser) return; // свои игнорируем
+                console.log("Хост получил действие от клиента:", action);
+                applyAction(action);
+            });
+        }
+    }
+
+    // ---- Функция применения действия к состоянию хоста ----
+    function applyAction(action) {
+        console.log("Применяем действие:", action);
+        if (action.type === 'build') {
+            const b = action.building;
+            if (!buildings.some(lb => lb.id === b.id)) {
+                let building = { ...b, marker: null, radarCircle: null };
+                let icon;
+                if (b.type === 'radar') icon = getRadarIcon();
+                else if (b.type === 'pvo') icon = getPvoIcon();
+                else if (b.type === 'powerPlant') icon = getPowerPlantIcon();
+                else if (b.type === 'refinery') icon = getRefineryIcon();
+                else if (b.type === 'rocketFactory') icon = getRocketFactoryIcon();
+                if (icon) {
+                    let marker = L.marker([b.lat, b.lng], { icon }).addTo(map);
+                    building.marker = marker;
+                    if (b.type === 'radar') {
+                        let circle = L.circle([b.lat, b.lng], { radius: 150000, color: '#00ffff', weight: 1, fillOpacity: 0.05 }).addTo(map);
+                        building.radarCircle = circle;
+                        radars.push(building);
+                    } else if (b.type === 'pvo') {
+                        pvoSystems.push(building);
+                    } else if (b.type === 'powerPlant') {
+                        powerPlants.push(building);
+                    } else if (b.type === 'refinery') {
+                        refineries.push(building);
+                    } else if (b.type === 'rocketFactory') {
+                        rocketFactories.push(building);
+                    }
+                    buildings.push(building);
+                }
+                sendGameStateUpdate();
+            }
+        } else if (action.type === 'launch') {
+            const weapon = weaponTypes[action.weaponType];
+            if (!weapon) return;
+            const fromLatLng = action.from;
+            const targetObj = action.to;
+            const count = action.count || 1;
+            for (let i = 0; i < count; i++) {
+                let offset = (i - (count-1)/2) * 0.03;
+                let targetLat = targetObj.lat + offset;
+                let targetLng = targetObj.lng + offset * 0.5;
+                let p1 = map.latLngToLayerPoint([fromLatLng.lat, fromLatLng.lng]);
+                let p2 = map.latLngToLayerPoint([targetLat, targetLng]);
+                let dx = p2.x - p1.x;
+                let dy = p2.y - p1.y;
+                let angle = Math.atan2(dx, -dy) * 180 / Math.PI + weapon.spriteOffset;
+                let proj = {
+                    id: Date.now()+Math.random(),
+                    from: fromLatLng,
+                    to: {lat: targetLat, lng: targetLng},
+                    progress: 0,
+                    speed: weapon.speed,
+                    damage: weapon.damage,
+                    team: action.team,
+                    targetType: action.targetType,
+                    targetId: action.targetId,
+                    type: action.weaponType,
+                    active: true,
+                    marker: null,
+                    lastInterceptCheck: 0,
+                    interceptedFlag: false,
+                    angle: angle
+                };
+                let marker = L.marker([proj.from.lat, proj.from.lng], {
+                    icon: getMissileIcon(action.weaponType, action.team),
+                    rotationOrigin: 'center center',
+                    rotationAngle: angle
+                }).addTo(map);
+                proj.marker = marker;
+                projectiles.push(proj);
+            }
+            sendGameStateUpdate();
+        } else if (action.type === 'intercept') {
+            const proj = projectiles.find(p => p.id === action.projectileId);
+            if (proj) {
+                proj.active = false;
+                if (proj.marker) map.removeLayer(proj.marker);
+                projectiles = projectiles.filter(p => p.id !== action.projectileId);
+                sendGameStateUpdate();
+            }
+        } else if (action.type === 'damageZone') {
+            const zone = zones.find(z => z.id === action.zoneId);
+            if (zone) {
+                zone.hp = action.newHp;
+                updateZoneMarkers();
+                if (zone.hp <= 0) removeZoneIfDestroyed(zone);
+                sendGameStateUpdate();
+            }
+        } else if (action.type === 'damageBuilding') {
+            const building = buildings.find(b => b.id === action.buildingId);
+            if (building) {
+                building.hp = action.newHp;
+                if (building.hp <= 0) destroyBuilding(building);
+                sendGameStateUpdate();
+            }
+        }
+        // airportPlaced игнорируем
     }
 
     function initMPGame(initialState) {
@@ -1360,17 +1826,22 @@
         loadRealBorders(() => {
             if (ld) ld.remove();
             zones = [];
-            zoneData.forEach(z => {
-                const stateZone = initialState.zones.find(sz => sz.id === z.id);
-                const hp = stateZone ? stateZone.hp : z.hp;
-                let circle = L.circle(z.center, { radius: 15000, color: z.team === 'russia' ? teamColors.russia : teamColors.ukraine, weight: 2, fillOpacity: 0.25 }).addTo(map);
-                let marker = L.marker(z.center, {
-                    icon: L.divIcon({
-                        html: `<div class="zone-marker" style="border-color: ${z.team === 'russia' ? '#ff8888' : '#88aaff'};">${z.name}<br>${Math.floor((hp / z.baseHp) * 100)}%</div>`,
-                        iconSize: [80, 40]
-                    })
-                }).addTo(map);
-                zones.push({ id: z.id, name: z.name, center: z.center, team: z.team, hp: hp, baseHp: z.baseHp, circle: circle, marker: marker });
+            const cityMap = {};
+            allCities.forEach(c => { cityMap[c.name] = c; });
+            initialState.zones.forEach(sz => {
+                const base = cityMap[sz.id];
+                if (!base) return;
+                const z = {
+                    id: sz.id,
+                    name: base.name,
+                    center: base.center,
+                    team: base.team,
+                    hp: sz.hp,
+                    baseHp: sz.hp,
+                };
+                let circle = L.circle(z.center, { radius: 15000, color: z.team === 'russia' ? '#ff5555' : '#55aaff', weight: 2, fillOpacity: 0.25 }).addTo(map);
+                let marker = L.marker(z.center, { icon: createCityMarker(z) }).addTo(map);
+                zones.push({ ...z, circle, marker });
             });
             updateTotalPercent();
 
@@ -1417,15 +1888,20 @@
             requestAnimationFrame(gameLoop);
             startRadarAnimation();
 
+            // Экономический интервал только у хоста
             if (economyInterval) clearInterval(economyInterval);
-            economyInterval = setInterval(() => {
-                if (gameActive && isMultiplayer) {
-                    let income = 5 + powerPlants.filter(p => p.team === myTeam).length * 3 + refineries.filter(r => r.team === myTeam).length * 15;
-                    resources += income;
-                    updateUI();
-                    sendGameStateUpdate();
-                }
-            }, 1000);
+            if (isHost) {
+                economyInterval = setInterval(() => {
+                    if (gameActive && isMultiplayer) {
+                        let income = 5 + powerPlants.filter(p => p.team === myTeam).length * 3 + refineries.filter(r => r.team === myTeam).length * 15;
+                        resources += income;
+                        updateUI();
+                        sendGameStateUpdate();
+                    }
+                }, 1000);
+            } else {
+                economyInterval = setInterval(() => {}, 1000);
+            }
 
             if (mpGameRef) {
                 mpGameRef.off();
@@ -1449,12 +1925,47 @@
                     airportMarker.on('click', () => showAttackModal(airportMarker));
                     airportPlaced = true;
                     showHint("📡 Теперь постройте Радар");
-                    sendMpAction({ type: 'airportPlaced', lat, lng });
+                    if (isMultiplayer) {
+                        sendMpAction({ type: 'airportPlaced', lat, lng });
+                    }
                     return;
                 }
                 if (buildMode) {
-                    tryBuild(e.latlng.lat, e.latlng.lng, buildMode);
-                    buildMode = null;
+                    if (!isOwnTerritory(e.latlng.lat, e.latlng.lng)) {
+                        alert("Можно строить только на своей территории!");
+                        return;
+                    }
+                    // В мультиплеере клиент отправляет действие, а не строит локально
+                    if (isMultiplayer && !isHost) {
+                        // Отправляем действие на хост
+                        const buildingData = {
+                            id: Date.now()+Math.random(),
+                            lat: e.latlng.lat,
+                            lng: e.latlng.lng,
+                            type: buildMode,
+                            team: myTeam,
+                            hp: (buildMode==='radar'?120:(buildMode==='pvo'?180:(buildMode==='powerPlant'?100:(buildMode==='refinery'?150:200))))
+                        };
+                        // Проверка ресурсов и лимитов (у клиента)
+                        if (!isSandbox) {
+                            let cost = costs[buildMode];
+                            if (resources < cost) { alert("Не хватает энергии"); return; }
+                            // Проверка лимитов
+                            if (buildMode==='radar' && radars.filter(r=>r.team===myTeam).length >= maxRadars) { alert(`Максимум ${maxRadars} радаров`); return; }
+                            if (buildMode==='pvo' && pvoSystems.filter(p=>p.team===myTeam).length >= maxPvo) { alert(`Максимум ${maxPvo} ПВО`); return; }
+                            if (buildMode==='powerPlant' && powerPlants.filter(p=>p.team===myTeam).length >= maxPowerPlants) { alert(`Максимум ${maxPowerPlants} электростанций`); return; }
+                            if (buildMode==='refinery' && refineries.filter(r=>r.team===myTeam).length >= maxRefineries) { alert(`Максимум ${maxRefineries} НПЗ`); return; }
+                            resources -= cost;
+                            updateUI();
+                        }
+                        sendMpAction({ type: 'build', building: buildingData });
+                        buildMode = null;
+                        return;
+                    } else {
+                        // Хост или одиночная игра — строим локально
+                        tryBuild(e.latlng.lat, e.latlng.lng, buildMode);
+                        buildMode = null;
+                    }
                 }
             });
 
@@ -1470,7 +1981,7 @@
     }
 
     function sendGameStateUpdate() {
-        if (!isMultiplayer || !mpGameRef) return;
+        if (!isMultiplayer || !mpGameRef || !isHost) return;
         const state = {
             resources: { russia: getTeamResources('russia'), ukraine: getTeamResources('ukraine') },
             zones: zones.map(z => ({ id: z.id, hp: z.hp })),
@@ -1511,11 +2022,19 @@
                 let marker = L.marker([b.lat, b.lng], { icon }).addTo(map);
                 b.marker = marker;
                 buildings.push(b);
-                if (b.type === 'radar') radars.push(b);
-                else if (b.type === 'pvo') pvoSystems.push(b);
-                else if (b.type === 'powerPlant') powerPlants.push(b);
-                else if (b.type === 'refinery') refineries.push(b);
-                else if (b.type === 'rocketFactory') rocketFactories.push(b);
+                if (b.type === 'radar') {
+                    let circle = L.circle([b.lat, b.lng], { radius: 150000, color: '#00ffff', weight: 1, fillOpacity: 0.05 }).addTo(map);
+                    b.radarCircle = circle;
+                    radars.push(b);
+                } else if (b.type === 'pvo') {
+                    pvoSystems.push(b);
+                } else if (b.type === 'powerPlant') {
+                    powerPlants.push(b);
+                } else if (b.type === 'refinery') {
+                    refineries.push(b);
+                } else if (b.type === 'rocketFactory') {
+                    rocketFactories.push(b);
+                }
             });
             const remoteIds = state.buildings.map(b => b.id);
             const toRemove = buildings.filter(b => !remoteIds.includes(b.id));
@@ -1557,12 +2076,7 @@
             playBeep(600, 0.1);
             setTimeout(() => {
                 playBeep(800, 0.1);
-                isAI = true;
-                isSandbox = false;
-                isMultiplayer = false;
-                myTeam = 'russia';
-                enemyTeam = 'ukraine';
-                initGameMapAndLogic();
+                showSetupModal('single');
             }, 100);
         }, 100);
     };
@@ -1574,12 +2088,7 @@
             playBeep(600, 0.1);
             setTimeout(() => {
                 playBeep(800, 0.1);
-                isAI = true;
-                isSandbox = true;
-                isMultiplayer = false;
-                myTeam = 'russia';
-                enemyTeam = 'ukraine';
-                initGameMapAndLogic();
+                showSetupModal('sandbox');
             }, 100);
         }, 100);
     };
@@ -1590,29 +2099,6 @@
 
     document.getElementById('logoutBtn').onclick = logout;
 
-    // ---- Выбор сложности ----
-    document.getElementById('diffEasy').onclick = function() {
-        document.querySelectorAll('.difficulty-btn').forEach(btn => btn.classList.remove('selected'));
-        this.classList.add('selected');
-        difficulty = "EASY";
-    };
-    document.getElementById('diffNormal').onclick = function() {
-        document.querySelectorAll('.difficulty-btn').forEach(btn => btn.classList.remove('selected'));
-        this.classList.add('selected');
-        difficulty = "NORMAL";
-    };
-    document.getElementById('diffHard').onclick = function() {
-        document.querySelectorAll('.difficulty-btn').forEach(btn => btn.classList.remove('selected'));
-        this.classList.add('selected');
-        difficulty = "HARD";
-    };
-    document.getElementById('diffExtreme').onclick = function() {
-        document.querySelectorAll('.difficulty-btn').forEach(btn => btn.classList.remove('selected'));
-        this.classList.add('selected');
-        difficulty = "EXTREME";
-    };
-
-    // ---- Панель построек ----
     const buildToggle = document.getElementById('buildToggle');
     const buildMenu = document.getElementById('buildMenu');
     let buildMenuOpen = false;
@@ -1632,7 +2118,6 @@
         });
     });
 
-    // ---- Остальные обработчики ----
     document.getElementById('buildRadarBtn').onclick = () => { buildMode = 'radar'; };
     document.getElementById('buildPvoBtn').onclick = () => { buildMode = 'pvo'; };
     document.getElementById('buildPowerPlantBtn').onclick = () => { buildMode = 'powerPlant'; };
@@ -1661,7 +2146,7 @@
         closeAttackModal();
     };
 
-    console.log("✅ Игра полностью загружена. Пароли и ключи зашифрованы SHA-256. Никто не может их увидеть в Firebase.");
+    console.log("✅ Игра полностью загружена. Пароли и ключи зашифрованы SHA-256.");
 </script>
 </body>
 </html>
