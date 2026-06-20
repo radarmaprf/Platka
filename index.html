@@ -13,7 +13,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
     <style>
-        /* ===== ПОЛНЫЙ НАБОР СТИЛЕЙ (без изменений) ===== */
         *{margin:0;padding:0;box-sizing:border-box;user-select:none;-webkit-tap-highlight-color:transparent}
         body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#0a0f12;overflow:hidden;height:100vh;color:#eef;touch-action:manipulation}
         .screen{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;justify-content:center;align-items:center;z-index:2000;background:radial-gradient(circle at 20% 30%,#0a1f1a,#030a08)}
@@ -137,7 +136,6 @@
 </head>
 <body>
 
-<!-- Оверлей авторизации -->
 <div id="authOverlay" class="auth-overlay">
     <div class="auth-card">
         <h2 id="authTitle">ВХОД</h2>
@@ -152,7 +150,6 @@
     </div>
 </div>
 
-<!-- Главное меню -->
 <div id="menuScreen" class="screen">
     <div class="missile-bg"></div>
     <div class="scan-line"></div>
@@ -175,7 +172,6 @@
     </div>
 </div>
 
-<!-- Лобби -->
 <div id="lobbyScreen" class="screen" style="display:none;">
     <div class="card" style="width:400px; max-width:92%;">
         <h1>ЛОББИ</h1>
@@ -192,14 +188,12 @@
 </div>
 <div id="copyNotification">✅ Код скопирован!</div>
 
-<!-- Модалка рейтинга -->
 <div id="rankModal" class="ranking-modal" style="display:none;">
     <span class="close-btn" id="closeRankModal">&times;</span>
     <h2>🏆 ТОП ИГРОКОВ</h2>
     <ul id="rankList" class="ranking-list"><li style="text-align:center; color:#888; padding:20px;">Загрузка...</li></ul>
 </div>
 
-<!-- Меню настройки -->
 <div id="setupModal">
     <span class="close-setup" id="closeSetupModal">&times;</span>
     <h2>⚙️ НАСТРОЙКА ИГРЫ</h2>
@@ -220,7 +214,6 @@
     <button class="start-btn" id="startGameBtn">🚀 НАЧАТЬ ИГРУ</button>
 </div>
 
-<!-- Модалка атаки -->
 <div id="attackModal" class="modal" style="display:none;">
     <h3>🎯 ВЫБОР ЦЕЛИ</h3>
     <select id="targetSelect" size="5" style="width:100%; margin-bottom:10px;"></select>
@@ -232,7 +225,6 @@
     <button id="attackCancelBtn" style="background:#555; color:#fff;">ОТМЕНА</button>
 </div>
 
-<!-- Контейнер игры -->
 <div id="gameContainer" style="display:none; width:100%; height:100%; position:relative;">
     <div id="map" style="width:100%; height:100%;"></div>
     <div id="gameHUD">
@@ -278,12 +270,44 @@ const auth = firebase.auth();
 const db = firebase.database();
 
 // ============================================================
-// 2. ССЫЛКА НА CLOUDFLARE WORKER (для проверки ключей)
+// 2. ЛИЦЕНЗИОННЫЕ КЛЮЧИ (все 22 ключа)
 // ============================================================
-const WORKER_URL = 'https://gentle-band-81.c6fpjs5ryf.workers.dev/api/activate-key';
+const VALID_KEYS_ORIGINAL = [
+    "8n2ks5jf92jdn30qpeor-1k4slp",
+    "9n3ks2jf92jdn30qpeor-2k5slr",
+    "1k4slpkf92jdn30qpe-5j8hs4",
+    "4j6hs9f92jdn30qpeor-8n1ks6",
+    "7n0ks3jf92jdn30qpeor-0k2slt",
+    "9k0slvkf92jdn30qpe-0j2hs6",
+    "2j5hs9f92jdn30qpeor-3n6ks4",
+    "5n8ks1jf92jdn30qpeor-6k9slx",
+    "7k3slwkf92jdn30qpe-9j4hs7",
+    "0j2hs6f92jdn30qpeor-1n7ks5",
+    "3n6ks4jf92jdn30qpeor-4k0sly",
+    "6k9slxkf92jdn30qpe-7j1hs8",
+    "9j4hs7f92jdn30qpeor-0n8ks2",
+    "1n7ks5jf92jdn30qpeor-2k4slz",
+    "4k0slykf92jdn30qpe-5j2hs9",
+    "7j1hs8f92jdn30qpeor-8n5ks3",
+    "0n8ks2jf92jdn30qpeor-1k6sla",
+    "2k4slzkf92jdn30qpe-3j0hs2",
+    "5j2hs9f92jdn30qpeor-6n7ks5",
+    "8n5ks3jf92jdn30qpeor-9k1slb",
+    "1k6slakf92jdn30qpe-2j3hs4"
+];
 
 // ============================================================
-// 3. ПЕРЕМЕННЫЕ ИГРЫ
+// 3. ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ (SHA-256)
+// ============================================================
+async function sha256(message) {
+    const msgBuffer = new TextEncoder().encode(message);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// ============================================================
+// 4. ПЕРЕМЕННЫЕ ИГРЫ
 // ============================================================
 let playerXP = 0;
 let playerStats = { wins:0, losses:0, citiesDestroyed:0, buildingsDestroyed:0, missilesLaunched:0, hits:0, totalShots:0 };
@@ -307,10 +331,10 @@ let audioCtx = null;
 let lastUpdate = 0;
 let mpGameRef = null, actionsListenerRef = null, gameListenerRef = null;
 let currentRoomId = null, isHost = false, mpInitDone = false;
-let currentUID = null; // Firebase UID
+let currentUID = null;
 
 // ============================================================
-// 4. ОРУЖИЕ (обновлённый список)
+// 5. ОРУЖИЕ (обновлённый список)
 // ============================================================
 const weaponTypes = {
     shahed: { name: 'ШАХЕД', speed: 0.006, damage: 25, cost: 60, pvoChance: 0.08, spriteOffset: 0, img: 'drone.png' },
@@ -343,7 +367,7 @@ const ranks = [
 ];
 
 // ============================================================
-// 5. ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ (иконки, звук, хэлперы)
+// 6. ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ (иконки, звук, хэлперы)
 // ============================================================
 function playBeep(freq, duration, type='sine') {
     if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -460,7 +484,7 @@ async function updateElo(win, mode) {
 }
 
 // ============================================================
-// 6. АВТОРИЗАЦИЯ (Firebase Auth + Cloudflare Worker)
+// 7. АВТОРИЗАЦИЯ (Firebase Auth + локальная проверка ключей)
 // ============================================================
 const authLogin = document.getElementById('authLogin');
 const authPassword = document.getElementById('authPassword');
@@ -514,6 +538,7 @@ async function login(login, password) {
         authMessage.innerText = "Вход выполнен!";
         const user = userCredential.user;
         const uid = user.uid;
+        currentUID = uid;
         // Проверяем, активирован ли ключ
         const snap = await db.ref(`users/${uid}/keyUsed`).once('value');
         if (!snap.exists()) {
@@ -526,7 +551,7 @@ async function login(login, password) {
     }
 }
 
-// ====== АКТИВАЦИЯ КЛЮЧА ЧЕРЕЗ CLOUDFLARE WORKER ======
+// ====== АКТИВАЦИЯ КЛЮЧА (локальная проверка + запись в Firebase) ======
 async function activateKey(key) {
     if (!key) { authMessage.innerText = "Введите ключ"; return; }
     const user = auth.currentUser;
@@ -534,21 +559,47 @@ async function activateKey(key) {
     const uid = user.uid;
 
     try {
-        const response = await fetch(WORKER_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ key, uid })
-        });
-        const data = await response.json();
-        if (response.ok) {
-            authMessage.innerText = data.message || 'Ключ активирован!';
-            // После активации ключа загружаем игру
-            loadGameForUser(uid);
-        } else {
-            authMessage.innerText = data.error || 'Ошибка активации';
+        // 1. Вычисляем хэш ключа
+        const keyHash = await sha256(key);
+
+        // 2. Проверяем, есть ли такой хэш в списке валидных
+        const validHashes = await Promise.all(VALID_KEYS_ORIGINAL.map(k => sha256(k)));
+        if (!validHashes.includes(keyHash)) {
+            authMessage.innerText = "Неверный лицензионный ключ";
+            return;
         }
+
+        // 3. Проверяем, не использован ли ключ ранее (читаем из Firebase)
+        const usedSnap = await db.ref(`usedKeys/${keyHash}`).once('value');
+        if (usedSnap.exists()) {
+            authMessage.innerText = "Этот ключ уже использован";
+            return;
+        }
+
+        // 4. Записываем использование ключа (сохраняем uid)
+        await db.ref(`usedKeys/${keyHash}`).set(uid);
+
+        // 5. Обновляем запись пользователя (keyUsed)
+        await db.ref(`users/${uid}`).update({
+            keyUsed: keyHash,
+            elo: 1000
+        });
+
+        // 6. Создаём игровые данные, если их нет
+        const gameDataRef = db.ref(`gameData/${uid}`);
+        const gameSnap = await gameDataRef.once('value');
+        if (!gameSnap.exists()) {
+            await gameDataRef.set({
+                playerXP: 0,
+                playerStats: { wins: 0, losses: 0, citiesDestroyed: 0, buildingsDestroyed: 0, missilesLaunched: 0, hits: 0, totalShots: 0 }
+            });
+        }
+
+        authMessage.innerText = "Ключ активирован!";
+        currentUID = uid;
+        loadGameForUser(uid);
     } catch (error) {
-        authMessage.innerText = 'Ошибка соединения с сервером';
+        authMessage.innerText = "Ошибка активации: " + error.message;
         console.error(error);
     }
 }
@@ -562,7 +613,6 @@ async function loadGameForUser(uid) {
             playerStats = data.playerStats || { wins:0, losses:0, citiesDestroyed:0, buildingsDestroyed:0, missilesLaunched:0, hits:0, totalShots:0 };
             updateRankUI();
         } else {
-            // Если gameData нет, создаём пустые
             await db.ref(`gameData/${uid}`).set({
                 playerXP: 0,
                 playerStats: { wins:0, losses:0, citiesDestroyed:0, buildingsDestroyed:0, missilesLaunched:0, hits:0, totalShots:0 }
@@ -603,10 +653,10 @@ authSubmitBtn.onclick = async () => {
 };
 toggleLink.onclick = toggleMode;
 
-// Обработчик изменения состояния авторизации
 auth.onAuthStateChanged(async (user) => {
     if (user) {
         const uid = user.uid;
+        currentUID = uid;
         const snap = await db.ref(`users/${uid}/keyUsed`).once('value');
         if (snap.exists()) {
             loadGameForUser(uid);
@@ -620,7 +670,7 @@ auth.onAuthStateChanged(async (user) => {
 });
 
 // ============================================================
-// 7. РЕЙТИНГ (топ игроков)
+// 8. РЕЙТИНГ (топ игроков)
 // ============================================================
 document.getElementById('rankBtn').onclick = function() {
     document.getElementById('rankModal').style.display = 'block';
@@ -669,7 +719,7 @@ async function loadRanking() {
 }
 
 // ============================================================
-// 8. МУЛЬТИПЛЕЕР (без изменений, но использует currentUID)
+// 9. МУЛЬТИПЛЕЕР (полный, без изменений)
 // ============================================================
 function generateRoomId() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789';
@@ -859,7 +909,7 @@ function leaveLobby() {
 }
 
 // ============================================================
-// 9. ИГРОВОЙ ДВИЖОК (полный, без изменений)
+// 10. ИГРОВОЙ ДВИЖОК (полный, без изменений)
 // ============================================================
 // ---- СПИСОК ВСЕХ ГОРОДОВ ----
 const allCities = [
@@ -2006,7 +2056,7 @@ function applyGameState(state) {
     }
 }
 
-console.log("✅ Игра полностью загружена. Ключи защищены через Cloudflare Worker. Оружие обновлено, данные хранятся по UID.");
+console.log("✅ Игра полностью загружена. Проверка ключей локальная, использованные ключи записываются в Firebase.");
 </script>
 </body>
 </html>
