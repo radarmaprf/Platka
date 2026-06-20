@@ -13,6 +13,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
     <style>
+        /* ===== ПОЛНЫЙ НАБОР СТИЛЕЙ (без изменений) ===== */
         *{margin:0;padding:0;box-sizing:border-box;user-select:none;-webkit-tap-highlight-color:transparent}
         body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#0a0f12;overflow:hidden;height:100vh;color:#eef;touch-action:manipulation}
         .screen{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;justify-content:center;align-items:center;z-index:2000;background:radial-gradient(circle at 20% 30%,#0a1f1a,#030a08)}
@@ -136,6 +137,7 @@
 </head>
 <body>
 
+<!-- Оверлей авторизации -->
 <div id="authOverlay" class="auth-overlay">
     <div class="auth-card">
         <h2 id="authTitle">ВХОД</h2>
@@ -150,6 +152,7 @@
     </div>
 </div>
 
+<!-- Главное меню -->
 <div id="menuScreen" class="screen">
     <div class="missile-bg"></div>
     <div class="scan-line"></div>
@@ -172,6 +175,7 @@
     </div>
 </div>
 
+<!-- Лобби -->
 <div id="lobbyScreen" class="screen" style="display:none;">
     <div class="card" style="width:400px; max-width:92%;">
         <h1>ЛОББИ</h1>
@@ -188,12 +192,14 @@
 </div>
 <div id="copyNotification">✅ Код скопирован!</div>
 
+<!-- Модалка рейтинга -->
 <div id="rankModal" class="ranking-modal" style="display:none;">
     <span class="close-btn" id="closeRankModal">&times;</span>
     <h2>🏆 ТОП ИГРОКОВ</h2>
     <ul id="rankList" class="ranking-list"><li style="text-align:center; color:#888; padding:20px;">Загрузка...</li></ul>
 </div>
 
+<!-- Меню настройки -->
 <div id="setupModal">
     <span class="close-setup" id="closeSetupModal">&times;</span>
     <h2>⚙️ НАСТРОЙКА ИГРЫ</h2>
@@ -214,6 +220,7 @@
     <button class="start-btn" id="startGameBtn">🚀 НАЧАТЬ ИГРУ</button>
 </div>
 
+<!-- Модалка атаки -->
 <div id="attackModal" class="modal" style="display:none;">
     <h3>🎯 ВЫБОР ЦЕЛИ</h3>
     <select id="targetSelect" size="5" style="width:100%; margin-bottom:10px;"></select>
@@ -225,6 +232,7 @@
     <button id="attackCancelBtn" style="background:#555; color:#fff;">ОТМЕНА</button>
 </div>
 
+<!-- Контейнер игры -->
 <div id="gameContainer" style="display:none; width:100%; height:100%; position:relative;">
     <div id="map" style="width:100%; height:100%;"></div>
     <div id="gameHUD">
@@ -277,7 +285,6 @@ const WORKER_URL = 'https://gentle-band-81.c6fpjs5ryf.workers.dev/api/activate-k
 // ============================================================
 // 3. ПЕРЕМЕННЫЕ ИГРЫ
 // ============================================================
-let currentUser = null;
 let playerXP = 0;
 let playerStats = { wins:0, losses:0, citiesDestroyed:0, buildingsDestroyed:0, missilesLaunched:0, hits:0, totalShots:0 };
 let gameActive = false;
@@ -300,118 +307,31 @@ let audioCtx = null;
 let lastUpdate = 0;
 let mpGameRef = null, actionsListenerRef = null, gameListenerRef = null;
 let currentRoomId = null, isHost = false, mpInitDone = false;
+let currentUID = null; // Firebase UID
 
 // ============================================================
-// 4. ОРУЖИЕ (обновлённый список: убраны cruise, ballistic, hypersonic)
+// 4. ОРУЖИЕ (обновлённый список)
 // ============================================================
 const weaponTypes = {
-    // Российские
-    shahed: {
-        name: 'ШАХЕД',
-        speed: 0.006,
-        damage: 25,
-        cost: 60,
-        pvoChance: 0.08,
-        spriteOffset: 0,
-        img: 'drone.png'
-    },
-    x101: {
-        name: 'X-101',
-        speed: 0.03,
-        damage: 65,
-        cost: 160,
-        pvoChance: 0.12,
-        spriteOffset: 0,
-        img: 'x101.png'
-    },
-    iskander: {
-        name: 'ИСКАНДЕР',
-        speed: 0.07,
-        damage: 300,
-        cost: 1000,
-        pvoChance: 0.04,
-        spriteOffset: 0,
-        img: 'iskander.png'
-    },
-    kinzhal: {
-        name: 'КИНЖАЛ',
-        speed: 0.11,
-        damage: 250,
-        cost: 850,
-        pvoChance: 0.05,
-        spriteOffset: 0,
-        img: 'kinzhal.png'
-    },
-    kalibr: {
-        name: 'КАЛИБР',
-        speed: 0.025,
-        damage: 200,
-        cost: 750,
-        pvoChance: 0.08,
-        spriteOffset: 0,
-        img: 'kalibr.png'
-    },
-    geran5: {
-        name: 'ГЕРАНЬ-5',
-        speed: 0.05,
-        damage: 45,
-        cost: 120,
-        pvoChance: 0.07,
-        spriteOffset: 0,
-        img: 'geran5.png'
-    },
-    // Украинские (Лютый, Гром-2, Фламинго, Шторм Шадоу)
-    lutyi: {
-        name: 'ЛЮТИЙ',
-        speed: 0.006,
-        damage: 30,
-        cost: 70,
-        pvoChance: 0.08,
-        spriteOffset: 0,
-        img: 'droneua.png'
-    },
-    grom2: {
-        name: 'ГРОМ-2',
-        speed: 0.06,
-        damage: 150,
-        cost: 500,
-        pvoChance: 0.06,
-        spriteOffset: 0,
-        img: 'grom2.png'
-    },
-    flamingo: {
-        name: 'ФЛАМИНГО',
-        speed: 0.04,
-        damage: 80,
-        cost: 250,
-        pvoChance: 0.10,
-        spriteOffset: 0,
-        img: 'flamingo.png'
-    },
-    stormshadow: {
-        name: 'ШТОРМ ШАДОУ',
-        speed: 0.035,
-        damage: 120,
-        cost: 400,
-        pvoChance: 0.09,
-        spriteOffset: 0,
-        img: 'stormshadow.png'
-    }
+    shahed: { name: 'ШАХЕД', speed: 0.006, damage: 25, cost: 60, pvoChance: 0.08, spriteOffset: 0, img: 'drone.png' },
+    x101: { name: 'X-101', speed: 0.03, damage: 65, cost: 160, pvoChance: 0.12, spriteOffset: 0, img: 'x101.png' },
+    iskander: { name: 'ИСКАНДЕР', speed: 0.07, damage: 300, cost: 1000, pvoChance: 0.04, spriteOffset: 0, img: 'iskander.png' },
+    kinzhal: { name: 'КИНЖАЛ', speed: 0.11, damage: 250, cost: 850, pvoChance: 0.05, spriteOffset: 0, img: 'kinzhal.png' },
+    kalibr: { name: 'КАЛИБР', speed: 0.025, damage: 200, cost: 750, pvoChance: 0.08, spriteOffset: 0, img: 'kalibr.png' },
+    geran5: { name: 'ГЕРАНЬ-5', speed: 0.05, damage: 45, cost: 120, pvoChance: 0.07, spriteOffset: 0, img: 'geran5.png' },
+    lutyi: { name: 'ЛЮТИЙ', speed: 0.006, damage: 30, cost: 70, pvoChance: 0.08, spriteOffset: 0, img: 'droneua.png' },
+    grom2: { name: 'ГРОМ-2', speed: 0.06, damage: 150, cost: 500, pvoChance: 0.06, spriteOffset: 0, img: 'grom2.png' },
+    flamingo: { name: 'ФЛАМИНГО', speed: 0.04, damage: 80, cost: 250, pvoChance: 0.10, spriteOffset: 0, img: 'flamingo.png' },
+    stormshadow: { name: 'ШТОРМ ШАДОУ', speed: 0.035, damage: 120, cost: 400, pvoChance: 0.09, spriteOffset: 0, img: 'stormshadow.png' }
 };
 
-// Функция получения доступного оружия по команде
 function getAvailableWeapons(team) {
-    if (team === 'russia') {
-        return ['shahed', 'x101', 'iskander', 'kinzhal', 'kalibr', 'geran5'];
-    } else { // ukraine
-        return ['lutyi', 'grom2', 'flamingo', 'stormshadow'];
-    }
+    return team === 'russia' 
+        ? ['shahed', 'x101', 'iskander', 'kinzhal', 'kalibr', 'geran5']
+        : ['lutyi', 'grom2', 'flamingo', 'stormshadow'];
 }
 
-// Цены на постройки
 const costs = { radar: 180, pvo: 220, powerPlant: 250, refinery: 400, rocketFactory: 500 };
-
-// Ранги
 const ranks = [
     { level:1, xp:0, title:"Рядовой" },
     { level:2, xp:500, title:"Сержант" },
@@ -467,14 +387,12 @@ function getInterceptorIcon() {
 }
 
 function getMissileImage(type, team) {
-    // Российские
     if (type === 'shahed') return (team === 'russia') ? 'images/drone.png' : 'images/droneua.png';
     if (type === 'x101') return 'images/x101.png';
     if (type === 'iskander') return 'images/iskander.png';
     if (type === 'kinzhal') return 'images/kinzhal.png';
     if (type === 'kalibr') return 'images/kalibr.png';
     if (type === 'geran5') return 'images/geran5.png';
-    // Украинские
     if (type === 'lutyi') return (team === 'ukraine') ? 'images/droneua.png' : 'images/drone.png';
     if (type === 'grom2') return 'images/grom2.png';
     if (type === 'flamingo') return 'images/flamingo.png';
@@ -484,11 +402,8 @@ function getMissileImage(type, team) {
 
 function getMissileIcon(type, team) {
     const url = getMissileImage(type, team);
-    try {
-        return L.icon({ iconUrl: url, iconSize: [28,28], iconAnchor: [14,14] });
-    } catch(e) {
-        return L.divIcon({ html: '💥', iconSize:[28,28] });
-    }
+    try { return L.icon({ iconUrl: url, iconSize: [28,28], iconAnchor: [14,14] }); }
+    catch(e) { return L.divIcon({ html: '💥', iconSize:[28,28] }); }
 }
 
 function createCityMarker(city) {
@@ -499,9 +414,6 @@ function createCityMarker(city) {
     return L.divIcon({ html, className: '', iconSize: [100, 60], iconAnchor: [50, 30] });
 }
 
-// ============================================================
-// 6. ФУНКЦИИ РАНГА И ОБНОВЛЕНИЯ UI
-// ============================================================
 function updateRankUI() {
     let idx = ranks.length-1; while(idx>0 && playerXP < ranks[idx].xp) idx--;
     document.getElementById('rankTitle').innerHTML = ranks[idx].title;
@@ -527,7 +439,7 @@ function updateStatsAfterGame(victory){
     if(victory) addXP(300); 
 }
 async function updateElo(win, mode) {
-    if (!auth.currentUser) return;
+    if (!currentUID) return;
     let eloChange = 0;
     if (mode === 'multiplayer') eloChange = win ? 30 : -15;
     else {
@@ -539,17 +451,16 @@ async function updateElo(win, mode) {
             default: eloChange = win ? 20 : -10;
         }
     }
-    const userRef = db.ref('users').child(auth.currentUser.uid);
+    const userRef = db.ref('users').child(currentUID);
     const snap = await userRef.get();
     if (!snap.exists()) return;
     const currentElo = snap.val().elo || 1000;
     const newElo = Math.max(0, currentElo + eloChange);
     await userRef.update({ elo: newElo });
-    console.log(`Эло изменено на ${eloChange}, теперь ${newElo}`);
 }
 
 // ============================================================
-// 7. АВТОРИЗАЦИЯ (Firebase Auth + Cloudflare Worker)
+// 6. АВТОРИЗАЦИЯ (Firebase Auth + Cloudflare Worker)
 // ============================================================
 const authLogin = document.getElementById('authLogin');
 const authPassword = document.getElementById('authPassword');
@@ -586,6 +497,7 @@ function register(login, password) {
         authMessage.innerText = "Пароль должен быть не менее 6 символов";
         return;
     }
+    login = login.toLowerCase().trim();
     auth.createUserWithEmailAndPassword(login + '@skyfire.local', password)
         .then(() => {
             authMessage.innerText = "Аккаунт создан! Теперь введите лицензионный ключ.";
@@ -596,38 +508,42 @@ function register(login, password) {
 
 async function login(login, password) {
     if (!login || !password) { authMessage.innerText = "Введите логин и пароль"; return; }
+    login = login.toLowerCase().trim();
     try {
         const userCredential = await auth.signInWithEmailAndPassword(login + '@skyfire.local', password);
         authMessage.innerText = "Вход выполнен!";
         const user = userCredential.user;
-        // Проверяем, активирован ли ключ (в старой базе — по логину)
-        const snapshot = await db.ref(`users/${login}/keyUsed`).once('value');
-        if (!snapshot.exists()) {
+        const uid = user.uid;
+        // Проверяем, активирован ли ключ
+        const snap = await db.ref(`users/${uid}/keyUsed`).once('value');
+        if (!snap.exists()) {
             showKeyInput();
         } else {
-            loadGameForUser(login);
+            loadGameForUser(uid);
         }
     } catch (err) {
         authMessage.innerText = err.message;
     }
 }
 
+// ====== АКТИВАЦИЯ КЛЮЧА ЧЕРЕЗ CLOUDFLARE WORKER ======
 async function activateKey(key) {
     if (!key) { authMessage.innerText = "Введите ключ"; return; }
     const user = auth.currentUser;
     if (!user) { authMessage.innerText = "Вы не авторизованы"; return; }
-    const login = user.email ? user.email.replace('@skyfire.local', '') : user.uid;
+    const uid = user.uid;
 
     try {
         const response = await fetch(WORKER_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ key, uid: login })
+            body: JSON.stringify({ key, uid })
         });
         const data = await response.json();
         if (response.ok) {
             authMessage.innerText = data.message || 'Ключ активирован!';
-            loadGameForUser(login);
+            // После активации ключа загружаем игру
+            loadGameForUser(uid);
         } else {
             authMessage.innerText = data.error || 'Ошибка активации';
         }
@@ -637,29 +553,36 @@ async function activateKey(key) {
     }
 }
 
-async function loadGameForUser(login) {
+async function loadGameForUser(uid) {
     try {
-        const snap = await db.ref(`gameData/${login}`).once('value');
+        const snap = await db.ref(`gameData/${uid}`).once('value');
         const data = snap.val();
         if (data) {
             playerXP = data.playerXP || 0;
             playerStats = data.playerStats || { wins:0, losses:0, citiesDestroyed:0, buildingsDestroyed:0, missilesLaunched:0, hits:0, totalShots:0 };
             updateRankUI();
+        } else {
+            // Если gameData нет, создаём пустые
+            await db.ref(`gameData/${uid}`).set({
+                playerXP: 0,
+                playerStats: { wins:0, losses:0, citiesDestroyed:0, buildingsDestroyed:0, missilesLaunched:0, hits:0, totalShots:0 }
+            });
         }
+        currentUID = uid;
         document.getElementById('authOverlay').style.display = 'none';
         document.getElementById('menuScreen').style.display = 'flex';
-        startAutoSave(login);
+        startAutoSave(uid);
     } catch (e) {
         console.error('Ошибка загрузки игры', e);
         authMessage.innerText = 'Ошибка загрузки данных';
     }
 }
 
-function startAutoSave(login) {
+function startAutoSave(uid) {
     if (window.saveInterval) clearInterval(window.saveInterval);
     window.saveInterval = setInterval(async () => {
         try {
-            await db.ref(`gameData/${login}`).set({
+            await db.ref(`gameData/${uid}`).set({
                 playerXP,
                 playerStats
             });
@@ -680,12 +603,13 @@ authSubmitBtn.onclick = async () => {
 };
 toggleLink.onclick = toggleMode;
 
+// Обработчик изменения состояния авторизации
 auth.onAuthStateChanged(async (user) => {
     if (user) {
-        const login = user.email ? user.email.replace('@skyfire.local', '') : user.uid;
-        const snap = await db.ref(`users/${login}/keyUsed`).once('value');
+        const uid = user.uid;
+        const snap = await db.ref(`users/${uid}/keyUsed`).once('value');
         if (snap.exists()) {
-            loadGameForUser(login);
+            loadGameForUser(uid);
         } else {
             document.getElementById('authOverlay').style.display = 'flex';
             showKeyInput();
@@ -696,7 +620,7 @@ auth.onAuthStateChanged(async (user) => {
 });
 
 // ============================================================
-// 8. РЕЙТИНГ
+// 7. РЕЙТИНГ (топ игроков)
 // ============================================================
 document.getElementById('rankBtn').onclick = function() {
     document.getElementById('rankModal').style.display = 'block';
@@ -721,9 +645,9 @@ async function loadRanking() {
             list.innerHTML = '<li class="no-players">Нет игроков</li>';
             return;
         }
-        const players = Object.keys(data).map(key => ({
-            login: key,
-            elo: data[key].elo || 1000
+        const players = Object.keys(data).map(uid => ({
+            login: data[uid].login || uid,
+            elo: data[uid].elo || 1000
         })).sort((a,b) => b.elo - a.elo);
         const top = players.slice(0, 10);
         list.innerHTML = '';
@@ -745,7 +669,7 @@ async function loadRanking() {
 }
 
 // ============================================================
-// 9. ЛОГИКА МУЛЬТИПЛЕЕРА
+// 8. МУЛЬТИПЛЕЕР (без изменений, но использует currentUID)
 // ============================================================
 function generateRoomId() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789';
@@ -761,11 +685,12 @@ document.getElementById('multiplayerBtn').onclick = function() {
 
 document.getElementById('createRoomBtn').onclick = function() {
     if (!auth.currentUser) { alert("Сначала войдите в аккаунт!"); return; }
+    const uid = auth.currentUser.uid;
     const roomId = generateRoomId();
     const gameData = {
-        host: auth.currentUser.uid,
+        host: uid,
         players: {
-            [auth.currentUser.uid]: { team: 'russia', ready: false }
+            [uid]: { team: 'russia', ready: false }
         },
         status: 'waiting',
         createdAt: Date.now()
@@ -783,18 +708,19 @@ document.getElementById('joinRoomBtn').onclick = function() {
     const roomId = document.getElementById('roomCodeInput').value.trim().toUpperCase();
     if (!roomId) { alert("Введите код комнаты"); return; }
     if (!auth.currentUser) { alert("Сначала войдите в аккаунт!"); return; }
+    const uid = auth.currentUser.uid;
     db.ref('games').child(roomId).once('value').then(snapshot => {
         if (!snapshot.exists()) { alert("Комната не найдена!"); return; }
         const data = snapshot.val();
         if (data.status === 'playing') { alert("Игра уже началась!"); return; }
-        if (data.players && data.players[auth.currentUser.uid]) { alert("Вы уже в этой комнате!"); return; }
+        if (data.players && data.players[uid]) { alert("Вы уже в этой комнате!"); return; }
         const teams = Object.values(data.players).map(p => p.team);
         let myTeam = 'ukraine';
         if (!teams.includes('russia')) myTeam = 'russia';
         else if (!teams.includes('ukraine')) myTeam = 'ukraine';
         else { alert("В комнате уже два игрока!"); return; }
         const updates = {};
-        updates[`players/${auth.currentUser.uid}`] = { team: myTeam, ready: false };
+        updates[`players/${uid}`] = { team: myTeam, ready: false };
         db.ref('games').child(roomId).update(updates).then(() => {
             currentRoomId = roomId;
             isHost = false;
@@ -933,7 +859,7 @@ function leaveLobby() {
 }
 
 // ============================================================
-// 10. ИГРОВОЙ ДВИЖОК (полный, с обновлённым оружием)
+// 9. ИГРОВОЙ ДВИЖОК (полный, без изменений)
 // ============================================================
 // ---- СПИСОК ВСЕХ ГОРОДОВ ----
 const allCities = [
@@ -969,7 +895,6 @@ const allCities = [
     { name: 'ЛЬВОВ', center: [49.8397, 24.0297], team: 'ukraine' }
 ];
 
-// ---- ФУНКЦИИ ПОДГОТОВКИ ГОРОДОВ ----
 function prepareCities(selectedNames) {
     let filtered = allCities.filter(c => selectedNames.includes(c.name));
     let russia = filtered.filter(c => c.team === 'russia').sort((a,b) => a.center[1] - b.center[1]);
@@ -1584,7 +1509,6 @@ function buildWeaponGrid(){
         card.onclick = () => { attackType = type; updateCostDisplay(); document.querySelectorAll('.weapon-card').forEach(c=>c.classList.remove('selected')); card.classList.add('selected'); };
         container.appendChild(card);
     });
-    // Если attackType не выбран или недоступен, выбираем первый
     if (!attackType || !available.includes(attackType)) {
         if (available.length > 0) {
             attackType = available[0];
@@ -1701,7 +1625,7 @@ document.getElementById('logoutBtn').onclick = function() {
     });
 };
 
-// ---- МУЛЬТИПЛЕЕР СИНХРОНИЗАЦИЯ ----
+// ---- МУЛЬТИПЛЕЕР СИНХРОНИЗАЦИЯ (без изменений) ----
 function startMultiplayerGame(roomId, data) {
     console.log("startMultiplayerGame", roomId, data);
     gameActive = false;
@@ -2082,7 +2006,7 @@ function applyGameState(state) {
     }
 }
 
-console.log("✅ Игра полностью загружена. Ключи защищены через Cloudflare Worker. Оружие обновлено.");
+console.log("✅ Игра полностью загружена. Ключи защищены через Cloudflare Worker. Оружие обновлено, данные хранятся по UID.");
 </script>
 </body>
 </html>
