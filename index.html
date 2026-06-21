@@ -10,10 +10,10 @@
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
-        /* ===== ВСЕ СТИЛИ ===== */
+        /* ===== ВАШИ СТИЛИ (полностью сохранены) ===== */
         *{margin:0;padding:0;box-sizing:border-box;user-select:none;-webkit-tap-highlight-color:transparent}
         body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#0a0f12;overflow:hidden;height:100vh;color:#eef;touch-action:manipulation}
         .screen{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;justify-content:center;align-items:center;z-index:2000;background:radial-gradient(circle at 20% 30%,#0a1f1a,#030a08)}
@@ -98,6 +98,7 @@
         @media (min-width:601px) and (max-width:900px){#gameHUD{padding:4px 12px;font-size:.8rem}.bar-bg{width:80px;height:7px}.modal{width:80vw;padding:20px}.card,.auth-card{padding:30px 24px}.logo{font-size:2.5rem}}
         @media (max-width:800px) and (orientation:landscape){#gameHUD{flex-direction:row;flex-wrap:wrap;font-size:.6rem;padding:2px 8px;min-height:30px}.hud-resource,.hud-rank{font-size:.7rem;padding:2px 6px}.bar-bg{width:40px;height:4px}#buildToggle{padding:6px 12px;font-size:.8rem;min-height:30px}#buildMenu .build-btn{font-size:.7rem;padding:4px 10px}.modal{width:70vw;max-height:80vh;padding:12px}.modal .weapon-grid{max-height:150px}.modal .weapon-card img{height:30px}}
         @media (max-width:400px){.card,.auth-card{padding:12px 10px;border-radius:24px}.logo{font-size:1.6rem}.card button,.auth-card button{font-size:.8rem;padding:8px;margin:4px 0}.card input,.auth-card input{font-size:.8rem;padding:8px}.bar-bg{width:35px;height:4px}.modal{padding:10px;width:98vw}.modal h3{font-size:1rem}.modal .weapon-card{padding:4px}.modal .weapon-card img{height:30px}}
+
         .zone-marker{background:rgba(10,20,30,0.85);backdrop-filter:blur(8px);border-radius:16px;padding:8px 14px;text-align:center;font-weight:700;color:#fff;font-size:clamp(0.6rem,1.2vw,0.9rem);box-shadow:0 8px 25px rgba(0,0,0,0.7),0 0 15px rgba(0,255,200,0.1);border:2px solid rgba(255,255,255,0.25);min-width:70px;transition:transform 0.2s ease, box-shadow 0.2s ease;text-shadow:0 2px 4px rgba(0,0,0,0.5);letter-spacing:0.5px;line-height:1.3;pointer-events:none}
         .zone-marker .city-name{font-size:clamp(0.7rem,1.4vw,1rem);font-weight:800;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:2px}
         .zone-marker .city-hp{display:block;font-size:clamp(0.6rem,1.1vw,0.85rem);font-weight:600;opacity:0.9;background:rgba(0,0,0,0.3);border-radius:20px;padding:2px 8px;margin-top:2px}
@@ -137,6 +138,7 @@
 </head>
 <body>
 
+<!-- Оверлей авторизации -->
 <div id="authOverlay" class="auth-overlay">
     <div class="auth-card">
         <h2 id="authTitle">ВХОД</h2>
@@ -151,6 +153,7 @@
     </div>
 </div>
 
+<!-- Главное меню -->
 <div id="menuScreen" class="screen">
     <div class="missile-bg"></div>
     <div class="scan-line"></div>
@@ -173,6 +176,7 @@
     </div>
 </div>
 
+<!-- Лобби -->
 <div id="lobbyScreen" class="screen" style="display:none;">
     <div class="card" style="width:400px; max-width:92%;">
         <h1>ЛОББИ</h1>
@@ -189,12 +193,14 @@
 </div>
 <div id="copyNotification">✅ Код скопирован!</div>
 
+<!-- Модалка рейтинга -->
 <div id="rankModal" class="ranking-modal" style="display:none;">
     <span class="close-btn" id="closeRankModal">&times;</span>
     <h2>🏆 ТОП ИГРОКОВ</h2>
     <ul id="rankList" class="ranking-list"><li style="text-align:center; color:#888; padding:20px;">Загрузка...</li></ul>
 </div>
 
+<!-- Меню настройки -->
 <div id="setupModal">
     <span class="close-setup" id="closeSetupModal">&times;</span>
     <h2>⚙️ НАСТРОЙКА ИГРЫ</h2>
@@ -215,6 +221,7 @@
     <button class="start-btn" id="startGameBtn">🚀 НАЧАТЬ ИГРУ</button>
 </div>
 
+<!-- Модалка атаки -->
 <div id="attackModal" class="modal" style="display:none;">
     <h3>🎯 ВЫБОР ЦЕЛИ</h3>
     <select id="targetSelect" size="5" style="width:100%; margin-bottom:10px;"></select>
@@ -226,6 +233,7 @@
     <button id="attackCancelBtn" style="background:#555; color:#fff;">ОТМЕНА</button>
 </div>
 
+<!-- Контейнер игры -->
 <div id="gameContainer" style="display:none; width:100%; height:100%; position:relative;">
     <div id="map" style="width:100%; height:100%;"></div>
     <div id="gameHUD">
@@ -255,24 +263,30 @@
 
 <script>
 // ============================================================
-// 1. НАСТРОЙКИ FIREBASE (проект keys-c7467)
+// 1. НАСТРОЙКИ FIREBASE (ваш проект keys-c7467)
 // ============================================================
 const firebaseConfig = {
-  apiKey: "AIzaSyCksMAKAI1U2gXRHefO0vAZYbY4Y6ES1Sg",
-  authDomain: "keys-c7467.firebaseapp.com",
-  databaseURL: "https://keys-c7467-default-rtdb.firebaseio.com",
-  projectId: "keys-c7467",
-  storageBucket: "keys-c7467.firebasestorage.app",
-  messagingSenderId: "573161424340",
-  appId: "1:573161424340:web:5f1989d6e26aa04a9f0241"
+    apiKey: "AIzaSyCksMAKAI1U2gXRHefO0vAZYbY4Y6ES1Sg",
+    authDomain: "keys-c7467.firebaseapp.com",
+    databaseURL: "https://keys-c7467-default-rtdb.firebaseio.com",
+    projectId: "keys-c7467",
+    storageBucket: "keys-c7467.firebasestorage.app",
+    messagingSenderId: "573161424340",
+    appId: "1:573161424340:web:6fe203312d2a18079f0241"
 };
 firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
 const db = firebase.database();
+const usersRef = db.ref('users');
+const sessionsRef = db.ref('sessions');
+const gamesRef = db.ref('games');
 
 // ============================================================
-// 2. ЛИЦЕНЗИОННЫЕ КЛЮЧИ (все 21 ключ)
+// 2. ХЕШИРОВАНИЕ (SHA-256) и ЛИЦЕНЗИОННЫЕ КЛЮЧИ (все 21)
 // ============================================================
+function hashSHA256(text) {
+    return CryptoJS.SHA256(text).toString(CryptoJS.enc.Hex);
+}
+
 const VALID_KEYS_ORIGINAL = [
     "8n2ks5jf92jdn30qpeor-1k4slp",
     "9n3ks2jf92jdn30qpeor-2k5slr",
@@ -296,214 +310,25 @@ const VALID_KEYS_ORIGINAL = [
     "8n5ks3jf92jdn30qpeor-9k1slb",
     "1k6slakf92jdn30qpe-2j3hs4"
 ];
+const VALID_KEYS_HASHES = VALID_KEYS_ORIGINAL.map(k => hashSHA256(k));
 
 // ============================================================
-// 3. ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ (SHA-256)
+// 3. УПРАВЛЕНИЕ АККАУНТАМИ И СЕССИЯМИ (ваша система)
 // ============================================================
-async function sha256(message) {
-    const msgBuffer = new TextEncoder().encode(message);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-// ============================================================
-// 4. ПЕРЕМЕННЫЕ ИГРЫ
-// ============================================================
-let playerXP = 0;
-let playerStats = { wins:0, losses:0, citiesDestroyed:0, buildingsDestroyed:0, missilesLaunched:0, hits:0, totalShots:0 };
-let gameActive = false;
-let map = null;
-let resources = 300;
-let buildings = [], zones = [], projectiles = [];
-let radars = [], pvoSystems = [], powerPlants = [], refineries = [], rocketFactories = [];
-let buildMode = null;
-let airportMarker = null, airportPlaced = false;
-let myTeam = null, enemyTeam = null;
-let isAI = false, isSandbox = false, isMultiplayer = false;
-let setupDifficulty = 'NORMAL', setupMode = 'single', selectedCountry = 'russia';
-let selectedCityNames = [];
-let russiaGeoJSON = null, ukraineGeoJSON = null, bordersLoaded = false;
-let radarAnimationInterval = null, aiInterval = null, economyInterval = null;
-let attackType = null, attackCount = 1;
-let maxRadars = 8, maxPvo = 12, maxPowerPlants = 5, maxRefineries = 3;
-let currentAirport = null;
-let audioCtx = null;
-let lastUpdate = 0;
-let mpGameRef = null, actionsListenerRef = null, gameListenerRef = null;
-let currentRoomId = null, isHost = false, mpInitDone = false;
-let currentUID = null;
-
-// ============================================================
-// 5. ОРУЖИЕ (обновлённый список с шансами ПВО)
-// ============================================================
-const weaponTypes = {
-    shahed: { name: 'ШАХЕД', speed: 0.006, damage: 25, cost: 60, pvoChance: 0.08, spriteOffset: 0, img: 'drone.png' },
-    x101: { name: 'X-101', speed: 0.03, damage: 65, cost: 160, pvoChance: 0.12, spriteOffset: 0, img: 'x101.png' },
-    iskander: { name: 'ИСКАНДЕР', speed: 0.07, damage: 300, cost: 1000, pvoChance: 0.04, spriteOffset: 0, img: 'iskander.png' },
-    kinzhal: { name: 'КИНЖАЛ', speed: 0.11, damage: 250, cost: 850, pvoChance: 0.05, spriteOffset: 0, img: 'kinzhal.png' },
-    kalibr: { name: 'КАЛИБР', speed: 0.025, damage: 200, cost: 750, pvoChance: 0.08, spriteOffset: 0, img: 'kalibr.png' },
-    geran5: { name: 'ГЕРАНЬ-5', speed: 0.05, damage: 45, cost: 120, pvoChance: 0.07, spriteOffset: 0, img: 'geran5.png' },
-    lutyi: { name: 'ЛЮТИЙ', speed: 0.006, damage: 30, cost: 70, pvoChance: 0.08, spriteOffset: 0, img: 'droneua.png' },
-    grom2: { name: 'ГРОМ-2', speed: 0.06, damage: 150, cost: 500, pvoChance: 0.06, spriteOffset: 0, img: 'grom2.png' },
-    flamingo: { name: 'ФЛАМИНГО', speed: 0.04, damage: 80, cost: 250, pvoChance: 0.10, spriteOffset: 0, img: 'flamingo.png' },
-    stormshadow: { name: 'ШТОРМ ШАДОУ', speed: 0.035, damage: 120, cost: 400, pvoChance: 0.09, spriteOffset: 0, img: 'stormshadow.png' }
-};
-
-function getAvailableWeapons(team) {
-    return team === 'russia' 
-        ? ['shahed', 'x101', 'iskander', 'kinzhal', 'kalibr', 'geran5']
-        : ['lutyi', 'grom2', 'flamingo', 'stormshadow'];
-}
-
-const costs = { radar: 180, pvo: 220, powerPlant: 250, refinery: 400, rocketFactory: 500 };
-const ranks = [
-    { level:1, xp:0, title:"Рядовой" },
-    { level:2, xp:500, title:"Сержант" },
-    { level:3, xp:1200, title:"Лейтенант" },
-    { level:4, xp:2500, title:"Капитан" },
-    { level:5, xp:5000, title:"Майор" },
-    { level:6, xp:9000, title:"Полковник" },
-    { level:7, xp:15000, title:"Генерал" }
-];
-
-// ============================================================
-// 6. ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ (иконки, звук, хэлперы)
-// ============================================================
-function playBeep(freq, duration, type='sine') {
-    if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const now = audioCtx.currentTime;
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.connect(gain); gain.connect(audioCtx.destination);
-    osc.frequency.value = freq; osc.type = type;
-    gain.gain.setValueAtTime(0.15, now);
-    gain.gain.exponentialRampToValueAtTime(0.00001, now + duration);
-    osc.start(); osc.stop(now + duration);
-}
-
-function getAirportIcon() {
-    try { return L.icon({ iconUrl: 'images/airport.png', iconSize: [48,48], iconAnchor: [24,24] }); }
-    catch(e){ return L.divIcon({ html:'🏠', iconSize:[48,48] }); }
-}
-function getRadarIcon() {
-    try { return L.icon({ iconUrl: 'images/radar.png', iconSize: [40,40], iconAnchor: [20,20] }); }
-    catch(e){ return L.divIcon({ html:'📡', iconSize:[40,40] }); }
-}
-function getPvoIcon() {
-    try { return L.icon({ iconUrl: 'images/pvo.png', iconSize: [40,40], iconAnchor: [20,20] }); }
-    catch(e){ return L.divIcon({ html:'🛡️', iconSize:[40,40] }); }
-}
-function getPowerPlantIcon() {
-    try { return L.icon({ iconUrl: 'images/powerplant.png', iconSize: [40,40], iconAnchor: [20,20] }); }
-    catch(e){ return L.divIcon({ html:'⚡', iconSize:[40,40] }); }
-}
-function getRefineryIcon() {
-    try { return L.icon({ iconUrl: 'images/refinery.png', iconSize: [40,40], iconAnchor: [20,20] }); }
-    catch(e){ return L.divIcon({ html:'⛽', iconSize:[40,40] }); }
-}
-function getRocketFactoryIcon() {
-    try { return L.icon({ iconUrl: 'images/rocket_factory.png', iconSize: [40,40], iconAnchor: [20,20] }); }
-    catch(e){ return L.divIcon({ html:'🏭', iconSize:[40,40] }); }
-}
-function getInterceptorIcon() {
-    try { return L.icon({ iconUrl: 'images/pvo_rocket.png', iconSize: [24,24], iconAnchor: [12,12] }); }
-    catch(e){ return L.divIcon({ html:'🚀', iconSize:[24,24] }); }
-}
-
-function getMissileImage(type, team) {
-    if (type === 'shahed') return (team === 'russia') ? 'images/drone.png' : 'images/droneua.png';
-    if (type === 'x101') return 'images/x101.png';
-    if (type === 'iskander') return 'images/iskander.png';
-    if (type === 'kinzhal') return 'images/kinzhal.png';
-    if (type === 'kalibr') return 'images/kalibr.png';
-    if (type === 'geran5') return 'images/geran5.png';
-    if (type === 'lutyi') return (team === 'ukraine') ? 'images/droneua.png' : 'images/drone.png';
-    if (type === 'grom2') return 'images/grom2.png';
-    if (type === 'flamingo') return 'images/flamingo.png';
-    if (type === 'stormshadow') return 'images/stormshadow.png';
-    return 'images/missile.png';
-}
-
-function getMissileIcon(type, team) {
-    const url = getMissileImage(type, team);
-    try { return L.icon({ iconUrl: url, iconSize: [28,28], iconAnchor: [14,14] }); }
-    catch(e) { return L.divIcon({ html: '💥', iconSize:[28,28] }); }
-}
-
-function createCityMarker(city) {
-    const percent = Math.floor((city.hp / city.baseHp) * 100);
-    const hpClass = percent > 60 ? 'hp-high' : (percent > 30 ? 'hp-mid' : 'hp-low');
-    const teamClass = city.team === 'russia' ? 'russia' : 'ukraine';
-    const html = `<div class="zone-marker ${teamClass}"><span class="city-name">${city.name}</span><span class="city-hp ${hpClass}">${percent}%</span></div>`;
-    return L.divIcon({ html, className: '', iconSize: [100, 60], iconAnchor: [50, 30] });
-}
-
-function updateRankUI() {
-    let idx = ranks.length-1; while(idx>0 && playerXP < ranks[idx].xp) idx--;
-    document.getElementById('rankTitle').innerHTML = ranks[idx].title;
-    document.getElementById('rankXp').innerHTML = playerXP + " XP";
-}
-function addXP(amount) {
-    playerXP += amount;
-    updateRankUI();
-}
-function updateUI(){ 
-    document.getElementById('energy').innerHTML = isSandbox ? '∞' : Math.floor(resources); 
-}
-function updateStatsAfterHit(damage, targetType, isHit){ 
-    playerStats.totalShots++; 
-    if(isHit){ 
-        playerStats.hits++; 
-        if(targetType === 'zone') playerStats.citiesDestroyed++; 
-        else playerStats.buildingsDestroyed++; 
-    } 
-}
-function updateStatsAfterGame(victory){ 
-    if(victory) playerStats.wins++; else playerStats.losses++; 
-    if(victory) addXP(300); 
-}
-async function updateElo(win, mode) {
-    if (!currentUID) return;
-    let eloChange = 0;
-    if (mode === 'multiplayer') eloChange = win ? 30 : -15;
-    else {
-        switch (setupDifficulty) {
-            case 'EASY': eloChange = win ? 10 : -5; break;
-            case 'NORMAL': eloChange = win ? 20 : -10; break;
-            case 'HARD': eloChange = win ? 30 : -15; break;
-            case 'EXTREME': eloChange = win ? 50 : -25; break;
-            default: eloChange = win ? 20 : -10;
-        }
-    }
-    const userRef = db.ref('users').child(currentUID);
-    const snap = await userRef.get();
-    if (!snap.exists()) return;
-    const currentElo = snap.val().elo || 1000;
-    const newElo = Math.max(0, currentElo + eloChange);
-    await userRef.update({ elo: newElo });
-}
-
-// ============================================================
-// 7. АВТОРИЗАЦИЯ (Firebase Auth + локальная проверка ключей)
-// ============================================================
+let currentUser = null;
+let currentSessionToken = null;
+const authOverlay = document.getElementById('authOverlay');
 const authLogin = document.getElementById('authLogin');
 const authPassword = document.getElementById('authPassword');
+const authKeyGroup = document.getElementById('authKeyGroup');
 const authKey = document.getElementById('authKey');
 const authSubmitBtn = document.getElementById('authSubmitBtn');
 const authMessage = document.getElementById('authMessage');
 const authTitle = document.getElementById('authTitle');
 const toggleLink = document.getElementById('toggleAuthMode');
-const authKeyGroup = document.getElementById('authKeyGroup');
 let isLoginMode = true;
 
-function showKeyInput() {
-    authKeyGroup.style.display = 'block';
-    authSubmitBtn.innerText = "АКТИВИРОВАТЬ КЛЮЧ";
-    authLogin.style.display = 'none';
-    authPassword.style.display = 'none';
-    toggleLink.style.display = 'none';
-}
+function showKeyInput() { authKeyGroup.style.display = 'block'; authSubmitBtn.innerText = "АКТИВИРОВАТЬ КЛЮЧ"; }
 function toggleMode() {
     isLoginMode = !isLoginMode;
     authTitle.innerText = isLoginMode ? "ВХОД" : "РЕГИСТРАЦИЯ";
@@ -517,161 +342,185 @@ function toggleMode() {
 }
 
 function register(login, password) {
-    if (!login || !password) { authMessage.innerText = "Введите логин и пароль"; return; }
-    if (password.length < 6) {
-        authMessage.innerText = "Пароль должен быть не менее 6 символов";
-        return;
-    }
-    login = login.toLowerCase().trim();
-    auth.createUserWithEmailAndPassword(login + '@skyfire.local', password)
-        .then(() => {
-            authMessage.innerText = "Аккаунт создан! Теперь введите лицензионный ключ.";
-            showKeyInput();
-        })
-        .catch(err => { authMessage.innerText = err.message; });
+    if(!login || !password) { authMessage.innerText = "Введите логин и пароль"; return false; }
+    const passwordHash = hashSHA256(password);
+    usersRef.child(login).get().then(snapshot => {
+        if(snapshot.exists()) { authMessage.innerText = "Аккаунт уже существует!"; }
+        else {
+            usersRef.child(login).set({
+                passwordHash: passwordHash,
+                keyUsed: null,
+                gameData: null,
+                elo: 1000
+            }).then(() => {
+                authMessage.innerText = "Аккаунт создан! Теперь войдите.";
+                toggleMode();
+            }).catch(err => {
+                authMessage.innerText = "Ошибка записи в БД: " + err.message;
+            });
+        }
+    }).catch(err => { authMessage.innerText = "Ошибка проверки: " + err.message; });
+    return false;
 }
 
 async function login(login, password) {
-    if (!login || !password) { authMessage.innerText = "Введите логин и пароль"; return; }
-    login = login.toLowerCase().trim();
+    if(!login || !password) { authMessage.innerText = "Введите логин и пароль"; return false; }
     try {
-        const userCredential = await auth.signInWithEmailAndPassword(login + '@skyfire.local', password);
+        const snapshot = await usersRef.child(login).get();
+        if(!snapshot.exists()) { authMessage.innerText = "Аккаунт не найден"; return false; }
+        const userData = snapshot.val();
+        const passwordHash = hashSHA256(password);
+        if(userData.passwordHash !== passwordHash) {
+            authMessage.innerText = "Неверный пароль";
+            return false;
+        }
+        currentUser = login;
+        const token = btoa(login + ":" + Date.now() + ":" + Math.random().toString(36));
+        currentSessionToken = token;
+        await sessionsRef.child(token).set({ login: login, createdAt: Date.now() });
+        localStorage.setItem("skyfire_session_token", token);
         authMessage.innerText = "Вход выполнен!";
-        const user = userCredential.user;
-        const uid = user.uid;
-        currentUID = uid;
-        // Проверяем, активирован ли ключ
-        const snap = await db.ref(`users/${uid}/keyUsed`).once('value');
-        if (!snap.exists()) {
+        if(userData.keyUsed) { loadGameForUser(userData); }
+        else {
+            authTitle.innerText = "АКТИВАЦИЯ ЛИЦЕНЗИИ";
+            authLogin.style.display = 'none';
+            authPassword.style.display = 'none';
+            toggleLink.style.display = 'none';
+            authMessage.innerText = "Введите лицензионный ключ";
             showKeyInput();
-        } else {
-            loadGameForUser(uid);
         }
-    } catch (err) {
-        authMessage.innerText = err.message;
-    }
+        return true;
+    } catch(err) { authMessage.innerText = "Ошибка: " + err.message; return false; }
 }
 
-// ====== АКТИВАЦИЯ КЛЮЧА (локальная проверка + запись в Firebase) ======
 async function activateKey(key) {
-    if (!key) { authMessage.innerText = "Введите ключ"; return; }
-    const user = auth.currentUser;
-    if (!user) { authMessage.innerText = "Вы не авторизованы"; return; }
-    const uid = user.uid;
-
-    try {
-        // 1. Вычисляем хэш ключа
-        const keyHash = await sha256(key);
-
-        // 2. Проверяем, есть ли такой хэш в списке валидных
-        const validHashes = await Promise.all(VALID_KEYS_ORIGINAL.map(k => sha256(k)));
-        if (!validHashes.includes(keyHash)) {
-            authMessage.innerText = "Неверный лицензионный ключ";
-            return;
-        }
-
-        // 3. Проверяем, не использован ли ключ ранее (читаем из Firebase)
-        const usedSnap = await db.ref(`usedKeys/${keyHash}`).once('value');
-        if (usedSnap.exists()) {
-            authMessage.innerText = "Этот ключ уже использован";
-            return;
-        }
-
-        // 4. Записываем использование ключа (сохраняем uid)
-        await db.ref(`usedKeys/${keyHash}`).set(uid);
-
-        // 5. Обновляем запись пользователя (keyUsed)
-        await db.ref(`users/${uid}`).update({
-            keyUsed: keyHash,
-            elo: 1000
-        });
-
-        // 6. Создаём игровые данные, если их нет
-        const gameDataRef = db.ref(`gameData/${uid}`);
-        const gameSnap = await gameDataRef.once('value');
-        if (!gameSnap.exists()) {
-            await gameDataRef.set({
-                playerXP: 0,
-                playerStats: { wins: 0, losses: 0, citiesDestroyed: 0, buildingsDestroyed: 0, missilesLaunched: 0, hits: 0, totalShots: 0 }
-            });
-        }
-
-        authMessage.innerText = "Ключ активирован!";
-        currentUID = uid;
-        loadGameForUser(uid);
-    } catch (error) {
-        authMessage.innerText = "Ошибка активации: " + error.message;
-        console.error(error);
+    if(!key) { authMessage.innerText = "Введите ключ"; return false; }
+    const keyHash = hashSHA256(key);
+    if(!VALID_KEYS_HASHES.includes(keyHash)) {
+        authMessage.innerText = "Неверный лицензионный ключ";
+        return false;
     }
+    const usedSnap = await db.ref('usedKeys/' + keyHash).get();
+    if(usedSnap.exists()) {
+        authMessage.innerText = "Этот ключ уже был использован другим игроком!";
+        return false;
+    }
+    await db.ref('usedKeys/' + keyHash).set(currentUser);
+    const userRef = usersRef.child(currentUser);
+    await userRef.update({ keyUsed: keyHash });
+    authMessage.innerText = "Ключ активирован! Запуск игры...";
+    const updatedData = (await userRef.get()).val();
+    loadGameForUser(updatedData);
+    return true;
 }
 
-async function loadGameForUser(uid) {
-    try {
-        const snap = await db.ref(`gameData/${uid}`).once('value');
-        const data = snap.val();
-        if (data) {
-            playerXP = data.playerXP || 0;
-            playerStats = data.playerStats || { wins:0, losses:0, citiesDestroyed:0, buildingsDestroyed:0, missilesLaunched:0, hits:0, totalShots:0 };
-            updateRankUI();
-        } else {
-            await db.ref(`gameData/${uid}`).set({
-                playerXP: 0,
-                playerStats: { wins:0, losses:0, citiesDestroyed:0, buildingsDestroyed:0, missilesLaunched:0, hits:0, totalShots:0 }
-            });
-        }
-        currentUID = uid;
-        document.getElementById('authOverlay').style.display = 'none';
-        document.getElementById('menuScreen').style.display = 'flex';
-        startAutoSave(uid);
-    } catch (e) {
-        console.error('Ошибка загрузки игры', e);
-        authMessage.innerText = 'Ошибка загрузки данных';
-    }
-}
-
-function startAutoSave(uid) {
-    if (window.saveInterval) clearInterval(window.saveInterval);
-    window.saveInterval = setInterval(async () => {
+function loadGameForUser(userData) {
+    if(userData.gameData) {
         try {
-            await db.ref(`gameData/${uid}`).set({
-                playerXP,
-                playerStats
-            });
-        } catch (e) {
-            console.warn('Ошибка сохранения', e);
+            const data = JSON.parse(userData.gameData);
+            if(data.playerXP) playerXP = data.playerXP;
+            if(data.playerStats) playerStats = data.playerStats;
+            updateRankUI();
+        } catch(e) {}
+    }
+    authOverlay.style.display = 'none';
+    document.getElementById('menuScreen').style.display = 'flex';
+    if(window.saveInterval) clearInterval(window.saveInterval);
+    window.saveInterval = setInterval(() => {
+        if(currentUser) {
+            const data = JSON.stringify({ playerXP, playerStats });
+            usersRef.child(currentUser).update({ gameData: data });
         }
     }, 30000);
 }
 
-authSubmitBtn.onclick = async () => {
-    if (authKeyGroup.style.display === 'block') {
-        await activateKey(authKey.value.trim());
-    } else if (isLoginMode) {
-        await login(authLogin.value.trim(), authPassword.value.trim());
-    } else {
-        register(authLogin.value.trim(), authPassword.value.trim());
-    }
-};
-toggleLink.onclick = toggleMode;
-
-auth.onAuthStateChanged(async (user) => {
-    if (user) {
-        const uid = user.uid;
-        currentUID = uid;
-        const snap = await db.ref(`users/${uid}/keyUsed`).once('value');
-        if (snap.exists()) {
-            loadGameForUser(uid);
-        } else {
-            document.getElementById('authOverlay').style.display = 'flex';
+async function restoreSession() {
+    const token = localStorage.getItem("skyfire_session_token");
+    if(!token) { authOverlay.style.display = 'flex'; return; }
+    try {
+        const snap = await sessionsRef.child(token).get();
+        if(!snap.exists()) {
+            localStorage.removeItem("skyfire_session_token");
+            authOverlay.style.display = 'flex';
+            return;
+        }
+        const sessionData = snap.val();
+        const login = sessionData.login;
+        const userSnap = await usersRef.child(login).get();
+        if(!userSnap.exists()) {
+            localStorage.removeItem("skyfire_session_token");
+            authOverlay.style.display = 'flex';
+            return;
+        }
+        currentUser = login; currentSessionToken = token;
+        const userData = userSnap.val();
+        const age = Date.now() - sessionData.createdAt;
+        if(age > 30*24*3600*1000) {
+            await sessionsRef.child(token).remove();
+            localStorage.removeItem("skyfire_session_token");
+            authOverlay.style.display = 'flex';
+            return;
+        }
+        if(userData.keyUsed) { loadGameForUser(userData); }
+        else {
+            authOverlay.style.display = 'flex';
+            authTitle.innerText = "АКТИВАЦИЯ ЛИЦЕНЗИИ";
+            authLogin.style.display = 'none'; authPassword.style.display = 'none';
+            toggleLink.style.display = 'none';
+            authMessage.innerText = "Введите лицензионный ключ";
             showKeyInput();
         }
-    } else {
-        document.getElementById('authOverlay').style.display = 'flex';
+    } catch(err) { console.error("Ошибка восстановления сессии:", err); authOverlay.style.display = 'flex'; }
+}
+
+async function logout() {
+    if(window.saveInterval) clearInterval(window.saveInterval);
+    if(currentUser) {
+        const data = JSON.stringify({ playerXP, playerStats });
+        await usersRef.child(currentUser).update({ gameData: data });
     }
-});
+    if(currentSessionToken) await sessionsRef.child(currentSessionToken).remove();
+    localStorage.removeItem("skyfire_session_token");
+    currentUser = null; currentSessionToken = null;
+    location.reload();
+}
+
+authSubmitBtn.onclick = async () => {
+    if(authKeyGroup.style.display === 'block') await activateKey(authKey.value.trim());
+    else if(isLoginMode) await login(authLogin.value.trim(), authPassword.value.trim());
+    else register(authLogin.value.trim(), authPassword.value.trim());
+};
+toggleLink.onclick = toggleMode;
+restoreSession();
 
 // ============================================================
-// 8. РЕЙТИНГ (топ игроков)
+// 4. СИСТЕМА ЭЛО
+// ============================================================
+async function updateElo(win, mode) {
+    if (!currentUser) return;
+    let eloChange = 0;
+    if (mode === 'multiplayer') {
+        eloChange = win ? 30 : -15;
+    } else {
+        switch (setupDifficulty) {
+            case 'EASY': eloChange = win ? 10 : -5; break;
+            case 'NORMAL': eloChange = win ? 20 : -10; break;
+            case 'HARD': eloChange = win ? 30 : -15; break;
+            case 'EXTREME': eloChange = win ? 50 : -25; break;
+            default: eloChange = win ? 20 : -10;
+        }
+    }
+    const userRef = usersRef.child(currentUser);
+    const snap = await userRef.get();
+    if (!snap.exists()) return;
+    const currentElo = snap.val().elo || 1000;
+    const newElo = Math.max(0, currentElo + eloChange);
+    await userRef.update({ elo: newElo });
+    console.log(`Эло изменено на ${eloChange}, теперь ${newElo}`);
+}
+
+// ============================================================
+// 5. РЕЙТИНГ (топ игроков)
 // ============================================================
 document.getElementById('rankBtn').onclick = function() {
     document.getElementById('rankModal').style.display = 'block';
@@ -690,15 +539,15 @@ async function loadRanking() {
     const list = document.getElementById('rankList');
     list.innerHTML = '<li style="text-align:center; color:#888; padding:20px;">Загрузка...</li>';
     try {
-        const snapshot = await db.ref('users').once('value');
+        const snapshot = await usersRef.once('value');
         const data = snapshot.val();
         if (!data) {
             list.innerHTML = '<li class="no-players">Нет игроков</li>';
             return;
         }
-        const players = Object.keys(data).map(uid => ({
-            login: data[uid].login || uid,
-            elo: data[uid].elo || 1000
+        const players = Object.keys(data).map(key => ({
+            login: key,
+            elo: data[key].elo || 1000
         })).sort((a,b) => b.elo - a.elo);
         const top = players.slice(0, 10);
         list.innerHTML = '';
@@ -720,14 +569,15 @@ async function loadRanking() {
 }
 
 // ============================================================
-// 9. МУЛЬТИПЛЕЕР (полный, без изменений)
+// 6. МУЛЬТИПЛЕЕР (ЛОББИ И КОМНАТЫ) — ваша реализация
 // ============================================================
-function generateRoomId() {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789';
-    let id = '';
-    for (let i = 0; i < 6; i++) id += chars.charAt(Math.floor(Math.random() * chars.length));
-    return id;
-}
+let currentRoomId = null;
+let gameListenerRef = null;
+let isHost = false;
+let mpGameRef = null;
+let isMultiplayer = false;
+let mpInitDone = false;
+let actionsListenerRef = null;
 
 document.getElementById('multiplayerBtn').onclick = function() {
     const controls = document.getElementById('multiplayerControls');
@@ -735,18 +585,17 @@ document.getElementById('multiplayerBtn').onclick = function() {
 };
 
 document.getElementById('createRoomBtn').onclick = function() {
-    if (!auth.currentUser) { alert("Сначала войдите в аккаунт!"); return; }
-    const uid = auth.currentUser.uid;
+    if (!currentUser) { alert("Сначала войдите в аккаунт!"); return; }
     const roomId = generateRoomId();
     const gameData = {
-        host: uid,
+        host: currentUser,
         players: {
-            [uid]: { team: 'russia', ready: false }
+            [currentUser]: { team: 'russia', ready: false }
         },
         status: 'waiting',
         createdAt: Date.now()
     };
-    db.ref('games').child(roomId).set(gameData).then(() => {
+    gamesRef.child(roomId).set(gameData).then(() => {
         currentRoomId = roomId;
         isHost = true;
         document.getElementById('roomDisplay').innerHTML = `Комната создана! Код: <b>${roomId}</b>`;
@@ -758,21 +607,20 @@ document.getElementById('createRoomBtn').onclick = function() {
 document.getElementById('joinRoomBtn').onclick = function() {
     const roomId = document.getElementById('roomCodeInput').value.trim().toUpperCase();
     if (!roomId) { alert("Введите код комнаты"); return; }
-    if (!auth.currentUser) { alert("Сначала войдите в аккаунт!"); return; }
-    const uid = auth.currentUser.uid;
-    db.ref('games').child(roomId).once('value').then(snapshot => {
+    if (!currentUser) { alert("Сначала войдите в аккаунт!"); return; }
+    gamesRef.child(roomId).once('value').then(snapshot => {
         if (!snapshot.exists()) { alert("Комната не найдена!"); return; }
         const data = snapshot.val();
         if (data.status === 'playing') { alert("Игра уже началась!"); return; }
-        if (data.players && data.players[uid]) { alert("Вы уже в этой комнате!"); return; }
+        if (data.players && data.players[currentUser]) { alert("Вы уже в этой комнате!"); return; }
         const teams = Object.values(data.players).map(p => p.team);
         let myTeam = 'ukraine';
         if (!teams.includes('russia')) myTeam = 'russia';
         else if (!teams.includes('ukraine')) myTeam = 'ukraine';
         else { alert("В комнате уже два игрока!"); return; }
         const updates = {};
-        updates[`players/${uid}`] = { team: myTeam, ready: false };
-        db.ref('games').child(roomId).update(updates).then(() => {
+        updates[`players/${currentUser}`] = { team: myTeam, ready: false };
+        gamesRef.child(roomId).update(updates).then(() => {
             currentRoomId = roomId;
             isHost = false;
             document.getElementById('roomDisplay').innerHTML = `Подключено к комнате: <b>${roomId}</b>`;
@@ -781,6 +629,13 @@ document.getElementById('joinRoomBtn').onclick = function() {
         });
     }).catch(err => alert("Ошибка подключения: " + err.message));
 };
+
+function generateRoomId() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789';
+    let id = '';
+    for (let i = 0; i < 6; i++) id += chars.charAt(Math.floor(Math.random() * chars.length));
+    return id;
+}
 
 document.getElementById('copyRoomCodeBtn').onclick = function() {
     const code = document.getElementById('lobbyRoomCode').innerText;
@@ -822,7 +677,7 @@ function enterLobby(roomId) {
     document.getElementById('lobbyRoomCode').innerText = roomId;
 
     if (gameListenerRef) gameListenerRef.off();
-    gameListenerRef = db.ref('games').child(roomId);
+    gameListenerRef = gamesRef.child(roomId);
     gameListenerRef.on('value', snapshot => {
         const data = snapshot.val();
         if (!data) {
@@ -862,7 +717,7 @@ function updateLobbyUI(data) {
         statusEl.style.color = '#66ff66';
         if (isHost && data.status !== 'playing') {
             setTimeout(() => {
-                db.ref('games').child(currentRoomId).update({ status: 'playing' });
+                gamesRef.child(currentRoomId).update({ status: 'playing' });
             }, 2000);
         }
     } else {
@@ -872,18 +727,18 @@ function updateLobbyUI(data) {
     const readyBtn = document.getElementById('readyBtn');
     if (data.status === 'playing') {
         readyBtn.style.display = 'none';
-    } else if (players[auth.currentUser?.uid]) {
+    } else if (players[currentUser]) {
         readyBtn.style.display = 'block';
-        readyBtn.innerText = players[auth.currentUser?.uid].ready ? '✅ ГОТОВ' : 'ГОТОВ';
-        readyBtn.disabled = players[auth.currentUser?.uid].ready;
+        readyBtn.innerText = players[currentUser].ready ? '✅ ГОТОВ' : 'ГОТОВ';
+        readyBtn.disabled = players[currentUser].ready;
     } else {
         readyBtn.style.display = 'none';
     }
 }
 
 document.getElementById('readyBtn').onclick = function() {
-    if (!currentRoomId || !auth.currentUser) return;
-    db.ref('games').child(currentRoomId).child(`players/${auth.currentUser.uid}/ready`).set(true);
+    if (!currentRoomId || !currentUser) return;
+    gamesRef.child(currentRoomId).child(`players/${currentUser}/ready`).set(true);
 };
 
 document.getElementById('leaveLobbyBtn').onclick = function() {
@@ -896,9 +751,9 @@ function leaveLobby() {
     if (actionsListenerRef) { actionsListenerRef.off(); actionsListenerRef = null; }
     if (currentRoomId) {
         if (isHost) {
-            db.ref('games').child(currentRoomId).remove().catch(()=>{});
+            gamesRef.child(currentRoomId).remove().catch(()=>{});
         } else {
-            db.ref('games').child(currentRoomId).child(`players/${auth.currentUser.uid}`).remove().catch(()=>{});
+            gamesRef.child(currentRoomId).child(`players/${currentUser}`).remove().catch(()=>{});
         }
         currentRoomId = null;
         isHost = false;
@@ -910,9 +765,25 @@ function leaveLobby() {
 }
 
 // ============================================================
-// 10. ИГРОВОЙ ДВИЖОК (полный, без изменений)
+// 7. ИГРОВОЙ ДВИЖОК (ПОЛНЫЙ, С НОВЫМИ РАКЕТАМИ)
 // ============================================================
-// ---- СПИСОК ВСЕХ ГОРОДОВ ----
+let map, gameActive = false;
+let resources = 300;
+let buildings = [], zones = [], projectiles = [];
+let radars = [], pvoSystems = [], powerPlants = [], refineries = [], rocketFactories = [];
+let buildMode = null;
+let airportMarker = null;
+let airportPlaced = false;
+let lastUpdate = 0;
+let myTeam = null, enemyTeam = null;
+let isAI = false;
+let isSandbox = false;
+let russiaGeoJSON = null, ukraineGeoJSON = null, bordersLoaded = false;
+let radarAnimationInterval = null, aiInterval = null, economyInterval = null;
+let attackType = null, attackCount = 1;
+let maxRadars = 8, maxPvo = 12, maxPowerPlants = 5, maxRefineries = 3;
+
+// ---- БАЗОВЫЙ СПИСОК ВСЕХ ГОРОДОВ ----
 const allCities = [
     { name: 'БРЯНСК', center: [53.2433, 34.3637], team: 'russia' },
     { name: 'СМОЛЕНСК', center: [54.7826, 32.0453], team: 'russia' },
@@ -945,6 +816,11 @@ const allCities = [
     { name: 'ОДЕССА', center: [46.4825, 30.7233], team: 'ukraine' },
     { name: 'ЛЬВОВ', center: [49.8397, 24.0297], team: 'ukraine' }
 ];
+
+let setupDifficulty = 'NORMAL';
+let setupMode = 'single';
+let selectedCityNames = [];
+let selectedCountry = 'russia';
 
 function prepareCities(selectedNames) {
     let filtered = allCities.filter(c => selectedNames.includes(c.name));
@@ -1048,7 +924,105 @@ document.getElementById('startGameBtn').onclick = function() {
     initGameMapAndLogic(preparedCities);
 };
 
-// ---- ЗАГРУЗКА ГРАНИЦ ----
+// ---- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ ИКОНОК (ОБНОВЛЕННЫЕ) ----
+function getMissileImage(type, team) {
+    // Российские
+    if (type === 'shahed') return (team === 'russia') ? 'images/drone.png' : 'images/droneua.png';
+    if (type === 'x101') return 'images/x101.png';
+    if (type === 'iskander') return 'images/iskander.png';
+    if (type === 'kinzhal') return 'images/kinzhal.png';
+    if (type === 'kalibr') return 'images/kalibr.png';
+    if (type === 'geran5') return 'images/geran5.png';
+    // Украинские
+    if (type === 'lutyi') return (team === 'ukraine') ? 'images/droneua.png' : 'images/drone.png';
+    if (type === 'grom2') return 'images/grom2.png';
+    if (type === 'flamingo') return 'images/flamingo.png';
+    if (type === 'stormshadow') return 'images/stormshadow.png';
+    return 'images/missile.png';
+}
+
+function getMissileIcon(type, team) {
+    const url = getMissileImage(type, team);
+    try {
+        return L.icon({ iconUrl: url, iconSize: [28,28], iconAnchor: [14,14] });
+    } catch(e) {
+        return L.divIcon({ html: '💥', iconSize:[28,28] });
+    }
+}
+
+// ---- ОСТАЛЬНЫЕ ФУНКЦИИ ИКОНОК (без изменений) ----
+function createCityMarker(city) {
+    const percent = Math.floor((city.hp / city.baseHp) * 100);
+    const hpClass = percent > 60 ? 'hp-high' : (percent > 30 ? 'hp-mid' : 'hp-low');
+    const teamClass = city.team === 'russia' ? 'russia' : 'ukraine';
+    const html = `
+        <div class="zone-marker ${teamClass}">
+            <span class="city-name">${city.name}</span>
+            <span class="city-hp ${hpClass}">${percent}%</span>
+        </div>
+    `;
+    return L.divIcon({ html, className: '', iconSize: [100, 60], iconAnchor: [50, 30] });
+}
+
+function getAirportIcon() {
+    try { return L.icon({ iconUrl: 'images/airport.png', iconSize: [48,48], iconAnchor: [24,24] }); }
+    catch(e){ return L.divIcon({ html:'🏠', iconSize:[48,48] }); }
+}
+function getRadarIcon() {
+    try { return L.icon({ iconUrl: 'images/radar.png', iconSize: [40,40], iconAnchor: [20,20] }); }
+    catch(e){ return L.divIcon({ html:'📡', iconSize:[40,40] }); }
+}
+function getPvoIcon() {
+    try { return L.icon({ iconUrl: 'images/pvo.png', iconSize: [40,40], iconAnchor: [20,20] }); }
+    catch(e){ return L.divIcon({ html:'🛡️', iconSize:[40,40] }); }
+}
+function getPowerPlantIcon() {
+    try { return L.icon({ iconUrl: 'images/powerplant.png', iconSize: [40,40], iconAnchor: [20,20] }); }
+    catch(e){ return L.divIcon({ html:'⚡', iconSize:[40,40] }); }
+}
+function getRefineryIcon() {
+    try { return L.icon({ iconUrl: 'images/refinery.png', iconSize: [40,40], iconAnchor: [20,20] }); }
+    catch(e){ return L.divIcon({ html:'⛽', iconSize:[40,40] }); }
+}
+function getRocketFactoryIcon() {
+    try { return L.icon({ iconUrl: 'images/rocket_factory.png', iconSize: [40,40], iconAnchor: [20,20] }); }
+    catch(e){ return L.divIcon({ html:'🏭', iconSize:[40,40] }); }
+}
+function getInterceptorIcon() {
+    try { return L.icon({ iconUrl: 'images/pvo_rocket.png', iconSize: [24,24], iconAnchor: [12,12] }); }
+    catch(e){ return L.divIcon({ html:'🚀', iconSize:[24,24] }); }
+}
+
+// ---- ОБНОВЛЁННЫЙ СПИСОК ОРУЖИЯ (без cruise, ballistic, hypersonic) ----
+const weaponTypes = {
+    // Российские
+    shahed: { name: 'ШАХЕД', speed: 0.006, damage: 25, cost: 60, pvoChance: 0.08, spriteOffset: 0, img: 'drone.png' },
+    x101: { name: 'X-101', speed: 0.03, damage: 65, cost: 160, pvoChance: 0.12, spriteOffset: 0, img: 'x101.png' },
+    iskander: { name: 'ИСКАНДЕР', speed: 0.07, damage: 300, cost: 1000, pvoChance: 0.04, spriteOffset: 0, img: 'iskander.png' },
+    kinzhal: { name: 'КИНЖАЛ', speed: 0.11, damage: 250, cost: 850, pvoChance: 0.05, spriteOffset: 0, img: 'kinzhal.png' },
+    kalibr: { name: 'КАЛИБР', speed: 0.025, damage: 200, cost: 750, pvoChance: 0.08, spriteOffset: 0, img: 'kalibr.png' },
+    geran5: { name: 'ГЕРАНЬ-5', speed: 0.05, damage: 45, cost: 120, pvoChance: 0.07, spriteOffset: 0, img: 'geran5.png' },
+    // Украинские
+    lutyi: { name: 'ЛЮТИЙ', speed: 0.006, damage: 30, cost: 70, pvoChance: 0.08, spriteOffset: 0, img: 'droneua.png' },
+    grom2: { name: 'ГРОМ-2', speed: 0.06, damage: 150, cost: 500, pvoChance: 0.06, spriteOffset: 0, img: 'grom2.png' },
+    flamingo: { name: 'ФЛАМИНГО', speed: 0.04, damage: 80, cost: 250, pvoChance: 0.10, spriteOffset: 0, img: 'flamingo.png' },
+    stormshadow: { name: 'ШТОРМ ШАДОУ', speed: 0.035, damage: 120, cost: 400, pvoChance: 0.09, spriteOffset: 0, img: 'stormshadow.png' }
+};
+
+// Функция получения доступного оружия (сортировка по цене)
+function getAvailableWeapons(team) {
+    let list;
+    if (team === 'russia') {
+        list = ['shahed', 'geran5', 'x101', 'kalibr', 'kinzhal', 'iskander'];
+    } else { // ukraine
+        list = ['lutyi', 'flamingo', 'stormshadow', 'grom2'];
+    }
+    // Сортировка по цене (от дешёвого к дорогому)
+    list.sort((a, b) => weaponTypes[a].cost - weaponTypes[b].cost);
+    return list;
+}
+
+// ---- ОСТАЛЬНЫЕ ФУНКЦИИ ИГРОВОГО ДВИЖКА (ваши, без изменений) ----
 function loadRealBorders(cb) {
     Promise.all([
         fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries/RUS.geo.json').then(r=>r.json()).catch(()=>fallbackRussia),
@@ -1066,6 +1040,7 @@ function loadRealBorders(cb) {
         if(cb)cb();
     });
 }
+
 const fallbackRussia = {
     "type":"FeatureCollection",
     "features":[{
@@ -1097,10 +1072,10 @@ function isInsideCountry(lat,lng,country) {
     try { return turf.booleanPointInPolygon(point,feat); } catch(e){ return true; }
 }
 function isOwnTerritory(lat,lng){ if(!myTeam) return false; return isInsideCountry(lat,lng,myTeam); }
-function canBuildHere(lat,lng){
-    if(!isOwnTerritory(lat,lng)) return false;
-    for(let b of buildings) if(map.distance([lat,lng],[b.lat,b.lng])<4000) return false;
-    return true;
+function canBuildHere(lat,lng){ 
+    if(!isOwnTerritory(lat,lng)) return false; 
+    for(let b of buildings) if(map.distance([lat,lng],[b.lat,b.lng])<4000) return false; 
+    return true; 
 }
 function canBuildForTeam(lat,lng,team){ if(!isInsideCountry(lat,lng,team)) return false; for(let b of buildings) if(map.distance([lat,lng],[b.lat,b.lng])<4000) return false; return true; }
 
@@ -1121,7 +1096,7 @@ function updateTotalPercent() {
         updateStatsAfterGame(victory);
         if (isMultiplayer) updateElo(victory, 'multiplayer');
         else if (isAI) updateElo(victory, 'single');
-        if(isMultiplayer && currentRoomId) db.ref('games').child(currentRoomId).remove();
+        if(isMultiplayer && currentRoomId) gamesRef.child(currentRoomId).remove();
         setTimeout(()=>location.reload(),3000);
     }
     if(uaTotal<=0 && gameActive){
@@ -1132,13 +1107,15 @@ function updateTotalPercent() {
         updateStatsAfterGame(victory);
         if (isMultiplayer) updateElo(victory, 'multiplayer');
         else if (isAI) updateElo(victory, 'single');
-        if(isMultiplayer && currentRoomId) db.ref('games').child(currentRoomId).remove();
+        if(isMultiplayer && currentRoomId) gamesRef.child(currentRoomId).remove();
         setTimeout(()=>location.reload(),3000);
     }
 }
 
 function updateZoneMarkers(){
-    zones.forEach(z => { z.marker.setIcon(createCityMarker(z)); });
+    zones.forEach(z => {
+        z.marker.setIcon(createCityMarker(z));
+    });
     updateTotalPercent();
 }
 
@@ -1151,14 +1128,7 @@ function removeZoneIfDestroyed(zone){
         showHint(`🏙️ Город ${zone.name} уничтожен!`);
     }
 }
-function showHint(text){
-    let h=document.createElement('div');
-    h.innerHTML=text;
-    h.style.cssText='position:fixed; top:clamp(60px,15vh,120px); left:50%; transform:translateX(-50%); background:#000; color:#fff; padding:clamp(10px,2vh,20px) clamp(16px,4vw,30px); border-radius:15px; border:2px solid gold; z-index:9999; font-size:clamp(.9rem,2.5vw,1.4rem); text-align:center; max-width:90%; pointer-events:none;';
-    document.body.appendChild(h);
-    setTimeout(()=>h.remove(),5000);
-}
-
+function showHint(text){ let h=document.createElement('div'); h.innerHTML=text; h.style.cssText='position:fixed; top:clamp(60px,15vh,120px); left:50%; transform:translateX(-50%); background:#000; color:#fff; padding:clamp(10px,2vh,20px) clamp(16px,4vw,30px); border-radius:15px; border:2px solid gold; z-index:9999; font-size:clamp(.9rem,2.5vw,1.4rem); text-align:center; max-width:90%; pointer-events:none;'; document.body.appendChild(h); setTimeout(()=>h.remove(),5000); }
 function destroyBuilding(building){
     if(building.marker) map.removeLayer(building.marker);
     if(building.radarCircle && map.hasLayer(building.radarCircle)) map.removeLayer(building.radarCircle);
@@ -1180,6 +1150,37 @@ function getBuildingName(type){
         case 'rocketFactory': return 'ЗАВОД РАКЕТ';
         default: return 'ЗДАНИЕ';
     }
+}
+function updateUI(){ document.getElementById('energy').innerHTML = isSandbox ? '∞' : Math.floor(resources); }
+function addXP(amount){ playerXP += amount; updateRankUI(); }
+function updateRankUI(){
+    let idx = ranks.length-1; while(idx>0 && playerXP < ranks[idx].xp) idx--;
+    document.getElementById('rankTitle').innerHTML = ranks[idx].title;
+    document.getElementById('rankXp').innerHTML = playerXP + " XP";
+}
+function updateStatsAfterHit(damage, targetType, isHit){ playerStats.totalShots++; if(isHit){ playerStats.hits++; if(targetType === 'zone') playerStats.citiesDestroyed++; else playerStats.buildingsDestroyed++; } }
+function updateStatsAfterGame(victory){ if(victory) playerStats.wins++; else playerStats.losses++; if(victory) addXP(300); }
+
+const costs = { radar: 180, pvo: 220, powerPlant: 250, refinery: 400, rocketFactory: 500 };
+const ranks = [
+    { level:1, xp:0, title:"Рядовой" }, { level:2, xp:500, title:"Сержант" }, { level:3, xp:1200, title:"Лейтенант" },
+    { level:4, xp:2500, title:"Капитан" }, { level:5, xp:5000, title:"Майор" }, { level:6, xp:9000, title:"Полковник" },
+    { level:7, xp:15000, title:"Генерал" }
+];
+let playerXP = 0;
+let playerStats = { wins:0, losses:0, citiesDestroyed:0, buildingsDestroyed:0, missilesLaunched:0, hits:0, totalShots:0 };
+let audioCtx = null;
+
+function playBeep(freq, duration, type='sine') {
+    if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const now = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.frequency.value = freq; osc.type = type;
+    gain.gain.setValueAtTime(0.15, now);
+    gain.gain.exponentialRampToValueAtTime(0.00001, now + duration);
+    osc.start(); osc.stop(now + duration);
 }
 
 // ---- ИНИЦИАЛИЗАЦИЯ ИГРЫ ----
@@ -1224,13 +1225,13 @@ function initGameMapAndLogic(citiesArray) {
                 showHint("📡 Теперь постройте Радар");
                 return;
             }
-            if(buildMode){
+            if(buildMode){ 
                 if(!isOwnTerritory(e.latlng.lat, e.latlng.lng)){
                     alert("Можно строить только на своей территории!");
                     return;
                 }
-                tryBuild(e.latlng.lat, e.latlng.lng, buildMode);
-                buildMode = null;
+                tryBuild(e.latlng.lat, e.latlng.lng, buildMode); 
+                buildMode = null; 
             }
         });
     });
@@ -1424,23 +1425,23 @@ function launchInterceptor(start,end){
     },20);
 }
 
-// ---- AI ----
+// ===== AI (ваш код, адаптированный под новые типы) =====
 const priorityWeights = { refinery:100, city:90, pvo:80, radar:70, powerPlant:60, rocketFactory:85 };
 function chooseAITargets(maxTargets=3){
     let candidates = [];
-    buildings.forEach(b => {
-        if(b.team === myTeam) {
-            let base = priorityWeights[b.type] || 30;
-            let hpFactor = (b.hp < 50) ? 20 : 0;
-            candidates.push({ target: b, score: base + hpFactor });
-        }
+    buildings.forEach(b => { 
+        if(b.team === myTeam) { 
+            let base = priorityWeights[b.type] || 30; 
+            let hpFactor = (b.hp < 50) ? 20 : 0; 
+            candidates.push({ target: b, score: base + hpFactor }); 
+        } 
     });
-    zones.forEach(z => {
-        if(z.team === myTeam) {
-            let base = priorityWeights.city;
-            let hpFactor = (z.hp < 50) ? 30 : 0;
-            candidates.push({ target: z, score: base + hpFactor });
-        }
+    zones.forEach(z => { 
+        if(z.team === myTeam) { 
+            let base = priorityWeights.city; 
+            let hpFactor = (z.hp < 50) ? 30 : 0; 
+            candidates.push({ target: z, score: base + hpFactor }); 
+        } 
     });
     candidates.sort((a,b) => b.score - a.score);
     let result = [];
@@ -1490,9 +1491,9 @@ function aiBuild(type){
 function launchAIAttack(target){
     let available;
     if (enemyTeam === 'russia') {
-        available = ['shahed', 'x101', 'iskander', 'kinzhal', 'kalibr', 'geran5'];
+        available = ['shahed', 'geran5', 'x101', 'kalibr', 'kinzhal', 'iskander'];
     } else {
-        available = ['lutyi', 'grom2', 'flamingo', 'stormshadow'];
+        available = ['lutyi', 'flamingo', 'stormshadow', 'grom2'];
     }
     let type = available[Math.floor(Math.random() * available.length)];
     let count = 1;
@@ -1545,12 +1546,12 @@ function gameLoop(now) {
     requestAnimationFrame(gameLoop);
 }
 
-// ---- МОДАЛЬНЫЕ ОКНА (обновлённое buildWeaponGrid с сортировкой и отображением шансов) ----
+// ---- МОДАЛЬНЫЕ ОКНА (обновлённое buildWeaponGrid) ----
 function buildWeaponGrid(){
     let container = document.getElementById('weaponGrid'); if(!container) return;
     container.innerHTML = '';
     let available = getAvailableWeapons(myTeam);
-    // СОРТИРОВКА ПО ЦЕНЕ (от дешёвого к дорогому)
+    // Сортировка по цене уже выполнена в getAvailableWeapons, но на всякий случай ещё раз:
     available.sort((a, b) => weaponTypes[a].cost - weaponTypes[b].cost);
     available.forEach(type => {
         let w = weaponTypes[type];
@@ -1573,6 +1574,7 @@ function buildWeaponGrid(){
         }
     }
 }
+
 function updateCostDisplay(){ 
     let w = weaponTypes[attackType]; 
     if (w) document.getElementById('costDisplay').innerHTML = `СТОИМОСТЬ: ${w.cost * attackCount} ⚡`; 
@@ -1648,7 +1650,7 @@ document.getElementById('cancelBuild').onclick = () => { buildMode = null; };
 
 // ---- КНОПКИ МЕНЮ ----
 document.getElementById('singleBtn').onclick = function() {
-    if (!auth.currentUser) { alert("Сначала войдите в аккаунт!"); return; }
+    if (!currentUser) { alert("Сначала войдите в аккаунт!"); return; }
     playBeep(400, 0.1);
     setTimeout(() => {
         playBeep(600, 0.1);
@@ -1659,7 +1661,7 @@ document.getElementById('singleBtn').onclick = function() {
     }, 100);
 };
 document.getElementById('sandboxBtn').onclick = function() {
-    if (!auth.currentUser) { alert("Сначала войдите в аккаунт!"); return; }
+    if (!currentUser) { alert("Сначала войдите в аккаунт!"); return; }
     playBeep(400, 0.1);
     setTimeout(() => {
         playBeep(600, 0.1);
@@ -1672,13 +1674,11 @@ document.getElementById('sandboxBtn').onclick = function() {
 document.getElementById('tutorialBtn').onclick = function() {
     alert("Обучение: постройте аэродром → радар → ПВО → атакуйте врага. В песочнице нет лимитов и бесконечная энергия. В мультиплеере играйте вдвоём.");
 };
-document.getElementById('logoutBtn').onclick = function() {
-    if (window.saveInterval) clearInterval(window.saveInterval);
-    auth.signOut().then(() => {
-        location.reload();
-    });
-};
-// ---- МУЛЬТИПЛЕЕР СИНХРОНИЗАЦИЯ (без изменений) ----
+document.getElementById('logoutBtn').onclick = logout;
+
+// ============================================================
+// 8. МУЛЬТИПЛЕЕР: СИНХРОНИЗАЦИЯ ИГРЫ (ваш код)
+// ============================================================
 function startMultiplayerGame(roomId, data) {
     console.log("startMultiplayerGame", roomId, data);
     gameActive = false;
@@ -1690,7 +1690,7 @@ function startMultiplayerGame(roomId, data) {
     if (radarAnimationInterval) clearInterval(radarAnimationInterval);
 
     const players = data.players;
-    const myTeamFromData = players[auth.currentUser.uid].team;
+    const myTeamFromData = players[currentUser].team;
     myTeam = myTeamFromData;
     enemyTeam = myTeam === 'russia' ? 'ukraine' : 'russia';
     isAI = false;
@@ -1700,7 +1700,7 @@ function startMultiplayerGame(roomId, data) {
     document.getElementById('gameContainer').style.display = 'block';
     document.getElementById('map').style.display = 'block';
 
-    mpGameRef = db.ref('games').child(roomId).child('gameState');
+    mpGameRef = gamesRef.child(roomId).child('gameState');
     mpGameRef.once('value').then(snapshot => {
         let state = snapshot.val();
         if (!state) {
@@ -1724,13 +1724,13 @@ function startMultiplayerGame(roomId, data) {
     }).catch(err => console.error("Ошибка загрузки состояния:", err));
 
     if (isHost) {
-        const actionsRef = db.ref('games').child(roomId).child('actions');
+        const actionsRef = gamesRef.child(roomId).child('actions');
         if (actionsListenerRef) actionsListenerRef.off();
         actionsListenerRef = actionsRef;
         actionsRef.on('child_added', (snapshot) => {
             const action = snapshot.val();
             if (!action) return;
-            if (action.player === auth.currentUser.uid) return;
+            if (action.player === currentUser) return;
             console.log("Хост получил действие от клиента:", action);
             applyAction(action);
         });
@@ -1969,8 +1969,8 @@ function initMPGame(initialState) {
 
 function sendMpAction(action) {
     if (!isMultiplayer || !mpGameRef) return;
-    const actionsRef = db.ref('games').child(currentRoomId).child('actions');
-    actionsRef.push({ ...action, player: auth.currentUser.uid, team: myTeam, timestamp: Date.now() });
+    const actionsRef = gamesRef.child(currentRoomId).child('actions');
+    actionsRef.push({ ...action, player: currentUser, team: myTeam, timestamp: Date.now() });
 }
 
 function sendGameStateUpdate() {
@@ -2059,7 +2059,7 @@ function applyGameState(state) {
     }
 }
 
-console.log("✅ Игра полностью загружена. Проверка ключей локальная, использованные ключи записываются в Firebase. Оружие отсортировано по цене, отображаются шансы сбития ПВО.");
+console.log("✅ Игра полностью загружена. Аккаунты и лицензии — по-вашему. Оружие обновлено (Герань-5, Лютый, Гром-2, Фламинго, Шторм Шадоу), сортировка по цене и шансы ПВО добавлены.");
 </script>
 </body>
 </html>
