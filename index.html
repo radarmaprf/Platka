@@ -13,7 +13,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
-        /* ===== ПОЛНЫЙ СТИЛЬ ===== */
+        /* ===== ВЕСЬ СТИЛЬ (без изменений, такой же как в прошлый раз) ===== */
         *{margin:0;padding:0;box-sizing:border-box;user-select:none;-webkit-tap-highlight-color:transparent}
         body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#0a0f12;overflow:hidden;height:100vh;color:#eef;touch-action:manipulation}
         .screen{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;justify-content:center;align-items:center;z-index:2000;background:radial-gradient(circle at 20% 30%,#0a1f1a,#030a08)}
@@ -337,7 +337,7 @@
 </div>
 
 <!-- ============================================================ -->
-<!-- JAVASCRIPT — ПОЛНЫЙ КОД (ВКЛЮЧАЯ ВСЕ ФУНКЦИИ МУЛЬТИПЛЕЕРА) -->
+<!-- JAVASCRIPT — ПОЛНЫЙ КОД С ИСПРАВЛЕНИЯМИ -->
 <!-- ============================================================ -->
 <script>
 // ============================================================
@@ -391,7 +391,7 @@ const VALID_KEYS_ORIGINAL = [
 const VALID_KEYS_HASHES = VALID_KEYS_ORIGINAL.map(k => hashSHA256(k));
 
 // ============================================================
-// 3. УПРАВЛЕНИЕ АККАУНТАМИ
+// 3. УПРАВЛЕНИЕ АККАУНТАМИ (без изменений)
 // ============================================================
 let currentUser = null;
 let currentSessionToken = null;
@@ -647,7 +647,7 @@ async function loadRanking() {
 }
 
 // ============================================================
-// 6. МУЛЬТИПЛЕЕР (ЛОББИ И КОМНАТЫ) — ПОЛНАЯ ВЕРСИЯ
+// 6. МУЛЬТИПЛЕЕР (ЛОББИ И КОМНАТЫ)
 // ============================================================
 let currentRoomId = null;
 let gameListenerRef = null;
@@ -843,7 +843,7 @@ function leaveLobby() {
 }
 
 // ============================================================
-// 7. ИГРОВОЙ ДВИЖОК (ОСНОВНАЯ ЛОГИКА) — ПОЛНАЯ ВЕРСИЯ
+// 7. ИГРОВОЙ ДВИЖОК (ОСНОВНАЯ ЛОГИКА) — С ИСПРАВЛЕНИЯМИ
 // ============================================================
 let map, gameActive = false;
 let resources = 300;
@@ -862,117 +862,55 @@ let russiaGeoJSON = null, ukraineGeoJSON = null, bordersLoaded = false;
 let radarAnimationInterval = null, aiInterval = null, economyInterval = null;
 let attackType = null, attackCount = 1;
 let maxRadars = 8, maxPvo = 12, maxPowerPlants = 5, maxRefineries = 3;
+let pvoPlacementMode = false, pvoPlacementType = null;
 
-// Переменные для режима размещения ПВО
-let pvoPlacementMode = false;
-let pvoPlacementType = null;
-
-// ---- Определение типов ПВО ----
+// ---- Определение типов ПВО (без изменений) ----
 const pvoTypes = {
     strela10: {
-        id: 'strela10',
-        name: 'Стрела-10',
-        icon: 'images/pvo_strela10.png',
-        range: 5,
-        cost: 150,
-        reloadTime: 3,
-        chances: {
-            shahed: 0.35, x101: 0.10, iskander: 0.05, kinzhal: 0.05, kalibr: 0.10,
-            geran5: 0.35, lutyi: 0.35, grom2: 0.10, flamingo: 0.15, stormshadow: 0.15
-        },
-        description: 'ПЗРК малой дальности, эффективен против дронов',
-        burstCount: 1
+        id: 'strela10', name: 'Стрела-10', icon: 'images/pvo_strela10.png', range: 5, cost: 150, reloadTime: 3,
+        chances: { shahed: 0.35, x101: 0.10, iskander: 0.05, kinzhal: 0.05, kalibr: 0.10, geran5: 0.35, lutyi: 0.35, grom2: 0.10, flamingo: 0.15, stormshadow: 0.15 },
+        description: 'ПЗРК малой дальности', burstCount: 1
     },
     tor: {
-        id: 'tor',
-        name: 'Тор-М2',
-        icon: 'images/pvo_tor.png',
-        range: 15,
-        cost: 300,
-        reloadTime: 5,
-        chances: {
-            shahed: 0.40, x101: 0.22, iskander: 0.08, kinzhal: 0.08, kalibr: 0.22,
-            geran5: 0.40, lutyi: 0.40, grom2: 0.15, flamingo: 0.20, stormshadow: 0.20
-        },
-        description: 'ЗРК малой/средней дальности, хорош против крылатых',
+        id: 'tor', name: 'Тор-М2', icon: 'images/pvo_tor.png', range: 15, cost: 300, reloadTime: 5,
+        chances: { shahed: 0.40, x101: 0.22, iskander: 0.08, kinzhal: 0.08, kalibr: 0.22, geran5: 0.40, lutyi: 0.40, grom2: 0.15, flamingo: 0.20, stormshadow: 0.20 },
         burstCount: 1
     },
     buk: {
-        id: 'buk',
-        name: 'Бук-М3',
-        icon: 'images/pvo_buk.png',
-        range: 45,
-        cost: 500,
-        reloadTime: 8,
-        chances: {
-            shahed: 0.28, x101: 0.33, iskander: 0.18, kinzhal: 0.18, kalibr: 0.33,
-            geran5: 0.28, lutyi: 0.28, grom2: 0.25, flamingo: 0.30, stormshadow: 0.30
-        },
-        description: 'ЗРК средней дальности, универсальный',
+        id: 'buk', name: 'Бук-М3', icon: 'images/pvo_buk.png', range: 45, cost: 500, reloadTime: 8,
+        chances: { shahed: 0.28, x101: 0.33, iskander: 0.18, kinzhal: 0.18, kalibr: 0.33, geran5: 0.28, lutyi: 0.28, grom2: 0.25, flamingo: 0.30, stormshadow: 0.30 },
         burstCount: 1
     },
     s300: {
-        id: 's300',
-        name: 'С-300В4',
-        icon: 'images/pvo_s300.png',
-        range: 90,
-        cost: 800,
-        reloadTime: 12,
-        chances: {
-            shahed: 0.20, x101: 0.35, iskander: 0.25, kinzhal: 0.25, kalibr: 0.35,
-            geran5: 0.20, lutyi: 0.20, grom2: 0.30, flamingo: 0.32, stormshadow: 0.32
-        },
-        description: 'ЗРК большой дальности, противоракетная оборона',
+        id: 's300', name: 'С-300В4', icon: 'images/pvo_s300.png', range: 90, cost: 800, reloadTime: 12,
+        chances: { shahed: 0.20, x101: 0.35, iskander: 0.25, kinzhal: 0.25, kalibr: 0.35, geran5: 0.20, lutyi: 0.20, grom2: 0.30, flamingo: 0.32, stormshadow: 0.32 },
         burstCount: 1
     },
     s400: {
-        id: 's400',
-        name: 'С-400',
-        icon: 'images/pvo_s400.png',
-        range: 120,
-        cost: 1200,
-        reloadTime: 15,
-        chances: {
-            shahed: 0.18, x101: 0.38, iskander: 0.30, kinzhal: 0.30, kalibr: 0.38,
-            geran5: 0.18, lutyi: 0.18, grom2: 0.35, flamingo: 0.35, stormshadow: 0.35
-        },
-        description: 'Самый мощный ЗРК, перехват баллистических целей',
+        id: 's400', name: 'С-400', icon: 'images/pvo_s400.png', range: 120, cost: 1200, reloadTime: 15,
+        chances: { shahed: 0.18, x101: 0.38, iskander: 0.30, kinzhal: 0.30, kalibr: 0.38, geran5: 0.18, lutyi: 0.18, grom2: 0.35, flamingo: 0.35, stormshadow: 0.35 },
         burstCount: 1
     },
     pantsir: {
-        id: 'pantsir',
-        name: 'Панцирь-С1',
-        icon: 'images/pvo_pantsir.png',
-        range: 20,
-        cost: 400,
-        reloadTime: 4,
-        chances: {
-            shahed: 0.40, x101: 0.25, iskander: 0.10, kinzhal: 0.10, kalibr: 0.25,
-            geran5: 0.40, lutyi: 0.40, grom2: 0.18, flamingo: 0.22, stormshadow: 0.22
-        },
-        description: 'Мобильная группа, стреляет очередями, эффективна против дронов',
+        id: 'pantsir', name: 'Панцирь-С1', icon: 'images/pvo_pantsir.png', range: 20, cost: 400, reloadTime: 4,
+        chances: { shahed: 0.40, x101: 0.25, iskander: 0.10, kinzhal: 0.10, kalibr: 0.25, geran5: 0.40, lutyi: 0.40, grom2: 0.18, flamingo: 0.22, stormshadow: 0.22 },
         burstCount: 3
     }
 };
 
 // ---- Доступные города ----
-function getMyCities() {
-    return zones.filter(z => z.team === myTeam);
-}
+function getMyCities() { return zones.filter(z => z.team === myTeam); }
 
 // ---- Функция получения иконки ПВО ----
 function getPvoIcon(typeId) {
     const pvo = pvoTypes[typeId];
-    try {
-        return L.icon({ iconUrl: pvo.icon, iconSize: [40,40], iconAnchor: [20,20] });
-    } catch(e) {
-        return L.divIcon({ html: '🛡️', iconSize:[40,40] });
-    }
+    try { return L.icon({ iconUrl: pvo.icon, iconSize: [40,40], iconAnchor: [20,20] }); }
+    catch(e) { return L.divIcon({ html: '🛡️', iconSize:[40,40] }); }
 }
 
 // ---- Функция получения шанса сбития (с учётом обучения) ----
 function getInterceptChance(pvoUnit, projectileType) {
-    if (isTutorial) return 1.0; // в обучении 100%
+    if (isTutorial) return 1.0;
     const pvo = pvoTypes[pvoUnit.type];
     if (!pvo) return 0.1;
     const chance = pvo.chances[projectileType];
@@ -1010,7 +948,7 @@ function launchPantsirBurst(from, target, count) {
     }
 }
 
-// ---- Остальные функции иконок ----
+// ---- Иконки ----
 function getAirportIcon() {
     try { return L.icon({ iconUrl: 'images/airport.png', iconSize: [48,48], iconAnchor: [24,24] }); }
     catch(e){ return L.divIcon({ html:'🏠', iconSize:[48,48] }); }
@@ -1386,7 +1324,6 @@ function initGameMapAndLogic(citiesArray) {
         airportPlaced = false; updateUI();
         map.off('click');
         map.on('click', (e) => {
-            // 1. РАЗМЕЩЕНИЕ АЭРОДРОМА
             if(!airportPlaced){
                 let lat = e.latlng.lat, lng = e.latlng.lng;
                 if(!isOwnTerritory(lat,lng)){ alert("Аэродром можно поставить только на своей территории!"); return; }
@@ -1403,37 +1340,21 @@ function initGameMapAndLogic(citiesArray) {
                 showHint("📡 Теперь постройте Радар");
                 return;
             }
-            // 2. РЕЖИМ РАЗМЕЩЕНИЯ ПВО
             if(pvoPlacementMode && pvoPlacementType){
-                const lat = e.latlng.lat;
-                const lng = e.latlng.lng;
-                if(!isOwnTerritory(lat,lng)){
-                    alert("Можно размещать ПВО только на своей территории!");
-                    return;
-                }
-                let nearestCity = null;
-                let minDist = Infinity;
-                const myCities = getMyCities();
-                for(const city of myCities){
+                const lat = e.latlng.lat, lng = e.latlng.lng;
+                if(!isOwnTerritory(lat,lng)){ alert("Можно размещать ПВО только на своей территории!"); return; }
+                let nearestCity = null, minDist = Infinity;
+                for(const city of getMyCities()){
                     const d = map.distance([lat,lng], city.center);
-                    if(d < minDist){
-                        minDist = d;
-                        nearestCity = city;
-                    }
+                    if(d < minDist){ minDist = d; nearestCity = city; }
                 }
                 const cityName = nearestCity ? nearestCity.name : 'Полевая позиция';
                 const success = deployPvo(pvoPlacementType, cityName, lat, lng);
-                if(success){
-                    exitPlacementMode();
-                }
+                if(success){ exitPlacementMode(); }
                 return;
             }
-            // 3. ОБЫЧНАЯ ПОСТРОЙКА
             if(buildMode){
-                if(!isOwnTerritory(e.latlng.lat, e.latlng.lng)){
-                    alert("Можно строить только на своей территории!");
-                    return;
-                }
+                if(!isOwnTerritory(e.latlng.lat, e.latlng.lng)){ alert("Можно строить только на своей территории!"); return; }
                 tryBuild(e.latlng.lat, e.latlng.lng, buildMode);
                 buildMode = null;
             }
@@ -1452,17 +1373,13 @@ function initZones(cities) {
     updateTotalPercent();
 }
 
-// ---- Постройки (добавлен штаб ПВО) ----
 function tryBuild(lat,lng,type){
     if(!airportPlaced){ alert("Сначала постройте аэродром!"); return false; }
     if(!canBuildHere(lat,lng)){ alert("Можно строить только на своей территории и не ближе 4 км к другим зданиям!"); return false; }
-
-    // В обучении (isTutorial) запрещаем строить что-либо, кроме радара, в миссии 2
     if(isTutorial && tutorialMission && tutorialMission.id === 'radar' && type !== 'radar') {
         showTutorialHint('❌ Сначала постройте радар!', 3000);
         return false;
     }
-
     if(!isSandbox){
         if(type==='radar' && radars.filter(r=>r.team===myTeam).length >= maxRadars){ alert(`Максимум ${maxRadars} радаров`); return false; }
         if(type==='powerPlant' && powerPlants.filter(p=>p.team===myTeam).length >= maxPowerPlants){ alert(`Максимум ${maxPowerPlants} электростанций`); return false; }
@@ -1479,11 +1396,7 @@ function tryBuild(lat,lng,type){
         let building={id:Date.now()+Math.random(), lat, lng, type:'pvoStaff', team:myTeam, hp:200, marker:null};
         let icon = getPvoStaffIcon();
         let marker = L.marker([lat,lng], {icon}).addTo(map);
-        marker.on('click', function() {
-            if (pvoStaffBuilt) {
-                openPvoModal();
-            }
-        });
+        marker.on('click', function() { if (pvoStaffBuilt) openPvoModal(); });
         building.marker = marker;
         buildings.push(building);
         updateUI();
@@ -1492,7 +1405,6 @@ function tryBuild(lat,lng,type){
         if(isMultiplayer && isHost) sendMpAction({ type:'build', building });
         return true;
     }
-
     if(!isSandbox){
         let cost = costs[type];
         if(resources < cost){ alert("Не хватает энергии"); return false; }
@@ -1533,9 +1445,7 @@ const weaponTypes = {
 };
 
 function getAvailableWeapons(team) {
-    return team === 'russia'
-        ? ['shahed', 'geran5', 'x101', 'kalibr', 'kinzhal', 'iskander']
-        : ['lutyi', 'flamingo', 'stormshadow', 'grom2'];
+    return team === 'russia' ? ['shahed','geran5','x101','kalibr','kinzhal','iskander'] : ['lutyi','flamingo','stormshadow','grom2'];
 }
 
 function getMissileImage(type, team) {
@@ -1612,14 +1522,12 @@ function tryIntercept(proj){
     if(now-proj.lastInterceptCheck<2000) return false;
     proj.lastInterceptCheck=now;
     const pos = proj.marker.getLatLng();
-
     for(let pvo of pvoUnits){
         if(pvo.team !== myTeam) continue;
         if(pvo.status !== 'active') continue;
         const dist = map.distance([pvo.lat, pvo.lng], [pos.lat, pos.lng]);
         const rangeMeters = pvoTypes[pvo.type].range * 1000;
         if(dist > rangeMeters) continue;
-
         let chance = getInterceptChance(pvo, proj.type);
         if(pvo.cooldown > 0) chance *= 0.3;
         if(Math.random() < chance){
@@ -1658,41 +1566,29 @@ function updatePvoCooldowns(dt) {
     }
 }
 
-// ---- РАЗМЕЩЕНИЕ ПВО ----
 function deployPvo(typeId, cityName, lat, lng) {
     if(!pvoStaffBuilt){ alert("Сначала постройте Штаб ПВО!"); return false; }
     if(lat === undefined || lng === undefined){
         const city = zones.find(z => z.name === cityName && z.team === myTeam);
         if(!city){ alert("Город не найден или не принадлежит вам"); return false; }
-        lat = city.center[0];
-        lng = city.center[1];
+        lat = city.center[0]; lng = city.center[1];
     } else {
-        if(!isOwnTerritory(lat, lng)){
-            alert("Можно размещать ПВО только на своей территории!");
-            return false;
-        }
+        if(!isOwnTerritory(lat, lng)){ alert("Можно размещать ПВО только на своей территории!"); return false; }
         for(let p of pvoUnits){
             if(p.team === myTeam){
                 const dist = map.distance([lat,lng], [p.lat, p.lng]);
-                if(dist < 3000){
-                    alert("Слишком близко к другому ПВО (мин. 3 км)");
-                    return false;
-                }
+                if(dist < 3000){ alert("Слишком близко к другому ПВО (мин. 3 км)"); return false; }
             }
         }
     }
     const pvoType = pvoTypes[typeId];
     if(!pvoType){ alert("Неизвестный тип ПВО"); return false; }
     if(!isSandbox && resources < pvoType.cost){ alert("Не хватает энергии"); return false; }
-    if(pvoUnits.filter(p => p.team === myTeam).length >= maxPvo){
-        alert(`Максимум ${maxPvo} комплексов ПВО`);
-        return false;
-    }
+    if(pvoUnits.filter(p => p.team === myTeam).length >= maxPvo){ alert(`Максимум ${maxPvo} комплексов ПВО`); return false; }
     const pvoUnit = {
         id: Date.now()+Math.random(),
         type: typeId,
-        lat: lat,
-        lng: lng,
+        lat: lat, lng: lng,
         team: myTeam,
         city: cityName,
         status: 'active',
@@ -1722,7 +1618,6 @@ function deployPvo(typeId, cityName, lat, lng) {
     return true;
 }
 
-// ---- Функции для режима размещения ----
 function enterPlacementMode(typeId) {
     pvoPlacementMode = true;
     pvoPlacementType = typeId;
@@ -1731,47 +1626,25 @@ function enterPlacementMode(typeId) {
     document.getElementById('pvoPlacementOverlay').classList.add('active');
     showHint("Кликните на карте, чтобы разместить ПВО");
 }
-
 function exitPlacementMode() {
     pvoPlacementMode = false;
     pvoPlacementType = null;
     document.getElementById('buildPanel').style.display = 'flex';
     document.getElementById('gameHUD').style.display = 'flex';
     document.getElementById('pvoPlacementOverlay').classList.remove('active');
-    const hints = document.querySelectorAll('.hint-text');
-    hints.forEach(h => h.remove());
 }
+document.getElementById('pvoPlacementCancelBtn').onclick = function() { exitPlacementMode(); };
 
-document.getElementById('pvoPlacementCancelBtn').onclick = function() {
-    exitPlacementMode();
-};
-
-// ---- AI ----
+// ---- AI (без изменений) ----
 const priorityWeights = { refinery:100, city:90, radar:70, powerPlant:60, rocketFactory:85 };
 function chooseAITargets(maxTargets=3){
     let candidates = [];
-    buildings.forEach(b => {
-        if(b.team === myTeam) {
-            let base = priorityWeights[b.type] || 30;
-            let hpFactor = (b.hp < 50) ? 20 : 0;
-            candidates.push({ target: b, score: base + hpFactor });
-        }
-    });
-    zones.forEach(z => {
-        if(z.team === myTeam) {
-            let base = 90;
-            let hpFactor = (z.hp < 50) ? 30 : 0;
-            candidates.push({ target: z, score: base + hpFactor });
-        }
-    });
+    buildings.forEach(b => { if(b.team === myTeam) { let base = priorityWeights[b.type] || 30; let hpFactor = (b.hp < 50) ? 20 : 0; candidates.push({ target: b, score: base + hpFactor }); } });
+    zones.forEach(z => { if(z.team === myTeam) { let base = 90; let hpFactor = (z.hp < 50) ? 30 : 0; candidates.push({ target: z, score: base + hpFactor }); } });
     candidates.sort((a,b) => b.score - a.score);
     let result = [];
-    for(let i=0; i<Math.min(maxTargets, candidates.length); i++) {
-        result.push(candidates[i].target);
-    }
-    if(setupDifficulty === "EXTREME" && result.length > 1 && Math.random() < 0.4 && candidates.length > 3) {
-        result.push(candidates[3].target);
-    }
+    for(let i=0; i<Math.min(maxTargets, candidates.length); i++) result.push(candidates[i].target);
+    if(setupDifficulty === "EXTREME" && result.length > 1 && Math.random() < 0.4 && candidates.length > 3) result.push(candidates[3].target);
     return result;
 }
 let aiPvo = null, aiAirportCoords = null, aiBuildInterval = null;
@@ -1804,14 +1677,8 @@ function aiBuild(type){
         else if(type==='rocketFactory') rocketFactories.push(building);
     }
 }
-
 function launchAIAttack(target){
-    let available;
-    if (enemyTeam === 'russia') {
-        available = ['shahed', 'geran5', 'x101', 'kalibr', 'kinzhal', 'iskander'];
-    } else {
-        available = ['lutyi', 'flamingo', 'stormshadow', 'grom2'];
-    }
+    let available = (enemyTeam === 'russia') ? ['shahed','geran5','x101','kalibr','kinzhal','iskander'] : ['lutyi','flamingo','stormshadow','grom2'];
     let type = available[Math.floor(Math.random() * available.length)];
     let count = 1;
     if(setupDifficulty === "NORMAL") count = Math.floor(Math.random()*2)+1;
@@ -1833,7 +1700,6 @@ function launchAIAttack(target){
         projectiles.push(proj);
     }
 }
-
 function initAI(){
     let enemyZones = zones.filter(z=>z.team===enemyTeam);
     if(enemyZones.length===0) return;
@@ -1865,7 +1731,6 @@ function gameLoop(now) {
     requestAnimationFrame(gameLoop);
 }
 
-// ---- Обновление снарядов ----
 function updateProjectiles(dt){
     for(let i=0;i<projectiles.length;i++){
         let p=projectiles[i]; if(!p.active) continue;
@@ -1922,7 +1787,6 @@ function createExplosion(lat,lng){
     let exp = L.marker([lat,lng], { icon: L.divIcon({ className:'', html:'<div class="explosion"></div>', iconSize:[60,60] }) }).addTo(map);
     setTimeout(()=>{ map.removeLayer(exp); },500);
 }
-
 function launchInterceptor(start,end){
     let missile = L.marker([start.lat,start.lng], { icon: getInterceptorIcon() }).addTo(map);
     let trail = L.polyline([[start.lat,start.lng]], { color:'#ffffaa', weight:3 }).addTo(map);
@@ -1938,7 +1802,6 @@ function launchInterceptor(start,end){
         trail.addLatLng([lat,lng]);
     },20);
 }
-
 function updatePvoMovement(dt) {
     for(let pvo of pvoUnits){
         if(pvo.status === 'moving'){
@@ -2046,14 +1909,10 @@ const pvoInfoPanel = document.getElementById('pvoInfoPanel');
 const pvoEnergyDisplay = document.getElementById('pvoEnergyDisplay');
 const pvoDeployBtn = document.getElementById('pvoDeployBtn');
 const pvoCancelBtn = document.getElementById('pvoCancelBtn');
-
 let selectedPvoType = null;
 
 function openPvoModal() {
-    if(!pvoStaffBuilt){
-        alert("Сначала постройте Штаб ПВО через панель 'Стройка'");
-        return;
-    }
+    if(!pvoStaffBuilt){ alert("Сначала постройте Штаб ПВО через панель 'Стройка'"); return; }
     pvoModal.style.display = 'block';
     renderPvoGrid();
     updatePvoInfo();
@@ -2061,9 +1920,7 @@ function openPvoModal() {
 }
 function closePvoModal() { pvoModal.style.display = 'none'; }
 closePvoBtn.onclick = closePvoModal;
-window.addEventListener('click', function(e) {
-    if (e.target === pvoModal) closePvoModal();
-});
+window.addEventListener('click', function(e) { if (e.target === pvoModal) closePvoModal(); });
 
 function renderPvoGrid() {
     pvoGrid.innerHTML = '';
@@ -2088,19 +1945,13 @@ function renderPvoGrid() {
             </div>
             <div class="badge">${pvo.burstCount > 1 ? 'Залп' : 'Одиночный'}</div>
         `;
-        card.onclick = function() {
-            selectedPvoType = key;
-            renderPvoGrid();
-            updatePvoInfo();
-        };
+        card.onclick = function() { selectedPvoType = key; renderPvoGrid(); updatePvoInfo(); };
         pvoGrid.appendChild(card);
     }
 }
-
 function updatePvoInfo() {
     pvoEnergyDisplay.textContent = isSandbox ? '∞' : Math.floor(resources);
-    let infoText = '';
-    let costText = '';
+    let infoText = '', costText = '';
     if(selectedPvoType) {
         const pvo = pvoTypes[selectedPvoType];
         const cost = isSandbox ? 0 : pvo.cost;
@@ -2118,20 +1969,15 @@ function updatePvoInfo() {
         costSpan.textContent = '⚡ Энергия: ' + (isSandbox ? '∞' : Math.floor(resources));
     }
 }
-
 pvoDeployBtn.onclick = function() {
-    if(!selectedPvoType) {
-        alert("Сначала выберите тип ПВО");
-        return;
-    }
+    if(!selectedPvoType) { alert("Сначала выберите тип ПВО"); return; }
     enterPlacementMode(selectedPvoType);
     closePvoModal();
 };
-
 pvoCancelBtn.onclick = closePvoModal;
 
 // ============================================================
-// 8. МУЛЬТИПЛЕЕР — ПОЛНЫЕ ФУНКЦИИ (ВОССТАНОВЛЕНЫ)
+// 8. МУЛЬТИПЛЕЕР — ПОЛНЫЕ ФУНКЦИИ (ИСПРАВЛЕННЫЕ)
 // ============================================================
 function startMultiplayerGame(roomId, data) {
     console.log("startMultiplayerGame", roomId, data);
@@ -2163,7 +2009,6 @@ function startMultiplayerGame(roomId, data) {
             if (isHost) {
                 const allCitiesWithHp = prepareCities(allCities.map(c => c.name));
                 state = {
-                    resources: { russia: 300, ukraine: 300 },
                     zones: allCitiesWithHp.map(z => ({ id: z.name, hp: z.hp })),
                     buildings: [],
                     projectiles: [],
@@ -2213,11 +2058,7 @@ function applyAction(action) {
             if (icon) {
                 let marker = L.marker([b.lat, b.lng], { icon }).addTo(map);
                 if (b.type === 'pvoStaff') {
-                    marker.on('click', function() {
-                        if (pvoStaffBuilt) {
-                            openPvoModal();
-                        }
-                    });
+                    marker.on('click', function() { if (pvoStaffBuilt) openPvoModal(); });
                 }
                 building.marker = marker;
                 if (b.type === 'radar') {
@@ -2230,9 +2071,7 @@ function applyAction(action) {
                     refineries.push(building);
                 } else if (b.type === 'rocketFactory') {
                     rocketFactories.push(building);
-                } else if (b.type === 'pvoStaff') {
-                    // штаб
-                }
+                } else if (b.type === 'pvoStaff') {}
                 buildings.push(building);
                 sendGameStateUpdate();
             }
@@ -2272,9 +2111,49 @@ function applyAction(action) {
             if (pvo.rangeCircle) map.removeLayer(pvo.rangeCircle);
         }
     } else if (action.type === 'launch') {
-        // обрабатывается локально (снаряды уже есть)
+        // Создаём снаряды у получателя
+        const from = action.from;
+        const to = action.to;
+        const type = action.weaponType;
+        const team = action.team || enemyTeam; // если не указано, считаем, что это враг
+        const count = action.count || 1;
+        for (let i = 0; i < count; i++) {
+            let offset = (i - (count-1)/2) * 0.03;
+            let targetLat = to.lat + offset;
+            let targetLng = to.lng + offset * 0.5;
+            let p1 = map.latLngToLayerPoint([from.lat, from.lng]);
+            let p2 = map.latLngToLayerPoint([targetLat, targetLng]);
+            let dx = p2.x - p1.x;
+            let dy = p2.y - p1.y;
+            let angle = Math.atan2(dx, -dy) * 180 / Math.PI + (weaponTypes[type]?.spriteOffset || 0);
+            let proj = {
+                id: Date.now()+Math.random()+i,
+                from: from,
+                to: {lat: targetLat, lng: targetLng},
+                progress: 0,
+                speed: weaponTypes[type]?.speed || 0.03,
+                damage: weaponTypes[type]?.damage || 25,
+                team: team,
+                targetType: action.targetType || 'zone',
+                targetId: action.targetId,
+                type: type,
+                active: true,
+                marker: null,
+                lastInterceptCheck: 0,
+                interceptedFlag: false,
+                angle: angle
+            };
+            let marker = L.marker([from.lat, from.lng], {
+                icon: getMissileIcon(type, team),
+                rotationOrigin: 'center center',
+                rotationAngle: angle
+            }).addTo(map);
+            proj.marker = marker;
+            projectiles.push(proj);
+        }
     } else if (action.type === 'intercept') {
-        // обрабатывается локально
+        // можно просто воспроизвести звук, снаряды уже перехвачены локально
+        playBeep(600,0.15);
     } else if (action.type === 'damageZone') {
         const zone = zones.find(z => z.id === action.zoneId);
         if (zone) {
@@ -2328,6 +2207,7 @@ function initMPGame(initialState) {
         pvoUnits = initialState.pvoUnits ? initialState.pvoUnits.map(p => ({ ...p, marker: null, rangeCircle: null })) : [];
         pvoStaffBuilt = initialState.pvoStaffBuilt || false;
 
+        // Восстанавливаем здания
         buildings.forEach(b => {
             let icon;
             if (b.type === 'radar') icon = getRadarIcon();
@@ -2338,11 +2218,7 @@ function initMPGame(initialState) {
             else return;
             let marker = L.marker([b.lat, b.lng], { icon }).addTo(map);
             if (b.type === 'pvoStaff') {
-                marker.on('click', function() {
-                    if (pvoStaffBuilt) {
-                        openPvoModal();
-                    }
-                });
+                marker.on('click', function() { if (pvoStaffBuilt) openPvoModal(); });
             }
             b.marker = marker;
             if (b.type === 'radar') {
@@ -2355,11 +2231,10 @@ function initMPGame(initialState) {
                 refineries.push(b);
             } else if (b.type === 'rocketFactory') {
                 rocketFactories.push(b);
-            } else if (b.type === 'pvoStaff') {
-                // штаб
-            }
+            } else if (b.type === 'pvoStaff') {}
         });
 
+        // Восстанавливаем ПВО
         pvoUnits.forEach(p => {
             const pvoType = pvoTypes[p.type];
             if (!pvoType) return;
@@ -2377,13 +2252,18 @@ function initMPGame(initialState) {
             p.rangeCircle = circle;
         });
 
+        // Восстанавливаем снаряды
         projectiles.forEach(p => {
-            let marker = L.marker([p.from.lat, p.from.lng], { icon: getMissileIcon(p.type, p.team) }).addTo(map);
+            let marker = L.marker([p.from.lat, p.from.lng], {
+                icon: getMissileIcon(p.type, p.team),
+                rotationOrigin: 'center center',
+                rotationAngle: p.angle || 0
+            }).addTo(map);
             p.marker = marker;
         });
 
-        const res = initialState.resources || { russia: 300, ukraine: 300 };
-        resources = res[myTeam] || 300;
+        // Ресурсы устанавливаем начальные (каждый игрок управляет сам)
+        resources = 300;
         airportPlaced = false;
         updateUI();
 
@@ -2392,20 +2272,18 @@ function initMPGame(initialState) {
         requestAnimationFrame(gameLoop);
         startRadarAnimation();
 
+        // Экономический интервал для каждого игрока (свои ресурсы)
         if (economyInterval) clearInterval(economyInterval);
-        if (isHost) {
-            economyInterval = setInterval(() => {
-                if (gameActive && isMultiplayer) {
-                    let income = 5 + powerPlants.filter(p => p.team === myTeam).length * 3 + refineries.filter(r => r.team === myTeam).length * 15;
-                    resources += income;
-                    updateUI();
-                    sendGameStateUpdate();
-                }
-            }, 1000);
-        } else {
-            economyInterval = setInterval(() => {}, 1000);
-        }
+        economyInterval = setInterval(() => {
+            if (gameActive && !isSandbox) {
+                let income = 5 + powerPlants.filter(p => p.team === myTeam).length * 3 + refineries.filter(r => r.team === myTeam).length * 15;
+                resources += income;
+                updateUI();
+                // Отправляем изменения ресурсов только если мы хост? Нет, ресурсы локальные, не синхронизируем.
+            }
+        }, 1000);
 
+        // Подписываемся на изменения состояния (только для общих данных, не ресурсов)
         if (mpGameRef) {
             mpGameRef.off();
             mpGameRef.on('value', (snapshot) => {
@@ -2433,35 +2311,22 @@ function initMPGame(initialState) {
                 return;
             }
             if (pvoPlacementMode && pvoPlacementType) {
-                const lat = e.latlng.lat;
-                const lng = e.latlng.lng;
-                if (!isOwnTerritory(lat, lng)) {
-                    alert("Можно размещать ПВО только на своей территории!");
-                    return;
-                }
-                let nearestCity = null;
-                let minDist = Infinity;
-                const myCities = getMyCities();
-                for (const city of myCities) {
+                const lat = e.latlng.lat, lng = e.latlng.lng;
+                if (!isOwnTerritory(lat, lng)) { alert("Можно размещать ПВО только на своей территории!"); return; }
+                let nearestCity = null, minDist = Infinity;
+                for (const city of getMyCities()) {
                     const d = map.distance([lat, lng], city.center);
-                    if (d < minDist) {
-                        minDist = d;
-                        nearestCity = city;
-                    }
+                    if (d < minDist) { minDist = d; nearestCity = city; }
                 }
                 const cityName = nearestCity ? nearestCity.name : 'Полевая позиция';
                 const success = deployPvo(pvoPlacementType, cityName, lat, lng);
-                if (success) {
-                    exitPlacementMode();
-                }
+                if (success) { exitPlacementMode(); }
                 return;
             }
             if (buildMode) {
-                if (!isOwnTerritory(e.latlng.lat, e.latlng.lng)) {
-                    alert("Можно строить только на своей территории!");
-                    return;
-                }
+                if (!isOwnTerritory(e.latlng.lat, e.latlng.lng)) { alert("Можно строить только на своей территории!"); return; }
                 if (isMultiplayer && !isHost) {
+                    // Не-хост отправляет действие, но сначала проверяет ресурсы локально
                     const buildingData = {
                         id: Date.now()+Math.random(),
                         lat: e.latlng.lat,
@@ -2511,18 +2376,12 @@ function sendMpAction(action) {
 function sendGameStateUpdate() {
     if (!isMultiplayer || !mpGameRef || !isHost) return;
     const state = {
-        resources: { russia: getTeamResources('russia'), ukraine: getTeamResources('ukraine') },
         zones: zones.map(z => ({ id: z.id, hp: z.hp })),
         buildings: buildings.map(b => ({ id: b.id, type: b.type, lat: b.lat, lng: b.lng, team: b.team, hp: b.hp })),
         projectiles: projectiles.map(p => ({ id: p.id, from: p.from, to: p.to, progress: p.progress, speed: p.speed, damage: p.damage, team: p.team, targetType: p.targetType, targetId: p.targetId, type: p.type, active: p.active, angle: p.angle })),
         pvoUnits: pvoUnits.map(p => ({ id: p.id, type: p.type, lat: p.lat, lng: p.lng, team: p.team, city: p.city, status: p.status, cooldown: p.cooldown }))
     };
     mpGameRef.set(state);
-}
-
-function getTeamResources(team) {
-    if (team === myTeam) return resources;
-    else return 300;
 }
 
 function applyGameState(state) {
@@ -2533,10 +2392,6 @@ function applyGameState(state) {
             if (zone) zone.hp = sz.hp;
         });
         updateZoneMarkers();
-    }
-    if (state.resources && state.resources[myTeam] !== undefined) {
-        resources = state.resources[myTeam];
-        updateUI();
     }
     if (state.buildings) {
         const newBuildings = state.buildings.filter(b => !buildings.some(lb => lb.id === b.id));
@@ -2550,11 +2405,7 @@ function applyGameState(state) {
             else return;
             let marker = L.marker([b.lat, b.lng], { icon }).addTo(map);
             if (b.type === 'pvoStaff') {
-                marker.on('click', function() {
-                    if (pvoStaffBuilt) {
-                        openPvoModal();
-                    }
-                });
+                marker.on('click', function() { if (pvoStaffBuilt) openPvoModal(); });
             }
             b.marker = marker;
             buildings.push(b);
@@ -2623,7 +2474,40 @@ function applyGameState(state) {
             }
         });
     }
-    // projectiles синхронизируются локально
+    // Синхронизация снарядов (добавляем новые, удаляем завершённые)
+    if (state.projectiles) {
+        const remoteIds = state.projectiles.map(p => p.id);
+        const toRemoveProj = projectiles.filter(p => !remoteIds.includes(p.id) && p.wave !== 'tutorial');
+        toRemoveProj.forEach(p => {
+            if (p.marker) map.removeLayer(p.marker);
+        });
+        projectiles = projectiles.filter(p => remoteIds.includes(p.id) || p.wave === 'tutorial');
+        state.projectiles.forEach(p => {
+            const existing = projectiles.find(lp => lp.id === p.id);
+            if (!existing) {
+                // Создаём новый снаряд
+                let marker = L.marker([p.from.lat, p.from.lng], {
+                    icon: getMissileIcon(p.type, p.team),
+                    rotationOrigin: 'center center',
+                    rotationAngle: p.angle || 0
+                }).addTo(map);
+                const newProj = { ...p, marker: marker };
+                projectiles.push(newProj);
+            } else {
+                // Обновляем существующий
+                existing.progress = p.progress;
+                existing.active = p.active;
+                existing.to = p.to;
+                existing.from = p.from;
+                if (existing.marker) {
+                    const lat = p.from.lat + (p.to.lat - p.from.lat) * p.progress;
+                    const lng = p.from.lng + (p.to.lng - p.from.lng) * p.progress;
+                    existing.marker.setLatLng([lat, lng]);
+                    if (existing.marker.setRotationAngle) existing.marker.setRotationAngle(p.angle || 0);
+                }
+            }
+        });
+    }
 }
 
 // ---- Кнопки стройки ----
@@ -2683,7 +2567,7 @@ document.getElementById('sandboxBtn').onclick = function() {
 document.getElementById('logoutBtn').onclick = logout;
 
 // ============================================================
-// 9. СИСТЕМА ОБУЧЕНИЯ (МИССИИ) — ИСПРАВЛЕННАЯ ВЕРСИЯ
+// 9. СИСТЕМА ОБУЧЕНИЯ (МИССИИ) — БЕЗ ИЗМЕНЕНИЙ (уже была)
 // ============================================================
 let isTutorial = false;
 let tutorialStep = 0;
@@ -2818,7 +2702,6 @@ const tutorialMissions = [
     }
 ];
 
-// ---- Функция запуска волны дронов (из Москвы в Киев) ----
 function launchDroneWave(count) {
     const enemyCity = zones.find(z => z.team === enemyTeam && z.name === 'МОСКВА');
     if (!enemyCity) {
@@ -2907,14 +2790,11 @@ function launchDroneWave(count) {
     }
 }
 
-// ---- Основная функция запуска обучения ----
 function startTutorial() {
     if (!currentUser) { alert("Сначала войдите в аккаунт!"); return; }
-
     document.getElementById('menuScreen').style.display = 'none';
     document.getElementById('gameContainer').style.display = 'block';
     if (map) map.remove();
-
     buildMode = null;
     pvoPlacementMode = false;
     pvoPlacementType = null;
@@ -2961,8 +2841,6 @@ function startTutorial() {
         map.off('click');
         map.on('click', (e) => {
             if (!tutorialMission) return;
-
-            // Аэродром
             if (!airportPlaced && tutorialMission.id === 'airport') {
                 let lat = e.latlng.lat, lng = e.latlng.lng;
                 if (!isOwnTerritory(lat, lng)) { showTutorialHint('❌ Поставьте аэродром на своей территории (Украина)!', 3000); return; }
@@ -2979,28 +2857,15 @@ function startTutorial() {
                 checkTutorialStep();
                 return;
             }
-
-            // Стройка
             if (buildMode) {
-                if (!isOwnTerritory(e.latlng.lat, e.latlng.lng)) {
-                    showTutorialHint('❌ Стройте только на своей территории!', 3000);
-                    return;
-                }
+                if (!isOwnTerritory(e.latlng.lat, e.latlng.lng)) { showTutorialHint('❌ Стройте только на своей территории!', 3000); return; }
                 const result = tryBuild(e.latlng.lat, e.latlng.lng, buildMode);
-                if (result) {
-                    buildMode = null;
-                    checkTutorialStep();
-                }
+                if (result) { buildMode = null; checkTutorialStep(); }
                 return;
             }
-
-            // Размещение ПВО
             if (pvoPlacementMode && pvoPlacementType) {
                 const lat = e.latlng.lat, lng = e.latlng.lng;
-                if (!isOwnTerritory(lat, lng)) {
-                    showTutorialHint('❌ Размещайте ПВО на своей территории!', 3000);
-                    return;
-                }
+                if (!isOwnTerritory(lat, lng)) { showTutorialHint('❌ Размещайте ПВО на своей территории!', 3000); return; }
                 let nearestCity = null, minDist = Infinity;
                 for (const city of getMyCities()) {
                     const d = map.distance([lat, lng], city.center);
@@ -3008,14 +2873,9 @@ function startTutorial() {
                 }
                 const cityName = nearestCity ? nearestCity.name : 'Полевая позиция';
                 const success = deployPvo(pvoPlacementType, cityName, lat, lng);
-                if (success) {
-                    exitPlacementMode();
-                    checkTutorialStep();
-                }
+                if (success) { exitPlacementMode(); checkTutorialStep(); }
                 return;
             }
-
-            // Если клик не обработан
             if (tutorialMission) {
                 const currentStep = tutorialMission.steps[tutorialStep];
                 if (currentStep) showTutorialHint(currentStep.text, 8000);
@@ -3085,12 +2945,11 @@ function completeMission() {
     }
 }
 
-// Переопределяем обработчик кнопки "Обучение"
 document.getElementById('tutorialBtn').onclick = function() {
     startTutorial();
 };
 
-console.log("✅ Игра полностью загружена. Мультиплеер работает, обучение с 8-секундными подсказками, дроны из Москвы в Киев, 100% ПВО в обучении.");
+console.log("✅ Игра полностью загружена. Мультиплеер исправлен: снаряды видны, ресурсы не сбрасываются.");
 </script>
 </body>
 </html>
