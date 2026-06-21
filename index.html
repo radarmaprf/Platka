@@ -2854,14 +2854,16 @@ document.getElementById('sandboxBtn').onclick = function() {
         }, 100);
     }, 100);
 };
+// Переопределяем обработчик кнопки "Обучение" (был alert, теперь запускает обучение)
 document.getElementById('tutorialBtn').onclick = function() {
-    alert("Обучение: постройте аэродром → радар → используйте Штаб ПВО для размещения ПВО, атакуйте врага ракетами. В песочнице нет лимитов и бесконечная энергия.");
+    startTutorial();
 };
 document.getElementById('logoutBtn').onclick = logout;
 
 console.log("✅ Игра полностью загружена. Штаб ПВО в Стройке за 250 энергии. Иконка штаба: pvobase.png. Клик по иконке открывает меню. В песочнице штаб строится бесплатно. Убрана кнопка переброски, добавлен режим размещения на карте.");
+
 // ============================================================
-// 8. СИСТЕМА ОБУЧЕНИЯ (МИССИИ)
+// 8. СИСТЕМА ОБУЧЕНИЯ (МИССИИ) — ИСПРАВЛЕННАЯ ВЕРСИЯ
 // ============================================================
 
 // Переменные для обучения
@@ -2974,12 +2976,12 @@ const tutorialMissions = [
     title: 'Миссия 4: Отражение атаки',
     description: 'Отразите налёт 15 БПЛА',
     steps: [
+      // ИСПРАВЛЕННЫЙ ПЕРВЫЙ ШАГ (check: true)
       {
         text: 'Внимание! Через 5 секунд на ваш город вылетит 15 дронов-камикадзе. Ваше ПВО будет работать автоматически, наблюдайте.',
-        check: () => false, // не проверяем, запускаем атаку по таймеру
-        onComplete: null,
+        check: () => true, // сразу завершаем шаг
+        onComplete: () => {},
         action: () => {
-          // Запускаем волну дронов через 5 секунд
           setTimeout(() => {
             launchDroneWave(15);
             showTutorialHint('🚨 15 БПЛА приближаются! ПВО начинает перехват...', 4000);
@@ -2989,7 +2991,6 @@ const tutorialMissions = [
       {
         text: 'Дроны уничтожены! Вы успешно отразили атаку. Переходим к ответному удару.',
         check: () => {
-          // Проверяем, что все дроны из волны уничтожены (не активны)
           const waveDrones = projectiles.filter(p => p.wave === 'tutorial' && p.team === enemyTeam);
           return waveDrones.length === 0 && waveDrones.every(p => !p.active);
         },
@@ -3007,13 +3008,11 @@ const tutorialMissions = [
       {
         text: 'Кликните на свой аэродром, чтобы открыть меню атаки. Выберите цель — любой город противника, и запустите 1 ракету (например, "ШАХЕД").',
         check: () => {
-          // Проверяем, что был нанесён урон хотя бы одному городу противника
           const enemyZones = zones.filter(z => z.team !== myTeam);
           return enemyZones.some(z => z.hp < z.baseHp);
         },
         onComplete: () => {
           showTutorialHint('🎉 Поздравляем! Вы прошли все миссии обучения. Теперь вы готовы к реальным сражениям!', 5000);
-          // Можно вернуться в меню через 5 секунд
           setTimeout(() => {
             if (confirm('Обучение завершено! Вернуться в главное меню?')) {
               location.reload();
@@ -3025,13 +3024,13 @@ const tutorialMissions = [
   }
 ];
 
-// Функция для запуска волны дронов (для миссии 4)
+// ИСПРАВЛЕННАЯ ФУНКЦИЯ ЗАПУСКА ВОЛНЫ ДРОНОВ (летят на свой город)
 function launchDroneWave(count) {
-  const enemyCity = zones.find(z => z.team !== myTeam);
-  if (!enemyCity) return;
-  const targetLat = enemyCity.center[0];
-  const targetLng = enemyCity.center[1];
-  const fromLat = targetLat + (Math.random() - 0.5) * 2; // с разных сторон
+  const myCity = zones.find(z => z.team === myTeam);
+  if (!myCity) return;
+  const targetLat = myCity.center[0];
+  const targetLng = myCity.center[1];
+  const fromLat = targetLat + (Math.random() - 0.5) * 2;
   const fromLng = targetLng + (Math.random() - 0.5) * 2;
   const from = { lat: fromLat, lng: fromLng };
 
@@ -3040,9 +3039,9 @@ function launchDroneWave(count) {
     const lat = from.lat + offset * 0.5;
     const lng = from.lng + offset * 0.3;
     const to = { lat: targetLat + offset * 0.2, lng: targetLng + offset * 0.1 };
-    const type = 'shahed'; // можно 'geran5'
-    const speed = 0.008; // медленнее, чтобы было видно
-    const damage = 10; // небольшой урон, чтобы не уничтожить город сразу
+    const type = 'shahed';
+    const speed = 0.008;
+    const damage = 10;
 
     const proj = {
       id: Date.now() + Math.random() + i,
@@ -3053,14 +3052,14 @@ function launchDroneWave(count) {
       damage: damage,
       team: enemyTeam,
       targetType: 'zone',
-      targetId: enemyCity.id,
+      targetId: myCity.id,
       type: type,
       active: true,
       marker: null,
       lastInterceptCheck: 0,
       interceptedFlag: false,
       angle: 0,
-      wave: 'tutorial' // метка для идентификации
+      wave: 'tutorial'
     };
 
     const marker = L.marker([from.lat, from.lng], {
@@ -3081,28 +3080,28 @@ function startTutorial() {
   document.getElementById('gameContainer').style.display = 'block';
   if (map) map.remove();
 
+  // Очистка режимов
+  buildMode = null;
+  pvoPlacementMode = false;
+  pvoPlacementType = null;
+
   // Инициализируем карту с упрощённым набором городов (для обучения)
   const tutorialCities = allCities.filter(c => c.name === 'КИЕВ' || c.name === 'МОСКВА');
-  // Добавим ещё пару городов для разнообразия
   const extra = allCities.filter(c => c.name === 'ХАРЬКОВ' || c.name === 'БЕЛГОРОД');
   const citySet = [...tutorialCities, ...extra];
-  // Установим HP
   citySet.forEach(c => { c.hp = 500; c.baseHp = 500; });
 
   isTutorial = true;
   isAI = false;
   isMultiplayer = false;
   isSandbox = false;
-  myTeam = 'ukraine'; // для обучения выберем Украину (можно сделать выбор)
+  myTeam = 'ukraine';
   enemyTeam = 'russia';
 
-  // Инициализируем карту и города
   map = L.map('map', { zoomControl: false }).setView([50.0, 30.0], 5);
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '© CartoDB' }).addTo(map);
 
-  // Загружаем границы
   loadRealBorders(() => {
-    // Создаём зоны
     zones = [];
     citySet.forEach(c => {
       let circle = L.circle(c.center, { radius: 15000, color: c.team === 'russia' ? '#ff5555' : '#55aaff', weight: 2, fillOpacity: 0.25 }).addTo(map);
@@ -3111,7 +3110,6 @@ function startTutorial() {
     });
     updateZoneMarkers();
 
-    // Сброс состояния игры
     buildings = [];
     radars = [];
     powerPlants = [];
@@ -3121,19 +3119,18 @@ function startTutorial() {
     pvoStaffBuilt = false;
     airportPlaced = false;
     airportMarker = null;
-    resources = 9999; // много энергии для обучения
+    resources = 9999;
     updateUI();
 
-    // Перехватываем клики по карте для обучения
+    // Отключаем экономику (заглушка)
+    if (economyInterval) clearInterval(economyInterval);
+    economyInterval = setInterval(() => {}, 1000);
+
     map.off('click');
     map.on('click', (e) => {
-      // Если не начата миссия, игнорируем
       if (!tutorialMission) return;
 
-      // Сначала обрабатываем стандартные действия (постройка аэродрома, стройка)
-      // Но у нас есть проверки в миссиях, поэтому просто вызываем ту же логику, но с проверкой
-
-      // 1. Аэродром
+      // Аэродром
       if (!airportPlaced && tutorialMission.id === 'airport') {
         let lat = e.latlng.lat, lng = e.latlng.lng;
         if (!isOwnTerritory(lat, lng)) { showTutorialHint('❌ Поставьте аэродром на своей территории (Украина)!', 2000); return; }
@@ -3146,44 +3143,34 @@ function startTutorial() {
         lastUpdate = performance.now();
         startRadarAnimation();
         requestAnimationFrame(gameLoop);
-        // Доход не нужен, но оставим
-        if (economyInterval) clearInterval(economyInterval);
-        economyInterval = setInterval(() => { if (gameActive) updateUI(); }, 1000);
         showTutorialHint('✅ Аэродром построен! Переходим к следующему шагу.', 2000);
-        // Проверяем шаг
         checkTutorialStep();
         return;
       }
 
-      // 2. Стройка (радар, штаб ПВО и т.д.) – используем существующую логику, но с проверкой на миссию
+      // Стройка
       if (buildMode) {
         if (!isOwnTerritory(e.latlng.lat, e.latlng.lng)) {
           showTutorialHint('❌ Стройте только на своей территории!', 1500);
           return;
         }
-        // Вызов стандартной tryBuild, но с контролем
         const result = tryBuild(e.latlng.lat, e.latlng.lng, buildMode);
         if (result) {
           buildMode = null;
-          // Проверим шаг
           checkTutorialStep();
-          // Если шаг выполнен, подсказка появится в onComplete
         }
         return;
       }
 
-      // 3. Размещение ПВО (если активен режим размещения)
+      // Размещение ПВО
       if (pvoPlacementMode && pvoPlacementType) {
-        const lat = e.latlng.lat;
-        const lng = e.latlng.lng;
+        const lat = e.latlng.lat, lng = e.latlng.lng;
         if (!isOwnTerritory(lat, lng)) {
           showTutorialHint('❌ Размещайте ПВО на своей территории!', 1500);
           return;
         }
-        let nearestCity = null;
-        let minDist = Infinity;
-        const myCities = getMyCities();
-        for (const city of myCities) {
+        let nearestCity = null, minDist = Infinity;
+        for (const city of getMyCities()) {
           const d = map.distance([lat, lng], city.center);
           if (d < minDist) { minDist = d; nearestCity = city; }
         }
@@ -3196,19 +3183,17 @@ function startTutorial() {
         return;
       }
 
-      // Если клик по карте не обработан, показываем подсказку
+      // Если клик не обработан
       if (tutorialMission) {
         const currentStep = tutorialMission.steps[tutorialStep];
         if (currentStep) showTutorialHint(currentStep.text, 3000);
       }
     });
 
-    // Запускаем первую миссию
     startMission(0);
   });
 }
 
-// Запуск конкретной миссии по индексу
 function startMission(index) {
   if (index >= tutorialMissions.length) {
     showTutorialHint('🏁 Все миссии пройдены! Вы великолепны!', 5000);
@@ -3217,34 +3202,27 @@ function startMission(index) {
   tutorialMission = tutorialMissions[index];
   tutorialStep = 0;
   showTutorialHint(`📖 ${tutorialMission.title}\n${tutorialMission.description}`, 4000);
-  // Показываем подсказку первого шага
   setTimeout(() => {
     const step = tutorialMission.steps[0];
     if (step) showTutorialHint(step.text, 0);
-    // Если есть action, выполняем
     if (step.action) step.action();
   }, 1000);
 
-  // Запускаем проверку шагов каждые 2 секунды
   if (tutorialCheckInterval) clearInterval(tutorialCheckInterval);
   tutorialCheckInterval = setInterval(checkTutorialStep, 2000);
 }
 
-// Проверка текущего шага
 function checkTutorialStep() {
   if (!tutorialMission) return;
   const steps = tutorialMission.steps;
   if (tutorialStep >= steps.length) {
-    // Миссия завершена
     completeMission();
     return;
   }
   const step = steps[tutorialStep];
   if (step.check && step.check()) {
-    // Шаг выполнен
     if (step.onComplete) step.onComplete();
     tutorialStep++;
-    // Переходим к следующему шагу
     if (tutorialStep < steps.length) {
       const nextStep = steps[tutorialStep];
       setTimeout(() => {
@@ -3252,13 +3230,11 @@ function checkTutorialStep() {
         if (nextStep.action) nextStep.action();
       }, 1500);
     } else {
-      // Миссия завершена
       completeMission();
     }
   }
 }
 
-// Завершение миссии
 function completeMission() {
   clearInterval(tutorialCheckInterval);
   const currentIndex = tutorialMissions.indexOf(tutorialMission);
@@ -3269,7 +3245,6 @@ function completeMission() {
     }, 3500);
   } else {
     showTutorialHint('🎉 Вы прошли все миссии обучения! Теперь вы готовы к бою!', 5000);
-    // Можно вернуть в меню
     setTimeout(() => {
       if (confirm('Обучение завершено! Вернуться в главное меню?')) {
         location.reload();
@@ -3278,21 +3253,7 @@ function completeMission() {
   }
 }
 
-// Переопределяем обработчик кнопки "Обучение"
-document.getElementById('tutorialBtn').onclick = function() {
-  startTutorial();
-};
-
-// Также нужно учесть, что в режиме обучения мы отключаем ИИ и другие режимы
-// В функции initGameMapAndLogic уже есть проверка isAI, isMultiplayer и т.д.
-// Но мы не будем её вызывать, вместо этого используем startTutorial.
-
-// Небольшая правка: в функции showTutorialHint нужно убрать pointer-events: none, чтобы игрок мог кликать
-// Уже установлено pointer-events: none, но нам нужно, чтобы подсказка не мешала кликать по карте - это нормально.
-
-// Также добавим кнопку для пропуска миссии (для тестирования) - можно добавить в подсказку, но не обязательно.
-
-console.log("✅ Система обучения (миссии) добавлена. Используйте кнопку 'Обучение' в главном меню.");
+console.log("✅ Система обучения (миссии) добавлена и исправлена. Используйте кнопку 'Обучение' в главном меню.");
 </script>
 </body>
 </html>
