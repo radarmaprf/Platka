@@ -13,7 +13,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
-        /* ===== ПОЛНЫЙ НАБОР СТИЛЕЙ ===== */
+        /* ===== ВСЕ СТИЛИ (без изменений) ===== */
         *{margin:0;padding:0;box-sizing:border-box;user-select:none;-webkit-tap-highlight-color:transparent}
         body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#0a0f12;overflow:hidden;height:100vh;color:#eef;touch-action:manipulation}
         .screen{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;justify-content:center;align-items:center;z-index:2000;background:radial-gradient(circle at 20% 30%,#0a1f1a,#030a08)}
@@ -1016,7 +1016,7 @@ function leaveLobby() {
 }
 
 // ============================================================
-// 7. ИГРОВОЙ ДВИЖОК (ОСНОВНАЯ ЛОГИКА)
+// 7. ИГРОВОЙ ДВИЖОК (ОСНОВНАЯ ЛОГИКА) — ИСПРАВЛЕННАЯ ВЕРСИЯ
 // ============================================================
 let map, gameActive = false;
 let resources = 300;
@@ -1356,6 +1356,10 @@ document.getElementById('startGameBtn').onclick = function() {
 
 // ---- Загрузка границ ----
 function loadRealBorders(cb) {
+    if (bordersLoaded) {
+        if (cb) cb();
+        return;
+    }
     Promise.all([
         fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries/RUS.geo.json').then(r=>r.json()).catch(()=>fallbackRussia),
         fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries/UKR.geo.json').then(r=>r.json()).catch(()=>fallbackUkraine)
@@ -1526,13 +1530,100 @@ function createCityMarker(city) {
     return L.divIcon({ html, className: '', iconSize: [100, 60], iconAnchor: [50, 30] });
 }
 
-// ============================================================
-// 8. ОСНОВНЫЕ ИГРОВЫЕ ФУНКЦИИ (постройка, атака, AI, и т.д.)
-// ============================================================
-// (продолжение следует в части 2)
-    // ============================================================
-// 8. ОСНОВНЫЕ ИГРОВЫЕ ФУНКЦИИ (постройка, атака, AI, и т.д.)
-// ============================================================
+// ---- ЕДИНСТВЕННАЯ ФУНКЦИЯ initGameMapAndLogic ----
+function initGameMapAndLogic(citiesArray) {
+    document.getElementById('menuScreen').style.display = 'none';
+    document.getElementById('lobbyScreen').style.display = 'none';
+    document.getElementById('gameContainer').style.display = 'block';
+    if(map) map.remove();
+    map = L.map('map', { zoomControl: false }).setView([55.0,40.0],5);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© CartoDB'}).addTo(map);
+    let ld = document.createElement('div'); ld.className='loading-indicator'; ld.innerText='Загрузка границ...'; document.body.appendChild(ld);
+    loadRealBorders(()=>{
+        if(ld) ld.remove();
+        initZones(citiesArray);
+        buildings = []; radars = []; powerPlants = []; refineries = []; rocketFactories = [];
+        pvoUnits = [];
+        pvoStaffBuilt = false;
+        if(isSandbox){
+            resources = 999999;
+            maxRadars = 999; maxPvo = 999; maxPowerPlants = 999; maxRefineries = 999;
+        } else {
+            if(setupDifficulty === "EASY") resources = 400;
+            else if(setupDifficulty === "NORMAL") resources = 300;
+            else if(setupDifficulty === "HARD") resources = 220;
+            else resources = 150;
+            maxRadars = 8; maxPvo = 12; maxPowerPlants = 5; maxRefineries = 3;
+        }
+        airportPlaced = false; updateUI();
+        // Очищаем старые обработчики, чтобы не дублировать
+        map.off('click');
+        map.on('click', (e) => {
+            // 1. РАЗМЕЩЕНИЕ АЭРОДРОМА
+            if(!airportPlaced){
+                let lat = e.latlng.lat, lng = e.latlng.lng;
+                if(!isOwnTerritory(lat,lng)){ alert("Аэродром можно поставить только на своей территории!"); return; }
+                let icon = getAirportIcon();
+                airportMarker = L.marker([lat,lng], {icon}).addTo(map);
+                airportMarker.bindPopup('<b>АЭРОДРОМ</b>');
+                airportMarker.on('click', () => showAttackModal(airportMarker));
+                airportPlaced = true; gameActive = true; updateUI(); lastUpdate = performance.now();
+                if(isAI) initAI();
+                startRadarAnimation();
+                requestAnimationFrame(gameLoop);
+                if(economyInterval) clearInterval(economyInterval);
+                economyInterval = setInterval(() => { if(gameActive && !isSandbox){ let income = 5 + powerPlants.filter(p=>p.team===myTeam).length*3 + refineries.filter(r=>r.team===myTeam).length*15; resources += income; updateUI(); } else updateUI(); }, 1000);
+                showHint("📡 Теперь постройте Радар");
+                return;
+            }
+            // 2. РЕЖИМ РАЗМЕЩЕНИЯ ПВО
+            if(pvoPlacementMode && pvoPlacementType){
+                const lat = e.latlng.lat;
+                const lng = e.latlng.lng;
+                if(!isOwnTerritory(lat,lng)){
+                    alert("Можно размещать ПВО только на своей территории!");
+                    return;
+                }
+                let nearestCity = null;
+                let minDist = Infinity;
+                const myCities = getMyCities();
+                for(const city of myCities){
+                    const d = map.distance([lat,lng], city.center);
+                    if(d < minDist){
+                        minDist = d;
+                        nearestCity = city;
+                    }
+                }
+                const cityName = nearestCity ? nearestCity.name : 'Полевая позиция';
+                const success = deployPvo(pvoPlacementType, cityName, lat, lng);
+                if(success){
+                    exitPlacementMode();
+                }
+                return;
+            }
+            // 3. ОБЫЧНАЯ ПОСТРОЙКА
+            if(buildMode){ 
+                if(!isOwnTerritory(e.latlng.lat, e.latlng.lng)){
+                    alert("Можно строить только на своей территории!");
+                    return;
+                }
+                tryBuild(e.latlng.lat, e.latlng.lng, buildMode); 
+                buildMode = null; 
+            }
+        });
+    });
+}
+
+function initZones(cities) {
+    zones = [];
+    cities.forEach(z => {
+        let circle = L.circle(z.center, { radius: 15000, color: z.team === 'russia' ? '#ff5555' : '#55aaff', weight: 2, fillOpacity: 0.25 }).addTo(map);
+        let marker = L.marker(z.center, { icon: createCityMarker(z) }).addTo(map);
+        zones.push({ id: z.name, name: z.name, center: z.center, team: z.team, hp: z.hp, baseHp: z.baseHp, circle: circle, marker: marker });
+    });
+    updateZoneMarkers();
+    updateTotalPercent();
+}
 
 // ---- Постройки (добавлен штаб ПВО) ----
 function tryBuild(lat,lng,type){
@@ -1593,7 +1684,7 @@ function tryBuild(lat,lng,type){
     return true;
 }
 
-// ---- Оружие ----
+// ---- Оружие (без изменений) ----
 const weaponTypes = {
     shahed: { name: 'ШАХЕД', speed: 0.006, damage: 25, cost: 60, pvoChance: 0.08, spriteOffset: 0, img: 'drone.png' },
     x101: { name: 'X-101', speed: 0.03, damage: 65, cost: 160, pvoChance: 0.12, spriteOffset: 0, img: 'x101.png' },
@@ -2199,92 +2290,11 @@ pvoDeployBtn.onclick = function() {
         alert("Сначала выберите тип ПВО");
         return;
     }
-    // Вход в режим размещения на карте
     enterPlacementMode(selectedPvoType);
     closePvoModal();
 };
 
 pvoCancelBtn.onclick = closePvoModal;
-
-// ---- ИНИЦИАЛИЗАЦИЯ ИГРЫ (ЗАПУСК) ----
-function initGameMapAndLogic(citiesArray) {
-    document.getElementById('menuScreen').style.display = 'none';
-    document.getElementById('lobbyScreen').style.display = 'none';
-    document.getElementById('gameContainer').style.display = 'block';
-    if(map) map.remove();
-    map = L.map('map', { zoomControl: false }).setView([55.0,40.0],5);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© CartoDB'}).addTo(map);
-    let ld = document.createElement('div'); ld.className='loading-indicator'; ld.innerText='Загрузка границ...'; document.body.appendChild(ld);
-    loadRealBorders(()=>{
-        if(ld) ld.remove();
-        initZones(citiesArray);
-        buildings = []; radars = []; powerPlants = []; refineries = []; rocketFactories = [];
-        pvoUnits = [];
-        pvoStaffBuilt = false;
-        if(isSandbox){
-            resources = 999999;
-            maxRadars = 999; maxPvo = 999; maxPowerPlants = 999; maxRefineries = 999;
-        } else {
-            if(setupDifficulty === "EASY") resources = 400;
-            else if(setupDifficulty === "NORMAL") resources = 300;
-            else if(setupDifficulty === "HARD") resources = 220;
-            else resources = 150;
-            maxRadars = 8; maxPvo = 12; maxPowerPlants = 5; maxRefineries = 3;
-        }
-        airportPlaced = false; updateUI();
-        map.off('click');
-        map.on('click', (e) => {
-            if(!airportPlaced){
-                let lat = e.latlng.lat, lng = e.latlng.lng;
-                if(!isOwnTerritory(lat,lng)){ alert("Аэродром можно поставить только на своей территории!"); return; }
-                let icon = getAirportIcon();
-                airportMarker = L.marker([lat,lng], {icon}).addTo(map);
-                airportMarker.bindPopup('<b>АЭРОДРОМ</b>');
-                airportMarker.on('click', () => showAttackModal(airportMarker));
-                airportPlaced = true; gameActive = true; updateUI(); lastUpdate = performance.now();
-                if(isAI) initAI();
-                startRadarAnimation();
-                requestAnimationFrame(gameLoop);
-                if(economyInterval) clearInterval(economyInterval);
-                economyInterval = setInterval(() => { if(gameActive && !isSandbox){ let income = 5 + powerPlants.filter(p=>p.team===myTeam).length*3 + refineries.filter(r=>r.team===myTeam).length*15; resources += income; updateUI(); } else updateUI(); }, 1000);
-                showHint("📡 Теперь постройте Радар");
-                return;
-            }
-            if(pvoPlacementMode && pvoPlacementType){
-                const lat = e.latlng.lat;
-                const lng = e.latlng.lng;
-                if(!isOwnTerritory(lat,lng)){
-                    alert("Можно размещать ПВО только на своей территории!");
-                    return;
-                }
-                let nearestCity = null;
-                let minDist = Infinity;
-                const myCities = getMyCities();
-                for(const city of myCities){
-                    const d = map.distance([lat,lng], city.center);
-                    if(d < minDist){
-                        minDist = d;
-                        nearestCity = city;
-                    }
-                }
-                const cityName = nearestCity ? nearestCity.name : 'Полевая позиция';
-                const success = deployPvo(pvoPlacementType, cityName, lat, lng);
-                if(success){
-                    exitPlacementMode();
-                }
-                return;
-            }
-            if(buildMode){ 
-                if(!isOwnTerritory(e.latlng.lat, e.latlng.lng)){
-                    alert("Можно строить только на своей территории!");
-                    return;
-                }
-                tryBuild(e.latlng.lat, e.latlng.lng, buildMode); 
-                buildMode = null; 
-            }
-        });
-    });
-}
 
 // ---- Мультиплеер синхронизация ----
 function startMultiplayerGame(roomId, data) {
@@ -2413,7 +2423,6 @@ function applyAction(action) {
             sendGameStateUpdate();
         }
     } else if (action.type === 'movePvo') {
-        // функция перемещения оставлена, но в интерфейсе её нет
         const pvo = pvoUnits.find(p => p.id === action.pvoId);
         if (pvo) {
             pvo.status = 'moving';
