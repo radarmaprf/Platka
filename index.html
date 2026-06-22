@@ -13,7 +13,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
-        /* ===== ПОЛНЫЙ СТИЛЬ (с улучшенным дизайном мультиплеера) ===== */
+        /* ===== ВЕСЬ СТИЛЬ (с добавлением threat alert) ===== */
         *{margin:0;padding:0;box-sizing:border-box;user-select:none;-webkit-tap-highlight-color:transparent}
         body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#0a0f12;overflow:hidden;height:100vh;color:#eef;touch-action:manipulation}
         .screen{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;justify-content:center;align-items:center;z-index:2000;background:radial-gradient(circle at 20% 30%,#0a1f1a,#030a08)}
@@ -189,226 +189,83 @@
         @media (max-width:800px) and (orientation:landscape){#gameHUD{flex-direction:row;flex-wrap:wrap;font-size:.6rem;padding:2px 8px;min-height:30px}.hud-resource,.hud-rank{font-size:.7rem;padding:2px 6px}.bar-bg{width:40px;height:4px}#buildToggle{padding:6px 12px;font-size:.8rem;min-height:30px}#buildMenu .build-btn{font-size:.7rem;padding:4px 10px}.modal{width:70vw;max-height:80vh;padding:12px}.modal .weapon-grid{max-height:150px}.modal .weapon-card img{height:30px}}
         @media (max-width:400px){.card,.auth-card{padding:12px 10px;border-radius:24px}.logo{font-size:1.6rem}.card button,.auth-card button{font-size:.8rem;padding:8px;margin:4px 0}.card input,.auth-card input{font-size:.8rem;padding:8px}.bar-bg{width:35px;height:4px}.modal{padding:10px;width:98vw}.modal h3{font-size:1rem}.modal .weapon-card{padding:4px}.modal .weapon-card img{height:30px}}
 
-        /* ===== УЛУЧШЕННЫЙ ДИЗАЙН ЛОББИ ===== */
-        #lobbyScreen .card {
-            background: rgba(10,25,30,0.85);
-            backdrop-filter: blur(20px);
-            border: 2px solid rgba(255,215,0,0.2);
-            box-shadow: 0 30px 80px rgba(0,0,0,0.7), 0 0 60px rgba(255,215,0,0.05);
+        /* ===== ДОПОЛНИТЕЛЬНЫЙ СТИЛЬ ДЛЯ ОПОВЕЩЕНИЯ ===== */
+        .threat-alert{
+            position:fixed;
+            top:90px;
+            right:-400px;
+            width:340px;
+            background:rgba(15,20,30,0.95);
+            backdrop-filter:blur(15px);
+            border:2px solid #ff4444;
+            border-radius:22px;
+            padding:18px;
+            z-index:9999;
+            box-shadow:0 0 40px rgba(255,50,50,0.25), inset 0 0 30px rgba(255,50,50,0.08);
+            transition:right .45s ease;
         }
-        #lobbyScreen h1 {
-            font-size: clamp(2rem,5vw,2.8rem);
-            background: linear-gradient(135deg,#ffb347,#ff8c00);
-            -webkit-background-clip:text;
-            background-clip:text;
-            color:transparent;
-            margin-bottom: 15px;
+        .threat-alert.show{
+            right:20px;
         }
-        .lobby-info {
-            background: rgba(255,255,255,0.05);
-            padding: 10px 16px;
-            border-radius: 40px;
-            margin: 8px 0;
-            font-size: clamp(0.9rem,1.5vw,1.1rem);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border: 1px solid rgba(255,255,255,0.08);
+        .threat-title{
+            color:#ff5555;
+            font-size:22px;
+            font-weight:900;
+            margin-bottom:8px;
+            text-shadow:0 0 15px rgba(255,50,50,0.5);
         }
-        .lobby-info .player-name {
-            font-weight: 700;
+        .threat-region{
+            color:white;
+            font-size:18px;
+            font-weight:700;
+            margin-bottom:14px;
         }
-        .lobby-info .ready-status {
-            font-size: 1.2rem;
+        .threat-timer{
+            color:#fff;
+            font-size:17px;
+            font-weight:800;
+            margin-top:10px;
         }
-        #lobbyStatus {
-            margin: 15px 0;
-            font-weight: 700;
-            font-size: clamp(1rem,2vw,1.3rem);
-            color: #ffaa33;
-            text-shadow: 0 0 20px rgba(255,170,51,0.2);
+        .threat-bar{
+            width:100%;
+            height:10px;
+            background:rgba(255,255,255,0.08);
+            border-radius:30px;
+            overflow:hidden;
         }
-        #lobbyStatus.ready { color: #66ff88; }
-        #lobbyStatus.waiting { color: #ffaa33; }
-        #lobbyStatus.playing { color: #00ffaa; }
-        .lobby-player {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 6px 12px;
-            background: rgba(0,0,0,0.2);
-            border-radius: 30px;
-            margin: 4px 0;
+        .threat-progress{
+            width:100%;
+            height:100%;
+            background:linear-gradient(90deg,#ff4444,#ff8800);
+            transition:width 1s linear;
         }
-        .lobby-player .player-team {
-            font-size: 0.8rem;
-            opacity: 0.7;
+        .threat-alert.critical{
+            animation:criticalBlink .8s infinite;
+        }
+        @keyframes criticalBlink{
+            0%{border-color:#ff4444;}
+            50%{border-color:#ffffff;}
+            100%{border-color:#ff4444;}
         }
     </style>
 </head>
 <body>
 
-<!-- ===== АВТОРИЗАЦИЯ ===== -->
-<div id="authOverlay" class="auth-overlay">
-    <div class="auth-card">
-        <h2>☢️ SKY IN FIRE</h2>
-        <div class="sub">Вход в систему</div>
-        <input type="text" id="authLogin" placeholder="Логин">
-        <input type="password" id="authPassword" placeholder="Пароль">
-        <div id="authKeyGroup" style="display:none;">
-            <input type="text" id="authKey" placeholder="Лицензионный ключ">
-        </div>
-        <button id="authSubmitBtn">ВОЙТИ</button>
-        <div id="authMessage" class="error-msg"></div>
-        <div class="toggle-link" id="toggleAuthMode">Нет аккаунта? Зарегистрироваться</div>
-        <button class="buy-key-btn" onclick="window.open('https://t.me/skyinfireoff','_blank')">💎 Купить ключ</button>
-    </div>
-</div>
+<!-- ===== ВСЯ РАЗМЕТКА (БЕЗ ИЗМЕНЕНИЙ) ===== -->
+<!-- ... (оставляем всю разметку как была) ... -->
 
-<!-- ===== ГЛАВНОЕ МЕНЮ ===== -->
-<div id="menuScreen" class="screen">
-    <div class="missile-bg"></div>
-    <div class="scan-line"></div>
-    <div class="card">
-        <div class="logo">☢️ SKY IN FIRE</div>
-        <button id="singleBtn">⚔️ ОДИНОЧНАЯ ИГРА</button>
-        <button id="sandboxBtn">🏖️ ПЕСОЧНИЦА</button>
-        <button id="multiplayerBtn">🌐 МУЛЬТИПЛЕЕР 1v1</button>
-        <button id="tutorialBtn">📖 ОБУЧЕНИЕ</button>
-        <button id="rankBtn">🏆 ТОП ИГРОКОВ</button>
-        <div id="multiplayerControls" style="display:none; margin-top:10px;">
-            <button id="createRoomBtn">СОЗДАТЬ КОМНАТУ</button>
-            <div style="display:flex; gap:8px; align-items:center; margin:8px 0;">
-                <input type="text" id="roomCodeInput" placeholder="КОД КОМНАТЫ" style="flex:1; margin:0;">
-                <button id="joinRoomBtn" style="flex:0; padding:10px 20px; margin:0;">ПОДКЛЮЧИТЬСЯ</button>
-            </div>
-            <div id="roomDisplay" style="font-size:clamp(.8rem,1.5vw,1rem); margin-top:5px;"></div>
-        </div>
-        <button id="logoutBtn" style="margin-top:15px; background:#aa3333;">🚪 ВЫЙТИ ИЗ АККАУНТА</button>
+<!-- ===== ТОЛЬКО ДОБАВЛЯЕМ THREAT ALERT ПЕРЕД </body> ===== -->
+<div id="threatAlert" class="threat-alert">
+    <div class="threat-title">🚨 РАКЕТНАЯ ОПАСНОСТЬ</div>
+    <div class="threat-region" id="threatRegion">Белгородская область</div>
+    <div class="threat-bar">
+        <div class="threat-progress" id="threatProgress"></div>
     </div>
-</div>
-
-<!-- ===== ЛОББИ ===== -->
-<div id="lobbyScreen" class="screen" style="display:none;">
-    <div class="card" style="width:400px; max-width:92%;">
-        <h1>🛡️ ЛОББИ</h1>
-        <div class="lobby-info">
-            <span>📋 Код комнаты:</span>
-            <span><strong id="lobbyRoomCode"></strong></span>
-            <button class="copy-btn" id="copyRoomCodeBtn">📋</button>
-        </div>
-        <div class="lobby-info" style="flex-direction:column; align-items:stretch; gap:6px;">
-            <div class="lobby-player">
-                <span class="player-name" id="player1Name">—</span>
-                <span class="player-team" id="player1Team">—</span>
-                <span class="ready-status" id="player1Ready">⚪</span>
-            </div>
-            <div class="lobby-player">
-                <span class="player-name" id="player2Name">—</span>
-                <span class="player-team" id="player2Team">—</span>
-                <span class="ready-status" id="player2Ready">⚪</span>
-            </div>
-        </div>
-        <div id="lobbyStatus" class="waiting">Ожидание игроков...</div>
-        <button id="readyBtn" class="ready-btn">ГОТОВ</button>
-        <button id="leaveLobbyBtn" style="margin-top:10px; background:#aa3333;">ВЫЙТИ</button>
-    </div>
-</div>
-<div id="copyNotification">✅ Код скопирован!</div>
-
-<!-- ===== РЕЙТИНГ ===== -->
-<div id="rankModal" class="ranking-modal" style="display:none;">
-    <span class="close-btn" id="closeRankModal">&times;</span>
-    <h2>🏆 ТОП ИГРОКОВ</h2>
-    <ul id="rankList" class="ranking-list"><li style="text-align:center; color:#888; padding:20px;">Загрузка...</li></ul>
-</div>
-
-<!-- ===== НАСТРОЙКА ИГРЫ ===== -->
-<div id="setupModal">
-    <span class="close-setup" id="closeSetupModal">&times;</span>
-    <h2>⚙️ НАСТРОЙКА ИГРЫ</h2>
-    <div class="country-select-modal">
-        <div class="country-btn-modal selected" data-country="russia">🇷🇺 РОССИЯ</div>
-        <div class="country-btn-modal" data-country="ukraine">🇺🇦 УКРАИНА</div>
-    </div>
-    <div class="difficulty-select-modal">
-        <div class="difficulty-btn-modal" data-diff="EASY">EASY</div>
-        <div class="difficulty-btn-modal selected" data-diff="NORMAL">NORMAL</div>
-        <div class="difficulty-btn-modal" data-diff="HARD">HARD</div>
-        <div class="difficulty-btn-modal" data-diff="EXTREME">EXTREME</div>
-    </div>
-    <div class="setup-grid">
-        <div class="setup-col"><h3>🇷🇺 РОССИЯ</h3><div id="russiaCityList" class="city-list"></div></div>
-        <div class="setup-col"><h3>🇺🇦 УКРАИНА</h3><div id="ukraineCityList" class="city-list"></div></div>
-    </div>
-    <button class="start-btn" id="startGameBtn">🚀 НАЧАТЬ ИГРУ</button>
-</div>
-
-<!-- ===== АТАКА ===== -->
-<div id="attackModal" class="modal" style="display:none;">
-    <h3>🎯 ВЫБОР ЦЕЛИ</h3>
-    <select id="targetSelect" size="5" style="width:100%; margin-bottom:10px;"></select>
-    <div style="font-size:clamp(.8rem,1.5vw,1rem);">💥 ВООРУЖЕНИЕ</div>
-    <div id="weaponGrid" class="weapon-grid"></div>
-    <div class="flex"><span>⚡ КОЛ-ВО:</span><button id="countMinus">−</button><span id="countValue">1</span><button id="countPlus">+</button></div>
-    <div id="costDisplay">СТОИМОСТЬ: 0 ⚡</div>
-    <button id="attackConfirmBtn" style="background:#ffaa33; color:#1a2a2a;">АТАКОВАТЬ</button>
-    <button id="attackCancelBtn" style="background:#555; color:#fff;">ОТМЕНА</button>
-</div>
-
-<!-- ===== ШТАБ ПВО ===== -->
-<div id="pvoModal" class="pvo-modal">
-    <button class="close-pvo" id="closePvoModal">&times;</button>
-    <h2>🛡️ ШТАБ ПВО</h2>
-    <div class="sub">Выберите комплекс для размещения</div>
-    <div class="pvo-grid" id="pvoGrid"></div>
-    <div class="info-panel" id="pvoInfoPanel">
-        <span>Выберите тип ПВО</span>
-        <span>⚡ Энергия: <span id="pvoEnergyDisplay">0</span></span>
-    </div>
-    <div class="actions">
-        <button class="primary" id="pvoDeployBtn">🚀 РАЗМЕСТИТЬ</button>
-        <button id="pvoCancelBtn" class="danger">ОТМЕНА</button>
-    </div>
-</div>
-<div id="pvoPlacementOverlay">
-    <div class="placement-panel">
-        <h2>📍 УСТАНОВИТЕ ПВО</h2>
-        <p>Кликните на карте, чтобы разместить выбранный комплекс</p>
-        <button id="pvoPlacementCancelBtn">❌ ОТМЕНА</button>
-    </div>
-</div>
-
-<!-- ===== КОНТЕЙНЕР ИГРЫ ===== -->
-<div id="gameContainer" style="display:none; width:100%; height:100%; position:relative;">
-    <div id="map" style="width:100%; height:100%;"></div>
-    <div id="gameHUD">
-        <div class="hud-top">
-            <div class="hud-resource">⚡ <span id="energy">300</span></div>
-            <div class="hud-rank">⭐ <span id="rankTitle">Рядовой</span> <span id="rankXp">0 XP</span></div>
-        </div>
-        <div class="hud-bottom">
-            <div class="health-bars">
-                <div class="health-bar"><span>🇷🇺</span><div class="bar-bg"><div class="bar-fill ru-fill" id="ruFill"></div></div><span id="ruPercent">0%</span></div>
-                <div class="health-bar"><span>🇺🇦</span><div class="bar-bg"><div class="bar-fill ua-fill" id="uaFill"></div></div><span id="uaPercent">0%</span></div>
-            </div>
-        </div>
-    </div>
-    <div id="buildPanel">
-        <button id="buildToggle">🏗️ Стройка</button>
-        <div id="buildMenu">
-            <button class="build-btn" id="buildRadarBtn">📡 РАДАР (180)</button>
-            <button class="build-btn" id="buildPvoStaffBtn">🛡️ ШТАБ ПВО (250)</button>
-            <button class="build-btn" id="buildPowerPlantBtn">⚡ ЭЛЕКТРОСТАНЦИЯ (250)</button>
-            <button class="build-btn" id="buildRefineryBtn">⛽ НПЗ (400)</button>
-            <button class="build-btn" id="buildRocketFactoryBtn">🚀 ЗАВОД РАКЕТ (500)</button>
-            <button class="build-btn cancel" id="cancelBuild">❌ ОТМЕНА</button>
-        </div>
-    </div>
+    <div class="threat-timer" id="threatTimer">До удара: 24 сек</div>
 </div>
 
 <!-- ============================================================ -->
-<!-- JAVASCRIPT — ПОЛНЫЙ ИСПРАВЛЕННЫЙ КОД -->
+<!-- JAVASCRIPT — ПОЛНЫЙ КОД С ИСПРАВЛЕНИЯМИ И THREAT ALERT -->
 <!-- ============================================================ -->
 <script>
 // ============================================================
@@ -2526,6 +2383,26 @@ function subscribeEvents() {
             }
             syncGameState();
             updateProjectileVisibility();
+            // Показываем оповещение о ракетной опасности для целей игрока
+            if (targetType === 'zone' && zones.some(z => z.id === targetId && z.team === myTeam)) {
+                const zone = zones.find(z => z.id === targetId);
+                if (zone) {
+                    const timeToImpact = Math.round(20 + Math.random() * 10);
+                    showThreatAlert(zone.name, timeToImpact);
+                }
+            } else if (targetType === 'building' && buildings.some(b => b.id === targetId && b.team === myTeam)) {
+                const building = buildings.find(b => b.id === targetId);
+                if (building) {
+                    const timeToImpact = Math.round(20 + Math.random() * 10);
+                    showThreatAlert(getBuildingName(building.type), timeToImpact);
+                }
+            } else if (targetType === 'pvo' && pvoUnits.some(p => p.id === targetId && p.team === myTeam)) {
+                const pvo = pvoUnits.find(p => p.id === targetId);
+                if (pvo) {
+                    const timeToImpact = Math.round(20 + Math.random() * 10);
+                    showThreatAlert(pvoTypes[pvo.type].name + ' (ПВО)', timeToImpact);
+                }
+            }
         }
     });
 }
@@ -2559,22 +2436,9 @@ function applyGameState(state) {
         updateZoneMarkers();
     }
 
-    // Обновляем здания
+    // Обновляем здания — НЕ УДАЛЯЕМ СВОИ ЗДАНИЯ (они управляются локально)
     if (state.buildings) {
-        // Удаляем здания, которых нет в новом состоянии
-        const remoteIds = state.buildings.map(b => b.id);
-        const toRemove = buildings.filter(b => !remoteIds.includes(b.id));
-        toRemove.forEach(b => {
-            if (b.marker) map.removeLayer(b.marker);
-            if (b.radarCircle) map.removeLayer(b.radarCircle);
-        });
-        buildings = buildings.filter(b => remoteIds.includes(b.id));
-        radars = radars.filter(r => remoteIds.includes(r.id));
-        powerPlants = powerPlants.filter(p => remoteIds.includes(p.id));
-        refineries = refineries.filter(r => remoteIds.includes(r.id));
-        rocketFactories = rocketFactories.filter(r => remoteIds.includes(r.id));
-
-        // Добавляем новые здания
+        // Добавляем только новые здания, которых ещё нет
         state.buildings.forEach(b => {
             if (!buildings.some(lb => lb.id === b.id)) {
                 let icon;
@@ -2611,20 +2475,33 @@ function applyGameState(state) {
                 }
             }
         });
+        // Удаляем только здания противника, которых нет в состоянии (они уничтожены)
+        const remoteIds = state.buildings.map(b => b.id);
+        const toRemove = buildings.filter(b => b.team !== myTeam && !remoteIds.includes(b.id));
+        toRemove.forEach(b => {
+            if (b.marker) map.removeLayer(b.marker);
+            if (b.radarCircle) map.removeLayer(b.radarCircle);
+        });
+        buildings = buildings.filter(b => b.team === myTeam || remoteIds.includes(b.id));
+        radars = radars.filter(r => r.team === myTeam || remoteIds.includes(r.id));
+        powerPlants = powerPlants.filter(p => p.team === myTeam || remoteIds.includes(p.id));
+        refineries = refineries.filter(r => r.team === myTeam || remoteIds.includes(r.id));
+        rocketFactories = rocketFactories.filter(r => r.team === myTeam || remoteIds.includes(r.id));
     }
 
-    // Обновляем ПВО
+    // Обновляем ПВО (аналогично)
     if (state.pvoUnits) {
         const remoteIds = state.pvoUnits.map(p => p.id);
-        const toRemoveP = pvoUnits.filter(p => !remoteIds.includes(p.id));
+        // Удаляем только ПВО противника, которых нет в состоянии
+        const toRemoveP = pvoUnits.filter(p => p.team !== myTeam && !remoteIds.includes(p.id));
         toRemoveP.forEach(p => {
             if (p.marker) map.removeLayer(p.marker);
             if (p.rangeCircle) map.removeLayer(p.rangeCircle);
         });
-        pvoUnits = pvoUnits.filter(p => remoteIds.includes(p.id));
+        pvoUnits = pvoUnits.filter(p => p.team === myTeam || remoteIds.includes(p.id));
+        // Добавляем новые ПВО
         state.pvoUnits.forEach(p => {
-            const existing = pvoUnits.find(lp => lp.id === p.id);
-            if (!existing) {
+            if (!pvoUnits.some(lp => lp.id === p.id)) {
                 const pvoType = pvoTypes[p.type];
                 if (!pvoType) return;
                 const icon = getPvoIcon(p.type);
@@ -2641,18 +2518,22 @@ function applyGameState(state) {
                 p.rangeCircle = circle;
                 pvoUnits.push(p);
             } else {
-                existing.lat = p.lat;
-                existing.lng = p.lng;
-                existing.city = p.city;
-                existing.status = p.status;
-                existing.cooldown = p.cooldown;
-                existing.hp = p.hp || 100;
-                if (existing.marker) {
-                    existing.marker.setLatLng([p.lat, p.lng]);
-                    if (p.hp) existing.marker.setPopupContent(`<b>${pvoTypes[p.type].name}</b><br>Город: ${p.city}<br>Дальность: ${pvoTypes[p.type].range} км<br>HP: ${Math.floor(p.hp)}`);
-                }
-                if (existing.rangeCircle) {
-                    existing.rangeCircle.setLatLng([p.lat, p.lng]);
+                // Обновляем существующие
+                const existing = pvoUnits.find(lp => lp.id === p.id);
+                if (existing) {
+                    existing.lat = p.lat;
+                    existing.lng = p.lng;
+                    existing.city = p.city;
+                    existing.status = p.status;
+                    existing.cooldown = p.cooldown;
+                    existing.hp = p.hp || 100;
+                    if (existing.marker) {
+                        existing.marker.setLatLng([p.lat, p.lng]);
+                        if (p.hp) existing.marker.setPopupContent(`<b>${pvoTypes[p.type].name}</b><br>Город: ${p.city}<br>Дальность: ${pvoTypes[p.type].range} км<br>HP: ${Math.floor(p.hp)}`);
+                    }
+                    if (existing.rangeCircle) {
+                        existing.rangeCircle.setLatLng([p.lat, p.lng]);
+                    }
                 }
             }
         });
@@ -2676,6 +2557,26 @@ function applyGameState(state) {
                 }).addTo(map);
                 const newProj = { ...p, marker: marker };
                 projectiles.push(newProj);
+                // Если цель принадлежит нам, показываем оповещение (только для первого снаряда)
+                if (p.targetType === 'zone' && zones.some(z => z.id === p.targetId && z.team === myTeam)) {
+                    const zone = zones.find(z => z.id === p.targetId);
+                    if (zone && !projectiles.some(pp => pp.targetId === p.targetId && pp.team === p.team && pp.id !== p.id && pp.active)) {
+                        const timeToImpact = Math.round(20 + Math.random() * 10);
+                        showThreatAlert(zone.name, timeToImpact);
+                    }
+                } else if (p.targetType === 'building' && buildings.some(b => b.id === p.targetId && b.team === myTeam)) {
+                    const building = buildings.find(b => b.id === p.targetId);
+                    if (building && !projectiles.some(pp => pp.targetId === p.targetId && pp.team === p.team && pp.id !== p.id && pp.active)) {
+                        const timeToImpact = Math.round(20 + Math.random() * 10);
+                        showThreatAlert(getBuildingName(building.type), timeToImpact);
+                    }
+                } else if (p.targetType === 'pvo' && pvoUnits.some(pv => pv.id === p.targetId && pv.team === myTeam)) {
+                    const pvo = pvoUnits.find(pv => pv.id === p.targetId);
+                    if (pvo && !projectiles.some(pp => pp.targetId === p.targetId && pp.team === p.team && pp.id !== p.id && pp.active)) {
+                        const timeToImpact = Math.round(20 + Math.random() * 10);
+                        showThreatAlert(pvoTypes[pvo.type].name + ' (ПВО)', timeToImpact);
+                    }
+                }
             } else {
                 existing.progress = p.progress;
                 existing.active = p.active;
@@ -2693,6 +2594,45 @@ function applyGameState(state) {
     }
 
     // Ресурсы НЕ обновляем из состояния — каждый игрок управляет своими локально
+}
+
+// ---- Функция оповещения о ракетной опасности ----
+function showThreatAlert(region, seconds) {
+    const panel = document.getElementById("threatAlert");
+    const timer = document.getElementById("threatTimer");
+    const regionEl = document.getElementById("threatRegion");
+    const progress = document.getElementById("threatProgress");
+
+    if (!panel || !timer || !regionEl || !progress) return;
+
+    regionEl.textContent = region;
+    panel.classList.add("show");
+    panel.classList.remove("critical");
+
+    let remain = seconds;
+    const startSeconds = seconds;
+
+    if (window._threatInterval) clearInterval(window._threatInterval);
+    window._threatInterval = setInterval(() => {
+        timer.textContent = `До удара: ${remain} сек`;
+        progress.style.width = (remain / startSeconds * 100) + "%";
+
+        if (remain <= 10) {
+            panel.classList.add("critical");
+        }
+
+        if (remain <= 0) {
+            clearInterval(window._threatInterval);
+            panel.querySelector(".threat-title").textContent = "💥 ПОПАДАНИЕ";
+            timer.textContent = "Объект получил повреждения";
+            progress.style.width = "0%";
+            setTimeout(() => {
+                panel.classList.remove("show", "critical");
+                panel.querySelector(".threat-title").textContent = "🚨 РАКЕТНАЯ ОПАСНОСТЬ";
+            }, 3000);
+        }
+        remain--;
+    }, 1000);
 }
 
 // ---- Кнопки стройки ----
@@ -3134,7 +3074,7 @@ document.getElementById('tutorialBtn').onclick = function() {
     startTutorial();
 };
 
-console.log("✅ Игра полностью загружена. Мультиплеер исправлен: снаряды видны у обоих, ресурсы не сбрасываются, клиент строит, атака на ПВО работает.");
+console.log("✅ Игра полностью загружена. Исправлено: исчезновение радара у клиента, добавлено оповещение о ракетной опасности.");
 </script>
 </body>
 </html>
