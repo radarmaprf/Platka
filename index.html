@@ -13,7 +13,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
-        /* ===== ВЕСЬ СТИЛЬ (с добавлением threat alert) ===== */
+        /* ===== ВЕСЬ СТИЛЬ ===== */
         *{margin:0;padding:0;box-sizing:border-box;user-select:none;-webkit-tap-highlight-color:transparent}
         body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#0a0f12;overflow:hidden;height:100vh;color:#eef;touch-action:manipulation}
         .screen{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;justify-content:center;align-items:center;z-index:2000;background:radial-gradient(circle at 20% 30%,#0a1f1a,#030a08)}
@@ -247,14 +247,226 @@
             50%{border-color:#ffffff;}
             100%{border-color:#ff4444;}
         }
+
+        /* ===== УЛУЧШЕННЫЙ ДИЗАЙН ЛОББИ ===== */
+        #lobbyScreen .card {
+            background: rgba(10,25,30,0.85);
+            backdrop-filter: blur(20px);
+            border: 2px solid rgba(255,215,0,0.2);
+            box-shadow: 0 30px 80px rgba(0,0,0,0.7), 0 0 60px rgba(255,215,0,0.05);
+        }
+        #lobbyScreen h1 {
+            font-size: clamp(2rem,5vw,2.8rem);
+            background: linear-gradient(135deg,#ffb347,#ff8c00);
+            -webkit-background-clip:text;
+            background-clip:text;
+            color:transparent;
+            margin-bottom: 15px;
+        }
+        .lobby-info {
+            background: rgba(255,255,255,0.05);
+            padding: 10px 16px;
+            border-radius: 40px;
+            margin: 8px 0;
+            font-size: clamp(0.9rem,1.5vw,1.1rem);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        .lobby-info .player-name {
+            font-weight: 700;
+        }
+        .lobby-info .ready-status {
+            font-size: 1.2rem;
+        }
+        #lobbyStatus {
+            margin: 15px 0;
+            font-weight: 700;
+            font-size: clamp(1rem,2vw,1.3rem);
+            color: #ffaa33;
+            text-shadow: 0 0 20px rgba(255,170,51,0.2);
+        }
+        #lobbyStatus.ready { color: #66ff88; }
+        #lobbyStatus.waiting { color: #ffaa33; }
+        #lobbyStatus.playing { color: #00ffaa; }
+        .lobby-player {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 12px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 30px;
+            margin: 4px 0;
+        }
+        .lobby-player .player-team {
+            font-size: 0.8rem;
+            opacity: 0.7;
+        }
     </style>
 </head>
 <body>
 
-<!-- ===== ВСЯ РАЗМЕТКА (БЕЗ ИЗМЕНЕНИЙ) ===== -->
-<!-- ... (оставляем всю разметку как была) ... -->
+<!-- ===== АВТОРИЗАЦИЯ ===== -->
+<div id="authOverlay" class="auth-overlay">
+    <div class="auth-card">
+        <h2>☢️ SKY IN FIRE</h2>
+        <div class="sub">Вход в систему</div>
+        <input type="text" id="authLogin" placeholder="Логин">
+        <input type="password" id="authPassword" placeholder="Пароль">
+        <div id="authKeyGroup" style="display:none;">
+            <input type="text" id="authKey" placeholder="Лицензионный ключ">
+        </div>
+        <button id="authSubmitBtn">ВОЙТИ</button>
+        <div id="authMessage" class="error-msg"></div>
+        <div class="toggle-link" id="toggleAuthMode">Нет аккаунта? Зарегистрироваться</div>
+        <button class="buy-key-btn" onclick="window.open('https://t.me/skyinfireoff','_blank')">💎 Купить ключ</button>
+    </div>
+</div>
 
-<!-- ===== ТОЛЬКО ДОБАВЛЯЕМ THREAT ALERT ПЕРЕД </body> ===== -->
+<!-- ===== ГЛАВНОЕ МЕНЮ ===== -->
+<div id="menuScreen" class="screen">
+    <div class="missile-bg"></div>
+    <div class="scan-line"></div>
+    <div class="card">
+        <div class="logo">☢️ SKY IN FIRE</div>
+        <button id="singleBtn">⚔️ ОДИНОЧНАЯ ИГРА</button>
+        <button id="sandboxBtn">🏖️ ПЕСОЧНИЦА</button>
+        <button id="multiplayerBtn">🌐 МУЛЬТИПЛЕЕР 1v1</button>
+        <button id="tutorialBtn">📖 ОБУЧЕНИЕ</button>
+        <button id="rankBtn">🏆 ТОП ИГРОКОВ</button>
+        <div id="multiplayerControls" style="display:none; margin-top:10px;">
+            <button id="createRoomBtn">СОЗДАТЬ КОМНАТУ</button>
+            <div style="display:flex; gap:8px; align-items:center; margin:8px 0;">
+                <input type="text" id="roomCodeInput" placeholder="КОД КОМНАТЫ" style="flex:1; margin:0;">
+                <button id="joinRoomBtn" style="flex:0; padding:10px 20px; margin:0;">ПОДКЛЮЧИТЬСЯ</button>
+            </div>
+            <div id="roomDisplay" style="font-size:clamp(.8rem,1.5vw,1rem); margin-top:5px;"></div>
+        </div>
+        <button id="logoutBtn" style="margin-top:15px; background:#aa3333;">🚪 ВЫЙТИ ИЗ АККАУНТА</button>
+    </div>
+</div>
+
+<!-- ===== ЛОББИ ===== -->
+<div id="lobbyScreen" class="screen" style="display:none;">
+    <div class="card" style="width:400px; max-width:92%;">
+        <h1>🛡️ ЛОББИ</h1>
+        <div class="lobby-info">
+            <span>📋 Код комнаты:</span>
+            <span><strong id="lobbyRoomCode"></strong></span>
+            <button class="copy-btn" id="copyRoomCodeBtn">📋</button>
+        </div>
+        <div class="lobby-info" style="flex-direction:column; align-items:stretch; gap:6px;">
+            <div class="lobby-player">
+                <span class="player-name" id="player1Name">—</span>
+                <span class="player-team" id="player1Team">—</span>
+                <span class="ready-status" id="player1Ready">⚪</span>
+            </div>
+            <div class="lobby-player">
+                <span class="player-name" id="player2Name">—</span>
+                <span class="player-team" id="player2Team">—</span>
+                <span class="ready-status" id="player2Ready">⚪</span>
+            </div>
+        </div>
+        <div id="lobbyStatus" class="waiting">Ожидание игроков...</div>
+        <button id="readyBtn" class="ready-btn">ГОТОВ</button>
+        <button id="leaveLobbyBtn" style="margin-top:10px; background:#aa3333;">ВЫЙТИ</button>
+    </div>
+</div>
+<div id="copyNotification">✅ Код скопирован!</div>
+
+<!-- ===== РЕЙТИНГ ===== -->
+<div id="rankModal" class="ranking-modal" style="display:none;">
+    <span class="close-btn" id="closeRankModal">&times;</span>
+    <h2>🏆 ТОП ИГРОКОВ</h2>
+    <ul id="rankList" class="ranking-list"><li style="text-align:center; color:#888; padding:20px;">Загрузка...</li></ul>
+</div>
+
+<!-- ===== НАСТРОЙКА ИГРЫ ===== -->
+<div id="setupModal">
+    <span class="close-setup" id="closeSetupModal">&times;</span>
+    <h2>⚙️ НАСТРОЙКА ИГРЫ</h2>
+    <div class="country-select-modal">
+        <div class="country-btn-modal selected" data-country="russia">🇷🇺 РОССИЯ</div>
+        <div class="country-btn-modal" data-country="ukraine">🇺🇦 УКРАИНА</div>
+    </div>
+    <div class="difficulty-select-modal">
+        <div class="difficulty-btn-modal" data-diff="EASY">EASY</div>
+        <div class="difficulty-btn-modal selected" data-diff="NORMAL">NORMAL</div>
+        <div class="difficulty-btn-modal" data-diff="HARD">HARD</div>
+        <div class="difficulty-btn-modal" data-diff="EXTREME">EXTREME</div>
+    </div>
+    <div class="setup-grid">
+        <div class="setup-col"><h3>🇷🇺 РОССИЯ</h3><div id="russiaCityList" class="city-list"></div></div>
+        <div class="setup-col"><h3>🇺🇦 УКРАИНА</h3><div id="ukraineCityList" class="city-list"></div></div>
+    </div>
+    <button class="start-btn" id="startGameBtn">🚀 НАЧАТЬ ИГРУ</button>
+</div>
+
+<!-- ===== АТАКА ===== -->
+<div id="attackModal" class="modal" style="display:none;">
+    <h3>🎯 ВЫБОР ЦЕЛИ</h3>
+    <select id="targetSelect" size="5" style="width:100%; margin-bottom:10px;"></select>
+    <div style="font-size:clamp(.8rem,1.5vw,1rem);">💥 ВООРУЖЕНИЕ</div>
+    <div id="weaponGrid" class="weapon-grid"></div>
+    <div class="flex"><span>⚡ КОЛ-ВО:</span><button id="countMinus">−</button><span id="countValue">1</span><button id="countPlus">+</button></div>
+    <div id="costDisplay">СТОИМОСТЬ: 0 ⚡</div>
+    <button id="attackConfirmBtn" style="background:#ffaa33; color:#1a2a2a;">АТАКОВАТЬ</button>
+    <button id="attackCancelBtn" style="background:#555; color:#fff;">ОТМЕНА</button>
+</div>
+
+<!-- ===== ШТАБ ПВО ===== -->
+<div id="pvoModal" class="pvo-modal">
+    <button class="close-pvo" id="closePvoModal">&times;</button>
+    <h2>🛡️ ШТАБ ПВО</h2>
+    <div class="sub">Выберите комплекс для размещения</div>
+    <div class="pvo-grid" id="pvoGrid"></div>
+    <div class="info-panel" id="pvoInfoPanel">
+        <span>Выберите тип ПВО</span>
+        <span>⚡ Энергия: <span id="pvoEnergyDisplay">0</span></span>
+    </div>
+    <div class="actions">
+        <button class="primary" id="pvoDeployBtn">🚀 РАЗМЕСТИТЬ</button>
+        <button id="pvoCancelBtn" class="danger">ОТМЕНА</button>
+    </div>
+</div>
+<div id="pvoPlacementOverlay">
+    <div class="placement-panel">
+        <h2>📍 УСТАНОВИТЕ ПВО</h2>
+        <p>Кликните на карте, чтобы разместить выбранный комплекс</p>
+        <button id="pvoPlacementCancelBtn">❌ ОТМЕНА</button>
+    </div>
+</div>
+
+<!-- ===== КОНТЕЙНЕР ИГРЫ ===== -->
+<div id="gameContainer" style="display:none; width:100%; height:100%; position:relative;">
+    <div id="map" style="width:100%; height:100%;"></div>
+    <div id="gameHUD">
+        <div class="hud-top">
+            <div class="hud-resource">⚡ <span id="energy">300</span></div>
+            <div class="hud-rank">⭐ <span id="rankTitle">Рядовой</span> <span id="rankXp">0 XP</span></div>
+        </div>
+        <div class="hud-bottom">
+            <div class="health-bars">
+                <div class="health-bar"><span>🇷🇺</span><div class="bar-bg"><div class="bar-fill ru-fill" id="ruFill"></div></div><span id="ruPercent">0%</span></div>
+                <div class="health-bar"><span>🇺🇦</span><div class="bar-bg"><div class="bar-fill ua-fill" id="uaFill"></div></div><span id="uaPercent">0%</span></div>
+            </div>
+        </div>
+    </div>
+    <div id="buildPanel">
+        <button id="buildToggle">🏗️ Стройка</button>
+        <div id="buildMenu">
+            <button class="build-btn" id="buildRadarBtn">📡 РАДАР (180)</button>
+            <button class="build-btn" id="buildPvoStaffBtn">🛡️ ШТАБ ПВО (250)</button>
+            <button class="build-btn" id="buildPowerPlantBtn">⚡ ЭЛЕКТРОСТАНЦИЯ (250)</button>
+            <button class="build-btn" id="buildRefineryBtn">⛽ НПЗ (400)</button>
+            <button class="build-btn" id="buildRocketFactoryBtn">🚀 ЗАВОД РАКЕТ (500)</button>
+            <button class="build-btn cancel" id="cancelBuild">❌ ОТМЕНА</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== ДОБАВЛЯЕМ THREAT ALERT ПЕРЕД </body> ===== -->
 <div id="threatAlert" class="threat-alert">
     <div class="threat-title">🚨 РАКЕТНАЯ ОПАСНОСТЬ</div>
     <div class="threat-region" id="threatRegion">Белгородская область</div>
@@ -265,7 +477,7 @@
 </div>
 
 <!-- ============================================================ -->
-<!-- JAVASCRIPT — ПОЛНЫЙ КОД С ИСПРАВЛЕНИЯМИ И THREAT ALERT -->
+<!-- JAVASCRIPT — ПОЛНЫЙ ИСПРАВЛЕННЫЙ КОД -->
 <!-- ============================================================ -->
 <script>
 // ============================================================
