@@ -13,7 +13,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
-        /* ===== ПОЛНЫЙ СТИЛЬ ===== */
+        /* ===== ПОЛНЫЙ СТИЛЬ (без изменений) ===== */
         *{margin:0;padding:0;box-sizing:border-box;user-select:none;-webkit-tap-highlight-color:transparent}
         body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#0a0f12;overflow:hidden;height:100vh;color:#eef;touch-action:manipulation}
         .screen{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;justify-content:center;align-items:center;z-index:2000;background:radial-gradient(circle at 20% 30%,#0a1f1a,#030a08)}
@@ -847,7 +847,7 @@ function leaveLobby() {
 }
 
 // ============================================================
-// 7. ИГРОВОЙ ДВИЖОК (ОСНОВНАЯ ЛОГИКА) — С ИСПРАВЛЕНИЯМИ
+// 7. ИГРОВОЙ ДВИЖОК (ОСНОВНАЯ ЛОГИКА)
 // ============================================================
 let map, gameActive = false;
 let resources = 300;
@@ -1429,7 +1429,7 @@ function tryBuild(lat,lng,type){
     building.marker=marker;
     buildings.push(building);
     if(type==='radar'){ radars.push(building); let circle=L.circle([lat,lng],{radius:150000,color:'#00ffff',weight:1,fillOpacity:0.05}).addTo(map); building.radarCircle=circle; showHint("🛡️ Теперь используйте Штаб ПВО для размещения ПВО"); addXP(5); updateProjectileVisibility(); }
-    if(type==='powerPlant'){ powerPlants.push(building); /* убрали подсказку про НПЗ в обучении */ if(!isTutorial) showHint("⛽ Постройте НПЗ"); addXP(10); }
+    if(type==='powerPlant'){ powerPlants.push(building); if(!isTutorial) showHint("⛽ Постройте НПЗ"); addXP(10); }
     if(type==='refinery'){ refineries.push(building); if(!isTutorial) showHint("🏭 Постройте Завод ракет"); }
     if(type==='rocketFactory'){ rocketFactories.push(building); }
     updateUI();
@@ -1495,7 +1495,7 @@ function getEnemyTargets(){
     pvoUnits.forEach(p => {
         if(p.team !== myTeam && p.status === 'active'){
             const pvoType = pvoTypes[p.type];
-            const maxHp = 100; // условно
+            const maxHp = 100;
             targets.push({ id: p.id, type: 'pvo', name: pvoType.name, lat: p.lat, lng: p.lng, hp: p.hp || 100, maxHp: 100, priority: 95, display: `${pvoType.name} (ПВО) (${Math.floor((p.hp||100)/100*100)}%)` });
         }
     });
@@ -1774,7 +1774,6 @@ function updateProjectiles(dt){
                     if(isMultiplayer) sendMpAction({ type:'damageBuilding', buildingId:p.targetId, newHp:targetBuilding.hp });
                 }
             } else if(p.targetType === 'pvo'){
-                // Урон по ПВО противника
                 let targetPvo = pvoUnits.find(pv => pv.id === p.targetId);
                 if(targetPvo && targetPvo.team !== myTeam){
                     targetPvo.hp = (targetPvo.hp || 100) - p.damage;
@@ -2077,21 +2076,15 @@ function startMultiplayerGame(roomId, data) {
         }
     }).catch(err => console.error("Ошибка загрузки состояния:", err));
 
-    if (isHost) {
-        const actionsRef = gamesRef.child(roomId).child('actions');
-        if (actionsListenerRef) actionsListenerRef.off();
-        actionsListenerRef = actionsRef;
-        actionsRef.on('child_added', (snapshot) => {
-            const action = snapshot.val();
-            if (!action) return;
-            if (action.player === currentUser) return;
-            console.log("Хост получил действие от клиента:", action);
-            applyAction(action);
-        });
-    }
+    // Подписка на actions перенесена в initMPGame, чтобы карта была готова
 }
 
 function applyAction(action) {
+    // Проверка, что карта готова
+    if (!map) {
+        console.warn("Карта ещё не инициализирована, действие пропущено");
+        return;
+    }
     console.log("Применяем действие:", action);
     if (action.type === 'build') {
         const b = action.building;
@@ -2358,6 +2351,20 @@ function initMPGame(initialState) {
                 if (state) {
                     applyGameState(state);
                 }
+            });
+        }
+
+        // --- ПОДПИСКА НА ДЕЙСТВИЯ (ТОЛЬКО ДЛЯ ХОСТА) ПОСЛЕ ИНИЦИАЛИЗАЦИИ КАРТЫ ---
+        if (isHost) {
+            const actionsRef = gamesRef.child(currentRoomId).child('actions');
+            if (actionsListenerRef) actionsListenerRef.off();
+            actionsListenerRef = actionsRef;
+            actionsRef.on('child_added', (snapshot) => {
+                const action = snapshot.val();
+                if (!action) return;
+                if (action.player === currentUser) return;
+                console.log("Хост получил действие от клиента:", action);
+                applyAction(action);
             });
         }
 
@@ -3017,7 +3024,7 @@ document.getElementById('tutorialBtn').onclick = function() {
     startTutorial();
 };
 
-console.log("✅ Игра полностью загружена. Исправлено: видимость снарядов, атака на ПВО, прямоугольные карточки ПВО, убраны лишние подсказки в обучении.");
+console.log("✅ Игра полностью загружена. Исправлена синхронизация зданий в мультиплеере.");
 </script>
 </body>
-</html>
+</html>у
