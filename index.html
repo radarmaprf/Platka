@@ -908,8 +908,11 @@ function getMyCities() { return zones.filter(z => z.team === myTeam); }
 // ---- Функция получения иконки ПВО ----
 function getPvoIcon(typeId) {
     const pvo = pvoTypes[typeId];
-    try { return L.icon({ iconUrl: pvo.icon, iconSize: [40,40], iconAnchor: [20,20] }); }
-    catch(e) { return L.divIcon({ html: '🛡️', iconSize:[40,40] }); }
+    try {
+        return L.icon({ iconUrl: pvo.icon, iconSize: [48, 32], iconAnchor: [24, 16] });
+    } catch(e) {
+        return L.divIcon({ html: '🛡️', iconSize:[48, 32], iconAnchor: [24, 16] });
+    }
 }
 
 // ---- Функция получения шанса сбития (с учётом обучения) ----
