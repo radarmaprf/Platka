@@ -961,6 +961,51 @@ async function updateElo(win, mode) {
     await userRef.update({ elo: newElo });
 }
 
-// ---- Инициализация ----
-// После загрузки всё должно работать. В index.html подключены все скрипты.
-console.log("✅ UI загружен. ПВО больше не сбивает свои цели, AI ставит ПВО.");
+// ---- НОВАЯ МЕХАНИКА РАДАРА: ОБРАБОТЧИКИ ПРОКАЧКИ ----
+document.getElementById('upgradeRangeBtn').addEventListener('click', function() {
+    if (!selectedRadarForUpgrade) return;
+    const r = selectedRadarForUpgrade;
+    const cost = 1000 * r.level;
+    if (resources < cost) {
+        alert('Не хватает энергии!');
+        return;
+    }
+    resources -= cost;
+    r.range += 50000; // +50 км
+    r.level++;
+    updateUI();
+    updateRadarSector(r);
+    updateRadarModalInfo();
+    showToast(`📡 Дальность увеличена до ${Math.round(r.range/1000)} км`, 'warning');
+});
+
+document.getElementById('upgradeSpeedBtn').addEventListener('click', function() {
+    if (!selectedRadarForUpgrade) return;
+    const r = selectedRadarForUpgrade;
+    const cost = 800 * r.level;
+    if (resources < cost) {
+        alert('Не хватает энергии!');
+        return;
+    }
+    resources -= cost;
+    r.rotationSpeed += 15; // +15 град/сек (быстрее вращение)
+    r.level++;
+    updateUI();
+    updateRadarModalInfo();
+    showToast(`📡 Скорость вращения увеличена до ${(360/r.rotationSpeed).toFixed(1)} сек/оборот`, 'warning');
+});
+
+document.getElementById('closeRadarUpgrade').addEventListener('click', function() {
+    document.getElementById('radarUpgradeModal').style.display = 'none';
+    selectedRadarForUpgrade = null;
+});
+
+window.addEventListener('click', function(e) {
+    const modal = document.getElementById('radarUpgradeModal');
+    if (e.target === modal) {
+        modal.style.display = 'none';
+        selectedRadarForUpgrade = null;
+    }
+});
+
+console.log("✅ UI загружен. Радары теперь работают с секторами и прокачкой.");
