@@ -6,27 +6,27 @@ function hashSHA256(text) {
 }
 
 const VALID_KEYS_ORIGINAL = [
-"9o3lt6kg03keo41rqfps-2l5tmq",
-"0o4lt3kg03keo41rqfps-3l6tms",
-"2l5tmqlg03keo41rqf-6k9it5",
-"5k7it0g03keo41rqfps-9o2lt7",
-"8o1lt4kg03keo41rqfps-1l3tmu",
-"0l1tmwlg03keo41rqf-1k3it7",
-"3k6it0g03keo41rqfps-4o7lt5",
-"6o9lt2kg03keo41rqfps-7l0tmy",
-"8l4tmxlg03keo41rqf-0k5it8",
-"1k3it7g03keo41rqfps-2o8lt6",
-"4o7lt5kg03keo41rqfps-5l1tmz",
-"7l0tmylg03keo41rqf-8k2it9",
-"0k5it8g03keo41rqfps-1o9lt3",
-"2o8lt6kg03keo41rqfps-3l5tma",
-"5l1tmzlg03keo41rqf-6k3it0",
-"8k2it9g03keo41rqfps-9o6lt4",
-"1o9lt3kg03keo41rqfps-2l7tmb",
-"3l5tmalg03keo41rqf-4k1it3",
-"6k3it0g03keo41rqfps-7o8lt6",
-"9o6lt4kg03keo41rqfps-0l2tmc",
-"2l7tmblg03keo41rqf-3k4it5"
+"9o3lt6kg03keo41-2l5tmq",
+"0o4lt3kg03keo4-3l6tms",
+"2l5tmqlg03k-6k9it5",
+"5k7it0g03keo4-9o2lt7",
+"8o1lt4kg03keo41-1l3tmu",
+"0l1tmwlg03keo-1k3it7",
+"3k6it0g03keo41rq-4o7lt5",
+"6o9lt2kg03ke-7l0tmy",
+"8l4tmxlg03keo4-0k5it8",
+"1k3it7g03keo-2o8lt6",
+"4o7lt5kg03keo4-5l1tmz",
+"7l0tmylg03ke-8k2it9",
+"0k5it8g03keo4-1o9lt3",
+"2o8lt6kg03keo-3l5tma",
+"5l1tmzlg03keo4",
+"8k2it9g03keo41r-9o6lt4",
+"1o9lt3kg03keo41rqfp",
+"3l5tmalg03keo41rqf-4",
+"6k3it0g03keo41rq7o8lt6",
+"9o6lt4kg03keo41rq0l2tmc",
+"2l7tmblg03k-3k4it5"
 ];
 const VALID_KEYS_HASHES = VALID_KEYS_ORIGINAL.map(k => hashSHA256(k));
 
