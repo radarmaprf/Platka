@@ -19,6 +19,7 @@ let radarAnimationInterval = null, aiInterval = null, economyInterval = null;
 let attackType = null, attackCount = 1;
 let maxRadars = 8, maxPvo = 12, maxPowerPlants = 5, maxRefineries = 3;
 let pvoPlacementMode = false, pvoPlacementType = null;
+let selectedRadarForUpgrade = null; // === НОВАЯ МЕХАНИКА РАДАРА ===
 
 // ---- Типы ПВО ----
 const pvoTypes = {
@@ -113,7 +114,7 @@ let playerXP = 0;
 let playerStats = { wins:0, losses:0, citiesDestroyed:0, buildingsDestroyed:0, missilesLaunched:0, hits:0, totalShots:0 };
 let audioCtx = null;
 
-// ---- Функции иконок ----
+// ---- Функции иконок (без изменений) ----
 function getAirportIcon() {
     try { return L.icon({ iconUrl: 'images/airport.png', iconSize: [48,48], iconAnchor: [24,24] }); }
     catch(e){ return L.divIcon({ html:'🏠', iconSize:[48,48] }); }
@@ -169,7 +170,7 @@ function getMissileIcon(type, team) {
     catch(e) { return L.divIcon({ html: '💥', iconSize:[28,28] }); }
 }
 
-// ---- Вспомогательные функции ----
+// ---- Вспомогательные функции (без изменений) ----
 function getMyCities() { return zones.filter(z => z.team === myTeam); }
 function getInterceptChance(pvoUnit, projectileType) {
     if (isTutorial) return 1.0;
@@ -281,7 +282,7 @@ function updateRankUI(){
 function updateStatsAfterHit(damage, targetType, isHit){ playerStats.totalShots++; if(isHit){ playerStats.hits++; if(targetType === 'zone') playerStats.citiesDestroyed++; else if(targetType === 'pvo') playerStats.buildingsDestroyed++; else playerStats.buildingsDestroyed++; } }
 function updateStatsAfterGame(victory){ if(victory) playerStats.wins++; else playerStats.losses++; if(victory) addXP(300); }
 
-// ---- Функции границ и территории ----
+// ---- Функции границ и территории (без изменений) ----
 function loadRealBorders(cb) {
     if (bordersLoaded) {
         if (cb) cb();
@@ -399,6 +400,7 @@ function initZones(cities) {
     updateTotalPercent();
 }
 
+// ---- ГЛАВНАЯ ФУНКЦИЯ ИНИЦИАЛИЗАЦИИ ----
 function initGameMapAndLogic(citiesArray) {
     document.getElementById('menuScreen').style.display = 'none';
     document.getElementById('lobbyScreen').style.display = 'none';
@@ -464,7 +466,7 @@ function initGameMapAndLogic(citiesArray) {
     });
 }
 
-// ---- Постройки ----
+// ---- ПОСТРОЙКИ (с обновлённой логикой радара) ----
 function tryBuild(lat,lng,type){
     if(!airportPlaced){ alert("Сначала постройте аэродром!"); return false; }
     if(!canBuildHere(lat,lng)){ alert("Можно строить только на своей территории и не ближе 4 км к другим зданиям!"); return false; }
@@ -514,10 +516,31 @@ function tryBuild(lat,lng,type){
     }
     building.marker = marker;
     buildings.push(building);
+    
+    // === НОВАЯ МЕХАНИКА РАДАРА ===
     if(type==='radar'){
+        // Добавляем свойства радара
+        const radarData = {
+            angle: Math.random() * 360,
+            rotationSpeed: 30, // градусов в секунду (уровень 1)
+            range: 200000, // 200 км в метрах
+            level: 1,
+            sectorAngle: 30, // ширина луча в градусах
+            lastContactTime: 0,
+            detectedTargets: new Set(),
+            sectorPolygon: null
+        };
+        Object.assign(building, radarData);
         radars.push(building);
         let circle = L.circle([lat,lng], {radius:150000, color:'#00ffff', weight:1, fillOpacity:0.05}).addTo(map);
         building.radarCircle = circle;
+        // Обработчик клика по радару для прокачки
+        marker.on('click', function() {
+            if (building.team === myTeam) {
+                selectedRadarForUpgrade = building;
+                openRadarUpgradeModal();
+            }
+        });
         showHint("🛡️ Теперь используйте Штаб ПВО для размещения ПВО");
         addXP(5);
         updateProjectileVisibility();
@@ -535,7 +558,7 @@ function tryBuild(lat,lng,type){
     return true;
 }
 
-// ---- Цели и атаки ----
+// ---- Цели и атаки (без изменений) ----
 function getAvailableWeapons(team) {
     return team === 'russia' ? ['shahed','geran5','x101','kalibr','kinzhal','iskander'] : ['lutyi','flamingo','stormshadow','grom2'];
 }
@@ -630,7 +653,7 @@ function launchAttack(airport, targetObj, type, count){
     return true;
 }
 
-// ---- ПВО ----
+// ---- ПВО (без изменений) ----
 function deployPvo(typeId, cityName, lat, lng) {
     if(!pvoStaffBuilt){ alert("Сначала постройте Штаб ПВО!"); return false; }
     if(lat === undefined || lng === undefined){
@@ -702,11 +725,9 @@ function exitPlacementMode() {
     document.getElementById('pvoPlacementOverlay').classList.remove('active');
 }
 
-// ---- Перехват (исправлен) ----
+// ---- ПЕРЕХВАТ (исправлен, не сбивает свои) ----
 function tryIntercept(proj){
-    // НЕ перехватываем свои снаряды
     if (proj.team === myTeam) return false;
-
     const now = Date.now();
     if (now - proj.lastInterceptCheck < 2000) return false;
     proj.lastInterceptCheck = now;
@@ -835,7 +856,7 @@ function updatePvoMovement(dt) {
     }
 }
 
-// ---- AI ----
+// ---- AI (без изменений) ----
 const priorityWeights = { refinery:100, city:90, radar:70, powerPlant:60, rocketFactory:85 };
 function chooseAITargets(maxTargets=3){
     let candidates = [];
@@ -877,7 +898,6 @@ function aiBuild(type){
         else if(type==='rocketFactory') rocketFactories.push(building);
     }
 }
-
 function aiDeployPvo() {
     if (!gameActive || !isAI) return;
     const enemyCities = zones.filter(z => z.team === enemyTeam);
@@ -922,7 +942,6 @@ function aiDeployPvo() {
     pvoUnit.rangeCircle = circle;
     pvoUnits.push(pvoUnit);
 }
-
 function launchAIAttack(target){
     let available = (enemyTeam === 'russia') ? ['shahed','geran5','x101','kalibr','kinzhal','iskander'] : ['lutyi','flamingo','stormshadow','grom2'];
     let type = available[Math.floor(Math.random() * available.length)];
@@ -965,12 +984,11 @@ function initAI(){
     }, attackIntervalMs);
     if(aiBuildInterval) clearInterval(aiBuildInterval);
     aiBuildInterval = setInterval(() => aiBuildLogic(), 30000);
-    // AI размещает ПВО
     setInterval(() => aiDeployPvo(), 45000);
     setTimeout(() => aiDeployPvo(), 5000);
 }
 
-// ---- Игровой цикл ----
+// ---- ИГРОВОЙ ЦИКЛ ----
 function gameLoop(now) {
     if (!gameActive) return;
     let dt = Math.min(0.1, (now - lastUpdate) / 1000);
@@ -981,81 +999,144 @@ function gameLoop(now) {
     requestAnimationFrame(gameLoop);
 }
 
-function updateProjectiles(dt){
-    for(let i=0;i<projectiles.length;i++){
-        let p=projectiles[i]; if(!p.active) continue;
-        if(tryIntercept(p)){ p.active=false; map.removeLayer(p.marker); projectiles.splice(i,1); i--; continue; }
-        p.progress += p.speed * dt;
-        if(p.progress >= 1){
-            p.active=false; map.removeLayer(p.marker);
-            if(p.targetType === 'zone'){
-                let targetZone = zones.find(z => z.id === p.targetId);
-                if(targetZone && targetZone.hp > 0){
-                    targetZone.hp = Math.max(0, targetZone.hp - p.damage);
-                    updateZoneMarkers(); playBeep(200,0.4); addXP(20);
-                    if (targetZone.hp <= 0) { removeZoneIfDestroyed(targetZone); addXP(100); }
-                    if(isMultiplayer && isHost) syncGameState();
-                }
-            } else if(p.targetType === 'building'){
-                let targetBuilding = buildings.find(b => b.id == p.targetId);
-                if(targetBuilding && targetBuilding.hp > 0){
-                    targetBuilding.hp -= p.damage; playBeep(200,0.4); addXP(20);
-                    if(targetBuilding.hp <= 0) destroyBuilding(targetBuilding);
-                    if(isMultiplayer && isHost) syncGameState();
-                }
-            } else if(p.targetType === 'pvo'){
-                let targetPvo = pvoUnits.find(pv => pv.id === p.targetId);
-                if(targetPvo && targetPvo.team !== myTeam){
-                    targetPvo.hp = (targetPvo.hp || 100) - p.damage;
-                    if(targetPvo.hp <= 0){
-                        if(targetPvo.marker) map.removeLayer(targetPvo.marker);
-                        if(targetPvo.rangeCircle) map.removeLayer(targetPvo.rangeCircle);
-                        pvoUnits = pvoUnits.filter(pv => pv.id !== targetPvo.id);
-                        showHint(`🛡️ ПВО ${pvoTypes[targetPvo.type].name} уничтожено!`);
-                        addXP(50);
-                        if(isMultiplayer && isHost) syncGameState();
-                    } else {
-                        if(targetPvo.marker) targetPvo.marker.setPopupContent(`<b>${pvoTypes[targetPvo.type].name}</b><br>Город: ${targetPvo.city}<br>Дальность: ${pvoTypes[targetPvo.type].range} км<br>HP: ${Math.floor(targetPvo.hp)}`);
-                        if(isMultiplayer && isHost) syncGameState();
-                    }
-                }
-            }
-            updateStatsAfterHit(p.damage, p.targetType, true);
-            projectiles.splice(i,1); i--;
-            continue;
-        }
-        let lat = p.from.lat + (p.to.lat - p.from.lat) * p.progress;
-        let lng = p.from.lng + (p.to.lng - p.from.lng) * p.progress;
-        p.marker.setLatLng([lat, lng]);
-        if (p.marker.setRotationAngle) p.marker.setRotationAngle(p.angle);
+// ---- НОВАЯ СИСТЕМА ОБНАРУЖЕНИЯ (радары) ----
+function updateRadarSector(radar) {
+    if (!map) return;
+    if (radar.sectorPolygon) {
+        map.removeLayer(radar.sectorPolygon);
+        radar.sectorPolygon = null;
     }
-}
+    const center = [radar.lat, radar.lng];
+    const radius = radar.range;
+    const halfAngle = radar.sectorAngle / 2;
+    const startAngle = (radar.angle - halfAngle + 360) % 360;
+    const endAngle = (radar.angle + halfAngle + 360) % 360;
 
-function updateProjectileVisibility(){
-    for(let p of projectiles){
-        if (!p.marker || !p.marker._icon) continue;
-        if(p.team === myTeam){
-            p.marker._icon.classList.remove('hidden-projectile');
-            continue;
-        }
-        let detected = false;
-        for(let r of radars){
-            if(r.team !== myTeam) continue;
-            let dist = map.distance([r.lat,r.lng], [p.marker.getLatLng().lat, p.marker.getLatLng().lng]);
-            if(dist < 150000){ detected = true; break; }
-        }
-        if(detected) p.marker._icon.classList.remove('hidden-projectile');
-        else p.marker._icon.classList.add('hidden-projectile');
+    const points = [];
+    points.push(center);
+    const steps = 30;
+    let angle = startAngle;
+    for (let i = 0; i <= steps; i++) {
+        let currentAngle = startAngle + (endAngle - startAngle + (endAngle < startAngle ? 360 : 0)) * (i / steps);
+        currentAngle = (currentAngle + 360) % 360;
+        const rad = currentAngle * Math.PI / 180;
+        const dx = radius * Math.sin(rad);
+        const dy = radius * Math.cos(rad);
+        const centerPoint = map.latLngToLayerPoint(center);
+        const targetPoint = centerPoint.add([dx, dy]);
+        const latLng = map.layerPointToLatLng(targetPoint);
+        points.push(latLng);
     }
+    const poly = L.polygon(points, {
+        color: '#00aaff',
+        weight: 1,
+        opacity: 0.6,
+        fillColor: '#0088ff',
+        fillOpacity: 0.12,
+        interactive: false,
+        className: 'radar-sector'
+    }).addTo(map);
+    radar.sectorPolygon = poly;
 }
 
 function startRadarAnimation(){
     if(radarAnimationInterval) clearInterval(radarAnimationInterval);
     radarAnimationInterval = setInterval(() => {
-        for(let r of radars){ if(r.marker){ r.radarAngle = (r.radarAngle + 30) % 360; let iconDiv = r.marker._icon?.querySelector('.radar-icon'); if(iconDiv) iconDiv.style.transform = `rotate(${r.radarAngle}deg)`; } }
+        for (let r of radars) {
+            if (r.team !== myTeam) continue;
+            r.angle = (r.angle + r.rotationSpeed * 0.5) % 360;
+            updateRadarSector(r);
+        }
         updateProjectileVisibility();
-    },1500);
+    }, 500);
 }
+
+function updateProjectileVisibility() {
+    const now = Date.now();
+    for (let p of projectiles) {
+        if (!p.marker || !p.marker._icon) continue;
+        if (p.team === myTeam) {
+            p.marker._icon.classList.remove('hidden-projectile');
+            continue;
+        }
+        let detected = false;
+        for (let r of radars) {
+            if (r.team !== myTeam) continue;
+            if (!r.marker) continue;
+            const pos = p.marker.getLatLng();
+            const dist = map.distance([r.lat, r.lng], [pos.lat, pos.lng]);
+            if (dist > r.range) continue;
+            // Вычисляем азимут от радара до цели (используем turf)
+            const from = turf.point([r.lng, r.lat]);
+            const to = turf.point([pos.lng, pos.lat]);
+            const bearing = turf.rhumbBearing(from, to); // в градусах, от -180 до 180
+            let bearingDeg = (bearing + 360) % 360;
+            let angleDiff = (bearingDeg - r.angle + 360) % 360;
+            if (angleDiff > 180) angleDiff = 360 - angleDiff;
+            if (angleDiff <= r.sectorAngle / 2) {
+                detected = true;
+                r.lastContactTime = now;
+                if (!r.detectedTargets.has(p.id)) {
+                    r.detectedTargets.add(p.id);
+                    const typeName = weaponTypes[p.type]?.name || p.type.toUpperCase();
+                    showToast(`📡 КОНТАКТ: ${typeName} на ${Math.round(dist/1000)} км`, 'warning');
+                    if (p.marker._icon) {
+                        p.marker._icon.style.boxShadow = '0 0 20px #00ffff';
+                        setTimeout(() => {
+                            if (p.marker._icon) p.marker._icon.style.boxShadow = '';
+                        }, 800);
+                    }
+                }
+                break;
+            }
+        }
+        if (detected) {
+            p.marker._icon.classList.remove('hidden-projectile');
+        } else {
+            p.marker._icon.classList.add('hidden-projectile');
+            // Проверяем, не видит ли цель другой радар
+            let stillDetected = false;
+            for (let r of radars) {
+                if (r.team !== myTeam) continue;
+                if (r.detectedTargets.has(p.id)) {
+                    stillDetected = true;
+                    break;
+                }
+            }
+            if (!stillDetected) {
+                radars.forEach(r => r.detectedTargets.delete(p.id));
+            }
+        }
+    }
+}
+
+// ---- МОДАЛКА ПРОКАЧКИ РАДАРА (функции) ----
+function openRadarUpgradeModal() {
+    if (!selectedRadarForUpgrade) return;
+    document.getElementById('radarUpgradeModal').style.display = 'block';
+    updateRadarModalInfo();
+}
+function updateRadarModalInfo() {
+    const r = selectedRadarForUpgrade;
+    if (!r) return;
+    document.getElementById('radarLevel').textContent = r.level;
+    document.getElementById('radarRange').textContent = Math.round(r.range / 1000);
+    const speedSec = 360 / r.rotationSpeed;
+    document.getElementById('radarSpeed').textContent = speedSec.toFixed(1);
+    const rangeCost = 1000 * r.level;
+    const speedCost = 800 * r.level;
+    document.getElementById('rangeCost').textContent = rangeCost;
+    document.getElementById('speedCost').textContent = speedCost;
+}
+
+// ============================================================
+// МУЛЬТИПЛЕЕР (централизованный подход) – без изменений
+// ============================================================
+// ... (весь мультиплеер из предыдущей версии, он не менялся) ...
+// Я не буду дублировать его здесь, чтобы не перегружать ответ.
+// Скопируйте его из вашего текущего game-core.js (он уже должен быть).
+// Он начинается с "let currentRoomId = null;" и до конца файла.
+// ============================================================
 // ============================================================
 // МУЛЬТИПЛЕЕР (централизованный подход)
 // ============================================================
